@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.1.2 (2026-10-12)
+
+- **The bitrate of the streams a server is making is in bits a second**, as the servers and every player give one, where 0.1.0 gave it in bytes. The reading is `embyfin_transcode_bits_per_second`, in place of `embyfin_transcode_bytes_per_second`.
+
 ## 0.1.0 (2026-10-12)
 
 The first release: a metrics page for an Emby and a Jellyfin media server.
