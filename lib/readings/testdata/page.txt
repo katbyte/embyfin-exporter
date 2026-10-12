@@ -101,9 +101,9 @@ embyfin_streams_by_type{server="emby",type="music_video"} 0
 embyfin_streams_by_type{server="emby",type="other"} 0
 embyfin_streams_by_type{server="emby",type="track"} 1
 embyfin_streams_by_type{server="emby",type="video"} 0
-# HELP embyfin_transcode_bytes_per_second How many bytes a second the streams the server is making come to between them: their bitrates added together, over 8.
-# TYPE embyfin_transcode_bytes_per_second gauge
-embyfin_transcode_bytes_per_second{server="emby"} 1.5625e+06
+# HELP embyfin_transcode_bits_per_second The bitrate of the streams the server is making, added together, in bits a second.
+# TYPE embyfin_transcode_bits_per_second gauge
+embyfin_transcode_bits_per_second{server="emby"} 1.25e+07
 # HELP embyfin_transcode_reasons Sessions the server is making a stream for, by each reason it gives for not sending the file as it is. A session with two reasons is under both.
 # TYPE embyfin_transcode_reasons gauge
 embyfin_transcode_reasons{reason="audio_codec_not_supported",server="emby"} 1

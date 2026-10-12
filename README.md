@@ -33,7 +33,7 @@ Every reading starts `embyfin_` and has a `server` label, `emby` or `jellyfin`.
 | `embyfin_streams_by_type` | `type` | sessions playing or paused, by the kind of thing playing: `movie`, `episode`, `track`, `music_video`, `video`, `audiobook`, or `other` for anything else, live television and trailers included |
 | `embyfin_video_transcodes` | `encoder` | sessions whose picture the server is re-encoding, the work that loads a CPU or a GPU, by whether `hardware` or `software` is encoding it |
 | `embyfin_transcode_reasons` | `reason` | sessions the server is making a stream for, by each reason it gives for not sending the file as it is: `container_not_supported`, `subtitle_codec_not_supported` and so on, see [why a stream is made](#why-a-stream-is-made) |
-| `embyfin_transcode_bytes_per_second` | | what the streams the server is making come to between them, in bytes a second; times 8 is their bitrate in bits |
+| `embyfin_transcode_bits_per_second` | | the bitrate of the streams the server is making, added together, in bits a second |
 | `embyfin_scheduled_tasks` | `state` | the server's scheduled tasks that are `idle`, `running` or `cancelling` |
 | `embyfin_scheduled_tasks_failed` | | scheduled tasks whose last run failed; one that was cancelled is not counted |
 | `embyfin_scheduled_task_last_run_failed` | `task` | which they are: for each task that has run, 1 when its last run failed and 0 when not, under the name the server's own dashboard lists the task by |
@@ -84,7 +84,7 @@ Two scheduled tasks of one name are one `task` on the page, failed if either did
 
 `embyfin_transcode_reasons` counts the streams a server is making, repacked or re-encoded, under each reason the server gives for not sending the file as it is. The reasons are the servers' own, some thirty of them, written in small letters: `ContainerNotSupported` is `container_not_supported`. A stream with two reasons is under both, so the reasons add up to more than the streams. There is no list of them to write at 0, so a reason is on the page only while a stream has it.
 
-`embyfin_transcode_bytes_per_second` is what the servers say those streams come to, added together. A file sent as it is adds nothing to it. The servers give a bitrate in bits a second and the page gives bytes, as Prometheus has its units, so multiply by 8 for megabits.
+`embyfin_transcode_bits_per_second` is what the servers say those streams come to, added together, in bits a second as the servers and every player give a bitrate. A file sent as it is adds nothing to it.
 
 ### Nobody's name is on it
 
@@ -200,7 +200,7 @@ time() - embyfin_poll_last_success_timestamp_seconds > 900         # readings go
 embyfin_library_scan_last_run_ok == 0                              # the last library scan failed or was cut short
 embyfin_scheduled_task_last_run_failed == 1                        # which scheduled task's last run failed
 sum by (server, reason) (embyfin_transcode_reasons)                # why streams are being made
-embyfin_transcode_bytes_per_second * 8                             # what the server's own streams come to, in bits a second
+embyfin_transcode_bits_per_second / 1e6                            # what the server's own streams come to, in megabits a second
 ```
 
 ## Development

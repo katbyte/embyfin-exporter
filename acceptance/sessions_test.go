@@ -87,7 +87,7 @@ func TestASessionPlayingPausedAndStopped(t *testing.T) {
 		reading("embyfin_streams_by_type", "type", "episode"):      0,
 		reading("embyfin_streams_by_type", "type", "track"):        0,
 		reading("embyfin_streams_by_type", "type", "other"):        0,
-		reading("embyfin_transcode_bytes_per_second"):              0,
+		reading("embyfin_transcode_bits_per_second"):               0,
 	})
 
 	// the file goes out as it is, so the server has no reason for making a stream of it
@@ -160,8 +160,8 @@ func TestASessionTheServerTranscodesFor(t *testing.T) {
 	})
 
 	// the device asked for no more than 300 kilobits a second, and the servers come in a little over what they are asked for
-	if rate, _ := value(text, reading("embyfin_transcode_bytes_per_second")); rate <= 0 || rate > 100000 {
-		t.Errorf("the stream comes to %v bytes a second, want more than nothing and no more than 100000", rate)
+	if rate, _ := value(text, reading("embyfin_transcode_bits_per_second")); rate <= 0 || rate > 800000 {
+		t.Errorf("the stream comes to %v bits a second, want more than nothing and no more than 800000", rate)
 	}
 
 	// which reasons is the server's to say; that it gives one, as words with nothing run together, is what is checked
@@ -184,7 +184,7 @@ func TestASessionTheServerTranscodesFor(t *testing.T) {
 	expect(t, stopped, map[string]float64{
 		reading("embyfin_video_transcodes", "encoder", "software"): 0,
 		reading("embyfin_streams_by_type", "type", "movie"):        0,
-		reading("embyfin_transcode_bytes_per_second"):              0,
+		reading("embyfin_transcode_bits_per_second"):               0,
 	})
 	if reasons := every(stopped, "embyfin_transcode_reasons"); len(reasons) != 0 {
 		t.Errorf("stopped, the page still gives reasons for a stream: %v", reasons)
@@ -219,8 +219,8 @@ func TestASessionTheServerRepacksFor(t *testing.T) {
 		reading("embyfin_streams_by_type", "type", "movie"):        1,
 	})
 
-	if rate, _ := value(text, reading("embyfin_transcode_bytes_per_second")); rate <= 0 {
-		t.Errorf("the stream comes to %v bytes a second, want more than nothing", rate)
+	if rate, _ := value(text, reading("embyfin_transcode_bits_per_second")); rate <= 0 {
+		t.Errorf("the stream comes to %v bits a second, want more than nothing", rate)
 	}
 	if reasons := every(text, "embyfin_transcode_reasons"); len(reasons) == 0 {
 		t.Errorf("the page gives no reason for the stream the server is making:\n%s", text)

@@ -141,7 +141,8 @@ func TestThePageIsWhatWasSaved(t *testing.T) {
 	})
 }
 
-// The names follow the conventions Prometheus checks for: a unit at the end, _total on what only goes up, help on everything.
+// The names follow the conventions Prometheus checks for: a unit at the end, _total on what only goes up, help on everything. The one exception
+// is a bitrate, which the check would have in bytes: it is in bits a second here, as both servers and every player give one.
 func TestThePageFollowsTheNamingConventions(t *testing.T) {
 	t.Parallel()
 
@@ -150,6 +151,10 @@ func TestThePageFollowsTheNamingConventions(t *testing.T) {
 		t.Fatal(err)
 	}
 	for _, p := range problems {
+		if p.Metric == "embyfin_transcode_bits_per_second" && strings.Contains(p.Text, `instead of "bits"`) {
+			continue
+		}
+
 		t.Errorf("%s: %s", p.Metric, p.Text)
 	}
 }
@@ -197,7 +202,7 @@ func TestEveryStateIsWrittenWhenNothingIsPlaying(t *testing.T) {
 		`embyfin_streams_by_type{server="emby",type="video"} 0`,
 		`embyfin_streams_by_type{server="emby",type="audiobook"} 0`,
 		`embyfin_streams_by_type{server="emby",type="other"} 0`,
-		`embyfin_transcode_bytes_per_second{server="emby"} 0`,
+		`embyfin_transcode_bits_per_second{server="emby"} 0`,
 		`embyfin_scheduled_tasks{server="emby",state="running"} 0`,
 		`embyfin_scheduled_tasks_failed{server="emby"} 0`,
 	} {
@@ -247,9 +252,8 @@ func TestWhatTheServerDoesNotSayIsStillCounted(t *testing.T) {
 	}
 }
 
-// The streams the server is making: how much they come to between them, and why it is making them. The servers give a bitrate in bits a second and
-// the page gives bytes, as Prometheus has it: 8 and 4.5 megabits are 1.5625 megabytes. A stream with two reasons is under both, so the reasons add
-// up to more than the streams.
+// The streams the server is making: how much they come to between them, in the bits a second the servers give a bitrate in, and why it is making
+// them. A stream with two reasons is under both, so the reasons add up to more than the streams.
 func TestTheStreamsTheServerIsMaking(t *testing.T) {
 	t.Parallel()
 
@@ -259,7 +263,7 @@ func TestTheStreamsTheServerIsMaking(t *testing.T) {
 		`embyfin_streams_by_type{server="emby",type="movie"} 1`,
 		`embyfin_streams_by_type{server="emby",type="track"} 1`,
 		`embyfin_streams_by_type{server="emby",type="other"} 0`,
-		`embyfin_transcode_bytes_per_second{server="emby"} 1.5625e+06`,
+		`embyfin_transcode_bits_per_second{server="emby"} 1.25e+07`,
 		`embyfin_transcode_reasons{reason="container_bitrate_exceeds_limit",server="emby"} 2`,
 		`embyfin_transcode_reasons{reason="audio_codec_not_supported",server="emby"} 1`,
 	} {

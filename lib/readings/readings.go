@@ -15,9 +15,6 @@ const Namespace = "embyfin"
 // serverLabel says which server a reading is of: "emby" or "jellyfin".
 const serverLabel = "server"
 
-// bitsInAByte turns the bits a second the servers give a stream's bitrate in into the bytes a second the page gives it in.
-const bitsInAByte = 8
-
 // day is the unit the windows below are counted in.
 const day = 24 * time.Hour
 
@@ -53,7 +50,7 @@ var (
 	streamsByType    = reading("streams_by_type", "Sessions playing or paused, by the kind of thing they play.", "type")
 	videoTranscodes  = reading("video_transcodes", "Sessions whose picture the server is re-encoding, by what does the work.", "encoder")
 	transcodeReasons = reading("transcode_reasons", "Sessions the server is making a stream for, by each reason it gives for not sending the file as it is. A session with two reasons is under both.", "reason")
-	transcodeBytes   = reading("transcode_bytes_per_second", "How many bytes a second the streams the server is making come to between them: their bitrates added together, over 8.")
+	transcodeBitrate = reading("transcode_bits_per_second", "The bitrate of the streams the server is making, added together, in bits a second.")
 
 	scheduledTasks       = reading("scheduled_tasks", "The server's scheduled tasks, by what they are doing.", "state")
 	scheduledTasksFailed = reading("scheduled_tasks_failed", "Scheduled tasks whose last run failed.")
@@ -230,7 +227,7 @@ func (w writer) sessions(s *poll.State) {
 	}
 	w.count(videoTranscodes, hardware, "hardware")
 	w.count(videoTranscodes, software, "software")
-	w.gauge(transcodeBytes, float64(bitrate)/bitsInAByte)
+	w.count(transcodeBitrate, bitrate)
 	for reason, n := range reasons {
 		w.count(transcodeReasons, n, reason)
 	}
