@@ -26,35 +26,61 @@ import (
 	"github.com/katbyte/go-kt/pmetrics"
 )
 
-// What .scripts/testenv.sh up prints: where the server is, a key for it, and the two accounts it made.
+// What .scripts/testenv.sh up prints: where the server is, a key for it, the two accounts it made, and the container it runs in.
 var (
-	backend  = os.Getenv("EMBYFIN_METRICS_TEST_BACKEND")
-	address  = os.Getenv("EMBYFIN_METRICS_TEST_SERVER")
-	token    = os.Getenv("EMBYFIN_METRICS_TEST_TOKEN")
-	admin    = os.Getenv("EMBYFIN_METRICS_TEST_ADMIN")
-	user     = os.Getenv("EMBYFIN_METRICS_TEST_USER")
-	password = os.Getenv("EMBYFIN_METRICS_TEST_PASSWORD")
+	backend   = os.Getenv("EMBYFIN_METRICS_TEST_BACKEND")
+	address   = os.Getenv("EMBYFIN_METRICS_TEST_SERVER")
+	token     = os.Getenv("EMBYFIN_METRICS_TEST_TOKEN")
+	admin     = os.Getenv("EMBYFIN_METRICS_TEST_ADMIN")
+	user      = os.Getenv("EMBYFIN_METRICS_TEST_USER")
+	password  = os.Getenv("EMBYFIN_METRICS_TEST_PASSWORD")
+	container = os.Getenv("EMBYFIN_METRICS_TEST_CONTAINER")
+)
+
+// Which server is under test, as the server label has it.
+const (
+	emby     = "emby"
+	jellyfin = "jellyfin"
 )
 
 // The catalogue .scripts/testenv.sh lays out, as counts: change one and the other must agree.
 const (
-	films    = 4
-	series   = 2
-	seasons  = 3
-	episodes = 5
-	artists  = 2
-	albums   = 3
-	tracks   = 6
+	films       = 4
+	series      = 2
+	seasons     = 3
+	episodes    = 5
+	artists     = 2
+	albums      = 3
+	tracks      = 6
+	musicVideos = 2
+	homeVideos  = 1
+	photos      = 2
+	books       = 2
+	// one audiobook, in two chapters
+	audiobooks = 1
+	chapters   = 2
+	// the folder that mixes kinds: one film, and one series of one season and one episode
+	mixedFilms    = 1
+	mixedSeries   = 1
+	mixedSeasons  = 1
+	mixedEpisodes = 1
 )
 
 // The libraries the suite makes over the catalogue, and the collection and the playlist it makes of two of the films. Both servers then list a
 // library of collections, and Emby one of playlists as well.
 const (
-	filmLibrary  = "Films"
-	showLibrary  = "Shows"
-	musicLibrary = "Music"
-	collection   = "Ridley Scott"
-	playlist     = "Tonight"
+	filmLibrary       = "Films"
+	showLibrary       = "Shows"
+	musicLibrary      = "Music"
+	clipLibrary       = "Clips"
+	homeLibrary       = "Home"
+	bookLibrary       = "Books"
+	audiobookLibrary  = "Audiobooks"
+	mixedLibrary      = "Mixed"
+	collectionLibrary = "Collections"
+	playlistLibrary   = "Playlists"
+	collection        = "Ridley Scott"
+	playlist          = "Tonight"
 )
 
 // library is one library the suite makes: its name, its type, where its files are in the container, and how many of each kind the server should
@@ -64,10 +90,30 @@ type library struct {
 	holds                        map[string]int
 }
 
-var libraries = []library{
-	{filmLibrary, "movies", "/media/films", map[string]int{"Movie": films}},
-	{showLibrary, "tvshows", "/media/shows", map[string]int{"Series": series, "Season": seasons, "Episode": episodes}},
-	{musicLibrary, "music", "/media/music", map[string]int{"MusicAlbum": albums, "Audio": tracks}},
+var libraries = catalogue()
+
+// catalogue is the libraries the suite makes on the server under test. The two servers differ over two of them. An audiobook is an album of tracks
+// in a library of audiobooks on Emby, and an audiobook in a library of books on Jellyfin, which has no library of audiobooks. And a library of
+// mixed kinds is one given no type on Emby, where one given the type "mixed" reads no file at all (seen on 4.10.1); Jellyfin's is asked for by
+// that word.
+func catalogue() []library {
+	listened := library{audiobookLibrary, "audiobooks", "/media/audiobooks", map[string]int{"MusicAlbum": audiobooks, "Audio": chapters}}
+	mixed := library{mixedLibrary, "", "/media/mixed", map[string]int{"Movie": mixedFilms, "Series": mixedSeries, "Season": mixedSeasons, "Episode": mixedEpisodes}}
+	if backend == jellyfin {
+		listened = library{audiobookLibrary, "books", "/media/audiobooks", map[string]int{"AudioBook": chapters}}
+		mixed.collectionType = "mixed"
+	}
+
+	return []library{
+		{filmLibrary, "movies", "/media/films", map[string]int{"Movie": films}},
+		{showLibrary, "tvshows", "/media/shows", map[string]int{"Series": series, "Season": seasons, "Episode": episodes}},
+		{musicLibrary, "music", "/media/music", map[string]int{"MusicAlbum": albums, "Audio": tracks}},
+		{clipLibrary, "musicvideos", "/media/musicvideos", map[string]int{"MusicVideo": musicVideos}},
+		{homeLibrary, "homevideos", "/media/home", map[string]int{"Video": homeVideos, "Photo": photos}},
+		{bookLibrary, "books", "/media/books", map[string]int{"Book": books}},
+		listened,
+		mixed,
+	}
 }
 
 const (
@@ -80,6 +126,11 @@ const (
 // client sets the server up and plays the part of its users. The program under test never uses it: it makes its own.
 var client *embyfin.Client
 
+// asker is the program's own way of asking the server, made once and used by every scrape. One made for each scrape would leave its connections
+// open behind it, and a test that scrapes in a loop then holds hundreds open at once: enough to bring down the link to a Docker that runs in a
+// virtual machine, as it did on a Mac.
+var asker *mediaserver.Server
+
 // runSuite sets the server up, runs the tests, and returns the exit code. With no server named every test skips.
 func runSuite(m *testing.M) int {
 	if backend == "" || address == "" || token == "" {
@@ -89,6 +140,11 @@ func runSuite(m *testing.M) int {
 	var err error
 	if client, err = embyfin.New(embyfin.Backend(backend), address, token); err != nil {
 		fmt.Fprintln(os.Stderr, "making a client for the test server:", err)
+
+		return 1
+	}
+	if asker, err = mediaserver.Connect(backend, address, token); err != nil {
+		fmt.Fprintln(os.Stderr, "connecting to the test server as the program does:", err)
 
 		return 1
 	}
@@ -283,17 +339,29 @@ func theScan(ctx context.Context) (*embyfin.Task, error) {
 	return nil, errors.New("the server lists no scan of every library among its scheduled tasks")
 }
 
+// first is the id and the name of the first item of a kind in a library, by the server's own name for the kind.
+func first(t *testing.T, library, kind string) (id, name string) {
+	t.Helper()
+
+	folder, err := client.FindLibrary(t.Context(), library)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	found, _, err := client.Search(t.Context(), embyfin.SearchOptions{ParentID: folder.ItemID, IncludeItemTypes: kind, SortBy: "SortName"})
+	if err != nil || len(found) == 0 {
+		t.Fatalf("listing what the library %s holds of kind %s: %d of them, %v", library, kind, len(found), err)
+	}
+
+	return found[0].ID, found[0].Name
+}
+
 // scrape asks the server everything once, as the program does when it starts, and gives back the page a scrape would then read. Only is the rounds
 // to ask, both when none is named.
 func scrape(t *testing.T, only ...poll.Round) string {
 	t.Helper()
 
-	server, err := mediaserver.Connect(backend, address, token)
-	if err != nil {
-		t.Fatalf("connecting: %v", err)
-	}
-
-	p, err := poll.New(server, poll.Intervals{Sessions: time.Minute, Library: 5 * time.Minute})
+	p, err := poll.New(asker, poll.Intervals{Sessions: time.Minute, Library: 5 * time.Minute})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -464,14 +532,39 @@ func (p player) report(t *testing.T, at, item, playSession, method string, pause
 	}
 }
 
-// cannotPlay is what a device says of itself that can play nothing as the file is: no direct play, and one way of being streamed to, at a bitrate
-// below the fixture's. A server asked how such a device should play a film answers with a stream it will make.
-var cannotPlay = map[string]any{
-	"MaxStreamingBitrate": 300000,
-	"DirectPlayProfiles":  []any{},
-	"TranscodingProfiles": []any{map[string]any{"Container": "ts", "Type": "Video", "VideoCodec": "h264", "AudioCodec": "aac", "Protocol": "hls", "Context": "Streaming", "MaxAudioChannels": "2"}},
-	"CodecProfiles":       []any{},
-	"SubtitleProfiles":    []any{},
+// lowBitrate is below what the fixture's film comes to, so a device held to it has the server re-encode the film, and highBitrate is far above
+// it, so a device given that much has the server pass the picture and the sound on as they are.
+const (
+	lowBitrate  = 300000
+	highBitrate = 100000000
+)
+
+// profile is what a device says of itself that can play nothing as the file is: no direct play, and one way of being streamed to, in the codecs the
+// fixture's film is already in, at no more than a bitrate. A server asked how such a device should play a film answers with a stream it will make:
+// re-encoded when the bitrate is below the film's, and only repacked when it is not.
+func profile(bitrate int) map[string]any {
+	return map[string]any{
+		"MaxStreamingBitrate": bitrate,
+		"DirectPlayProfiles":  []any{},
+		"TranscodingProfiles": []any{map[string]any{"Container": "ts", "Type": "Video", "VideoCodec": "h264", "AudioCodec": "aac", "Protocol": "hls", "Context": "Streaming", "MaxAudioChannels": "2"}},
+		"CodecProfiles":       []any{},
+		"SubtitleProfiles":    []any{},
+	}
+}
+
+// streamFor has the server start making a stream of an item for the device, held to a bitrate, and gives back the play's id. The list of
+// renditions names the list of pieces, which names the first piece, and asking for that is what starts the server on the work.
+func (p player) streamFor(t *testing.T, item string, bitrate int) (playSession string) {
+	t.Helper()
+
+	playSession, stream := p.howToPlay(t, item, map[string]any{"UserId": p.userID, "MaxStreamingBitrate": bitrate, "EnableDirectPlay": false, "EnableDirectStream": true, "EnableTranscoding": true, "DeviceProfile": profile(bitrate)})
+	if stream == "" {
+		t.Fatal("the server offered no stream of its own making to a device that can play nothing as it is")
+	}
+
+	p.fetch(t, p.fetch(t, p.fetch(t, stream)))
+
+	return playSession
 }
 
 // howToPlay asks the server how the device should play an item, and gives back the play's id and, when the server means to make a stream for it,

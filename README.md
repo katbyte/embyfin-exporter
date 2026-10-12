@@ -218,7 +218,16 @@ The tests under `make test` need no Emby or Jellyfin: each runs against a server
 
 The page itself, its `/metrics` and `/healthz` routes and the labels are [go-kt](https://github.com/katbyte/go-kt)'s `pmetrics`, shared with the other tools that serve one; what is here is the readings (`lib/readings`) and the asking (`lib/poll`, `lib/mediaserver`).
 
-The live tests (`acceptance/`) are where a real server gets to answer otherwise. [`.scripts/testenv.sh`](.scripts/testenv.sh) starts an Emby or a Jellyfin in Docker with no way out to the internet, lays out a small made-up catalogue for it (4 films, 2 series, 3 albums), gets it through its setup and mints a key; the suite then makes the libraries, a collection and a playlist, signs a device in, plays a film on it and has the server transcode one, and checks the page says so each time. It needs `docker`, `ffmpeg` and `jq`, and takes under a minute for both servers.
+The live tests (`acceptance/`) are where a real server gets to answer otherwise. [`.scripts/testenv.sh`](.scripts/testenv.sh) starts an Emby or a Jellyfin in Docker with no way out to the internet, lays out a small made-up catalogue for it, gets it through its setup and mints a key. The catalogue has something of every kind the page counts: films, series, music, music videos, a home video and photos, books, an audiobook, and a folder that mixes a film with a series. The suite then checks the page against the server each time it changes something:
+
+- it makes a library of each type, a collection and a playlist, and checks every count
+- it signs a device in and plays, pauses and stops a film, then plays one thing of each kind
+- it has the server re-encode a film for a device, and only repack one for another
+- it asks for a scan and catches it under way
+- it runs `serve` and scrapes it over HTTP, then freezes the server's container to see it reported as down, its readings left off, and back again when thawed
+- it starts the image `make docker` builds beside the server, and checks it serves the page, passes its own health check and does not run as root
+
+It needs `docker`, `ffmpeg` and `jq`, and takes about a minute for both servers once the images are there.
 
 ```bash
 make testacc BACKENDS=jellyfin                                             # one server only
@@ -226,5 +235,9 @@ eval "$(EMBYFIN_METRICS_TEST_BACKEND=emby .scripts/testenv.sh up)"         # or 
 make test-live
 EMBYFIN_METRICS_TEST_BACKEND=emby .scripts/testenv.sh down
 ```
+
+Run by hand like that, the test of the image is skipped unless `EMBYFIN_METRICS_TEST_PROGRAM_IMAGE` names one; `make testacc` builds it and does.
+
+What the live tests cannot reach stays with the unit tests: a transcode on a GPU, which the containers do not have, a scheduled task that fails, which none does on a server left to itself, and live television.
 
 Dependencies are vendored, and the dev tools are pinned in `.tools/go.mod` and the makefile; `make tools` installs them into `.tools/bin`.

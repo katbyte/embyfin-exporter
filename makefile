@@ -100,9 +100,10 @@ install: ## Install embyfin-metrics into GOPATH/bin with version info from git
 	@echo "==> installing..."
 	go install -ldflags "-X github.com/katbyte/go-kt/version.GitCommit=${GIT_COMMIT} -X github.com/katbyte/go-kt/version.Version=${GIT_VERSION}" .
 
+# the base images come from Google's mirror of Docker Hub, and from Docker Hub itself when the mirror gives nothing, as the build workflow does it
 docker: ## Build the embyfin-metrics container image with version info from git
 	@echo "==> building docker image..."
-	docker build --build-arg VERSION=${GIT_VERSION} --build-arg COMMIT=${GIT_COMMIT} -t embyfin-metrics .
+	docker build --build-arg VERSION=${GIT_VERSION} --build-arg COMMIT=${GIT_COMMIT} -t embyfin-metrics . || docker build --build-arg REGISTRY=docker.io/library --build-arg VERSION=${GIT_VERSION} --build-arg COMMIT=${GIT_COMMIT} -t embyfin-metrics .
 
 tools: $(ACTIONLINT) $(GOFUMPT) $(GOLANGCI_LINT) $(GOLANGCI_LINT_MODULES) $(MARKDOWNLINT) $(SHELLCHECK) $(TYPOS) $(YAMLLINT) $(ZIZMOR) ## Install all pinned dev tools into .tools/bin
 
@@ -196,12 +197,14 @@ test-live: ## Run the live tests against an already-running server (see testenv-
 testacc: ## Run the live tests against a throwaway server in Docker, for each backend
 	@for b in $(BACKENDS); do $(MAKE) --no-print-directory testacc-$$b || exit 1; done
 
-# start a container, run the suite, remove the container: what the server wrote is printed when the suite fails
-testacc-%:
+# build the image, start a container, run the suite, remove the container: what the server wrote is printed when the suite fails. The image is the
+# one a deployment runs, for the test that starts it beside the server
+testacc-%: docker
 	@echo "==> live tests on $*..."
 	@set -e; \
 		env=".testenv-$*.sh"; \
 		export EMBYFIN_METRICS_TEST_BACKEND=$*; \
+		export EMBYFIN_METRICS_TEST_PROGRAM_IMAGE=embyfin-metrics; \
 		.scripts/testenv.sh up | grep '^export' > "$$env"; \
 		trap 'st=$$?; [ $$st -eq 0 ] || .scripts/testenv.sh logs || true; .scripts/testenv.sh down; rm -f '"$$env"'; exit $$st' EXIT; \
 		. ./"$$env"; \

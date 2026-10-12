@@ -11,6 +11,8 @@ on:
       - 'go.sum'
       - 'vendor/**'
       - 'makefile'
+      - 'Dockerfile'
+      - '.dockerignore'
       - '.scripts/testenv.sh'
       - 'acceptance/**'
       - '.github/workflows/pr-acceptance.yaml'
@@ -45,8 +47,9 @@ jobs:
           sudo apt-get install -y -qq ffmpeg
           command -v ffmpeg jq docker
 
-      # make owns the container's life, so CI runs exactly what a developer runs. The server is
-      # given no way out to the internet, so this needs no network beyond its image.
+      # make owns the container's life, so CI runs exactly what a developer runs: it builds the
+      # program's image, which one test starts beside the server, then starts the server. The
+      # server is given no way out to the internet, so this needs no network beyond the images.
       - name: Run the live suite
         run: make testacc-${{ matrix.backend }}
 

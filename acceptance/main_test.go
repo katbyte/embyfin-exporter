@@ -6,6 +6,9 @@
 //
 // Every test is written once and runs on both servers. Where the two differ, the test says what the page holds on each and why.
 //
+// Two of the tests use docker themselves: one freezes the server's container to see it reported as down, and one runs the program's own image
+// beside it. make testacc builds that image and names it; driven by hand, that test skips unless EMBYFIN_METRICS_TEST_PROGRAM_IMAGE names one.
+//
 //	make testacc                  # both servers, each started and torn down
 //	make testacc-jellyfin         # one of them
 //

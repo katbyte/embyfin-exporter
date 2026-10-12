@@ -6,7 +6,6 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/katbyte/embyfin-mcp/sdk/embyfin"
 	"github.com/katbyte/embyfin-metrics/lib/poll"
 )
 
@@ -16,23 +15,17 @@ const (
 	phoneApp      = "Hallway Player"
 	television    = "the-television-upstairs"
 	televisionApp = "Upstairs Player"
+	tablet        = "the-tablet-in-the-kitchen"
+	tabletApp     = "Kitchen Player"
+	speaker       = "the-speaker-on-the-shelf"
+	speakerApp    = "Shelf Player"
 )
 
 // film is the id of the first film of the film library, and its title.
 func film(t *testing.T) (id, title string) {
 	t.Helper()
 
-	folder, err := client.FindLibrary(t.Context(), filmLibrary)
-	if err != nil {
-		t.Fatal(err)
-	}
-
-	found, _, err := client.Search(t.Context(), embyfin.SearchOptions{ParentID: folder.ItemID, IncludeItemTypes: "Movie", SortBy: "SortName"})
-	if err != nil || len(found) == 0 {
-		t.Fatalf("listing the films: %d of them, %v", len(found), err)
-	}
-
-	return found[0].ID, found[0].Name
+	return first(t, filmLibrary, "Movie")
 }
 
 // sessions is how many sessions the page counts in a state, and streams how many it counts playing by a method.
@@ -142,14 +135,7 @@ func TestASessionTheServerTranscodesFor(t *testing.T) {
 
 	device := signIn(t, television, televisionApp)
 	id, _ := film(t)
-
-	playSession, stream := device.howToPlay(t, id, map[string]any{"UserId": device.userID, "MaxStreamingBitrate": 300000, "EnableDirectPlay": false, "EnableDirectStream": false, "EnableTranscoding": true, "DeviceProfile": cannotPlay})
-	if stream == "" {
-		t.Fatal("the server offered no stream of its own making to a device that can play nothing as it is")
-	}
-
-	// the list of renditions names the list of pieces, which names the first piece, and asking for that is what starts the server on the work
-	device.fetch(t, device.fetch(t, device.fetch(t, stream)))
+	playSession := device.streamFor(t, id, lowBitrate)
 
 	device.report(t, "/Sessions/Playing", id, playSession, "Transcode", false)
 	t.Cleanup(func() { device.report(t, "/Sessions/Playing/Stopped", id, playSession, "Transcode", false) })
@@ -202,5 +188,90 @@ func TestASessionTheServerTranscodesFor(t *testing.T) {
 	})
 	if reasons := every(stopped, "embyfin_transcode_reasons"); len(reasons) != 0 {
 		t.Errorf("stopped, the page still gives reasons for a stream: %v", reasons)
+	}
+}
+
+// A device that can play what the film is made of, only not in the file it comes in, has the server repack it: the picture and the sound are passed
+// on as they are. That is a direct stream and not a transcode, and nothing is re-encoded, though the device itself calls it a transcode and the
+// server still gives its reasons and what the stream comes to.
+func TestASessionTheServerRepacksFor(t *testing.T) {
+	live(t)
+
+	device := signIn(t, tablet, tabletApp)
+	id, _ := film(t)
+	playSession := device.streamFor(t, id, highBitrate)
+
+	device.report(t, "/Sessions/Playing", id, playSession, "Transcode", false)
+	t.Cleanup(func() { device.report(t, "/Sessions/Playing/Stopped", id, playSession, "Transcode", false) })
+
+	text, ok := eventually(t, func(text string) bool { return streams(text, "direct_stream") == 1 }, poll.RoundSessions)
+	if !ok {
+		t.Fatalf("the stream the server is repacking never showed as a direct stream:\n%s", text)
+	}
+	expect(t, text, map[string]float64{
+		reading("embyfin_sessions", "state", "playing"):            1,
+		reading("embyfin_streams", "method", "direct_stream"):      1,
+		reading("embyfin_streams", "method", "transcode"):          0,
+		reading("embyfin_streams", "method", "direct_play"):        0,
+		reading("embyfin_streams", "method", "unknown"):            0,
+		reading("embyfin_video_transcodes", "encoder", "software"): 0,
+		reading("embyfin_video_transcodes", "encoder", "hardware"): 0,
+		reading("embyfin_streams_by_type", "type", "movie"):        1,
+	})
+
+	if rate, _ := value(text, reading("embyfin_transcode_bytes_per_second")); rate <= 0 {
+		t.Errorf("the stream comes to %v bytes a second, want more than nothing", rate)
+	}
+	if reasons := every(text, "embyfin_transcode_reasons"); len(reasons) == 0 {
+		t.Errorf("the page gives no reason for the stream the server is making:\n%s", text)
+	}
+
+	device.report(t, "/Sessions/Playing/Stopped", id, playSession, "Transcode", false)
+	if text, ok := eventually(t, func(text string) bool { return sessions(text, "playing") == 0 && streams(text, "direct_stream") == 0 }, poll.RoundSessions); !ok {
+		t.Errorf("stopped, the page still counts %v playing and %v direct streams", sessions(text, "playing"), streams(text, "direct_stream"))
+	}
+}
+
+// What is playing is counted by its kind, in the words the item counts use, whichever library it is from. An audiobook's chapter is a track on
+// Emby, which keeps an audiobook as an album, and an audiobook on Jellyfin.
+func TestWhatIsPlayingIsCountedByKind(t *testing.T) {
+	live(t)
+
+	listened := struct{ server, page string }{"Audio", "track"}
+	if backend == jellyfin {
+		listened = struct{ server, page string }{"AudioBook", "audiobook"}
+	}
+
+	device := signIn(t, speaker, speakerApp)
+	for _, c := range []struct{ library, kind, want string }{
+		{filmLibrary, "Movie", "movie"},
+		{showLibrary, "Episode", "episode"},
+		{musicLibrary, "Audio", "track"},
+		{clipLibrary, "MusicVideo", "music_video"},
+		{homeLibrary, "Video", "video"},
+		{audiobookLibrary, listened.server, listened.page},
+		{mixedLibrary, "Episode", "episode"},
+	} {
+		id, _ := first(t, c.library, c.kind)
+		playSession, _ := device.howToPlay(t, id, map[string]any{})
+
+		device.report(t, "/Sessions/Playing", id, playSession, "DirectPlay", false)
+
+		text, ok := eventually(t, func(text string) bool { return sessions(text, "playing") == 1 }, poll.RoundSessions)
+		if !ok {
+			t.Fatalf("the %s from %s playing never showed as a session playing:\n%s", c.kind, c.library, text)
+		}
+
+		want := map[string]float64{}
+		for _, kind := range poll.Kinds {
+			want[reading("embyfin_streams_by_type", "type", string(kind))] = 0
+		}
+		want[reading("embyfin_streams_by_type", "type", c.want)] = 1
+		expect(t, text, want)
+
+		device.report(t, "/Sessions/Playing/Stopped", id, playSession, "DirectPlay", false)
+		if text, ok := eventually(t, func(text string) bool { return sessions(text, "playing") == 0 }, poll.RoundSessions); !ok {
+			t.Fatalf("the %s from %s stopped and the page still counts a session playing:\n%s", c.kind, c.library, text)
+		}
 	}
 }

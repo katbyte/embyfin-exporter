@@ -1,8 +1,9 @@
 #!/usr/bin/env bash
 #
 # Bring up a throwaway Emby or Jellyfin in Docker, lay out a small made-up
-# catalogue of films, shows and music for it, complete its setup wizard, mint
-# an API key, and print the environment the live tests need.
+# catalogue for it (films, shows, music, music videos, home videos and photos,
+# books and an audiobook), complete its setup wizard, mint an API key, and
+# print the environment the live tests need.
 #
 #   eval "$(EMBYFIN_METRICS_TEST_BACKEND=jellyfin .scripts/testenv.sh up)"   # start, export EMBYFIN_METRICS_*
 #   EMBYFIN_METRICS_TEST_BACKEND=jellyfin .scripts/testenv.sh down            # stop and remove everything
@@ -71,7 +72,9 @@ api() {
 
 # ---------------------------------------------------------------------------
 # The catalogue: 4 films, 2 series with 3 seasons and 5 episodes between
-# them, and 2 artists with 3 albums and 6 tracks. The servers are never
+# them, 2 artists with 3 albums and 6 tracks, 2 music videos, a folder of
+# 1 home video and 2 photos, 2 books, 1 audiobook in 2 chapters, and a
+# folder that mixes 1 film with 1 series of 1 episode. The servers are never
 # asked to look any of it up, so the names only have to be laid out the way
 # each server reads a folder.
 
@@ -96,6 +99,26 @@ Pink Floyd|Wish You Were Here|1975|1|Shine On You Crazy Diamond
 Pink Floyd|Wish You Were Here|1975|2|Welcome to the Machine
 Battle Tapes|Polygon|2015|1|Belgrade
 Battle Tapes|Polygon|2015|2|Valkyrie'
+
+# file
+MUSIC_VIDEOS='Daft Punk - Around the World
+Gorillaz - Clint Eastwood'
+
+# photo in the one folder of home videos, which also holds one clip
+PHOTOS='one
+two'
+
+# author|title
+BOOKS='Ursula K. Le Guin|The Dispossessed
+Stanislaw Lem|Solaris'
+
+# author|book|chapter number|title - read from its tags, as a song is
+CHAPTERS='Frank Herbert|Dune|1|Arrakis
+Frank Herbert|Dune|2|Muad Dib'
+
+# the folder that mixes kinds: one film, and one series of one episode
+MIXED_FILM='Heat (1995)'
+MIXED_EPISODE='Dark|1|1'
 
 # wipe_data removes the data directory. The container writes its config,
 # metadata and cache as its own user, and on Linux those land in the bind
@@ -125,6 +148,20 @@ clip() {
 song() {
   mkdir -p "$(dirname "$1")"
   ffmpeg -nostdin -loglevel error -y -f lavfi -i "sine=frequency=$((220 + $3 * 55)):duration=1:sample_rate=44100" -c:a libmp3lame -b:a 64k -id3v2_version 3 -metadata "title=$2" -metadata "track=$3" -metadata "artist=$4" -metadata "album_artist=$4" -metadata "album=$5" -metadata "date=$6" "$1"
+}
+
+# still FILE - one frame of the test pattern, as a photo.
+still() {
+  mkdir -p "$(dirname "$1")"
+  ffmpeg -nostdin -loglevel error -y -f lavfi -i "testsrc2=s=320x240" -frames:v 1 "$1"
+}
+
+# pdf FILE - the least a file can hold and still be a PDF of one blank page.
+# A book is known by its file's name and kind; neither server opens it to
+# count it.
+pdf() {
+  mkdir -p "$(dirname "$1")"
+  printf '%%PDF-1.4\n1 0 obj<</Type/Catalog/Pages 2 0 R>>endobj\n2 0 obj<</Type/Pages/Kids[3 0 R]/Count 1>>endobj\n3 0 obj<</Type/Page/Parent 2 0 R/MediaBox[0 0 200 200]>>endobj\ntrailer<</Root 1 0 R>>\n%%%%EOF\n' > "$1"
 }
 
 fixtures() {
@@ -159,6 +196,45 @@ EOF
   done <<EOF
 ${TRACKS}
 EOF
+
+  local video
+  while IFS= read -r video; do
+    mkdir -p "${DATA}/media/musicvideos"
+    cp "$master" "${DATA}/media/musicvideos/${video}.mkv"
+  done <<EOF
+${MUSIC_VIDEOS}
+EOF
+
+  local photo
+  mkdir -p "${DATA}/media/home/Holiday"
+  cp "$master" "${DATA}/media/home/Holiday/beach.mkv"
+  while IFS= read -r photo; do
+    still "${DATA}/media/home/Holiday/${photo}.jpg"
+  done <<EOF
+${PHOTOS}
+EOF
+
+  local author book chapter
+  while IFS='|' read -r author book; do
+    pdf "${DATA}/media/books/${author}/${book}/${book}.pdf"
+  done <<EOF
+${BOOKS}
+EOF
+
+  while IFS='|' read -r author book chapter title; do
+    song "${DATA}/media/audiobooks/${author}/${book}/$(printf '%02d' "$chapter") - ${title}.mp3" "$title" "$chapter" "$author" "$book" 1965
+  done <<EOF
+${CHAPTERS}
+EOF
+
+  mkdir -p "${DATA}/media/mixed/${MIXED_FILM}"
+  cp "$master" "${DATA}/media/mixed/${MIXED_FILM}/${MIXED_FILM}.mkv"
+  IFS='|' read -r show season ep <<EOF
+${MIXED_EPISODE}
+EOF
+  dir="${DATA}/media/mixed/${show}/Season $(printf '%02d' "$season")"
+  mkdir -p "$dir"
+  cp "$master" "${dir}/${show} - S$(printf '%02d' "$season")E$(printf '%02d' "$ep").mkv"
 
   rm -f "$master"
 }
@@ -298,11 +374,15 @@ up() {
   echo "export EMBYFIN_METRICS_TEST_USER='${USER2}'"
   echo "export EMBYFIN_METRICS_TEST_USER_ID='${u2}'"
   echo "export EMBYFIN_METRICS_TEST_PASSWORD='${PASSWORD}'"
+  # for the tests that stop the server answering, or run the program's own image beside it
+  echo "export EMBYFIN_METRICS_TEST_CONTAINER='${NAME}'"
 }
 
 down() {
   log "removing ${NAME}"
-  docker rm -f "$NAME" >/dev/null 2>&1 || true
+  # and the program's own image, which one test runs beside the server and
+  # removes itself unless it was cut short
+  docker rm -f "$NAME" "${NAME}-program" >/dev/null 2>&1 || true
   wipe_data
 }
 

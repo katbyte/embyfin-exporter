@@ -6,6 +6,8 @@ import (
 	"strings"
 	"testing"
 	"time"
+
+	"github.com/katbyte/embyfin-metrics/lib/poll"
 )
 
 // A server that is there answers both rounds in full, and says what it is.
@@ -25,9 +27,9 @@ func TestTheServerIsUp(t *testing.T) {
 		}
 	}
 
-	for _, poll := range []string{"sessions", "library"} {
-		if at, _ := value(text, reading("embyfin_poll_last_success_timestamp_seconds", "poll", poll)); time.Since(time.Unix(int64(at), 0)) > time.Minute {
-			t.Errorf("the %s round last succeeded at %v, want just now", poll, time.Unix(int64(at), 0))
+	for _, round := range poll.Rounds {
+		if at, _ := value(text, reading("embyfin_poll_last_success_timestamp_seconds", "poll", string(round))); time.Since(time.Unix(int64(at), 0)) > time.Minute {
+			t.Errorf("the %s round last succeeded at %v, want just now", round, time.Unix(int64(at), 0))
 		}
 	}
 
@@ -43,37 +45,71 @@ func TestTheServerIsUp(t *testing.T) {
 	}
 }
 
-// Each library holds what the catalogue has, by kind, and the whole server is the libraries added together. Making a collection gives both servers a
-// library of collections; a playlist gives Emby one of playlists, where Jellyfin keeps its playlists in no library. Emby counts a music library's
-// artists; Jellyfin gives every artist it knows whichever library is asked after, so its are not counted.
+// Each library holds what the catalogue has, by kind, and the whole server is the libraries added together: a library of every type the page knows
+// how to count, each asked only for the kinds its type holds.
+//
+// Where the servers differ, so does the page. Making a collection gives both a library of collections; a playlist gives Emby one of playlists, where
+// Jellyfin keeps its playlists in no library. Emby counts a music library's artists; Jellyfin gives every artist it knows whichever library is asked
+// after, so its are not counted. And an audiobook is an album of tracks on Emby, in a library of its own, and an audiobook on Jellyfin, in a library
+// of books.
 func TestWhatTheLibrariesHold(t *testing.T) {
 	live(t)
 
-	want := map[string]float64{
-		reading("embyfin_library_items", "library", filmLibrary, "type", "movie"):        films,
-		reading("embyfin_library_items", "library", showLibrary, "type", "series"):       series,
-		reading("embyfin_library_items", "library", showLibrary, "type", "season"):       seasons,
-		reading("embyfin_library_items", "library", showLibrary, "type", "episode"):      episodes,
-		reading("embyfin_library_items", "library", musicLibrary, "type", "album"):       albums,
-		reading("embyfin_library_items", "library", musicLibrary, "type", "track"):       tracks,
-		reading("embyfin_library_items", "library", "Collections", "type", "collection"): 1,
-
-		reading("embyfin_items", "type", "movie"):      films,
-		reading("embyfin_items", "type", "series"):     series,
-		reading("embyfin_items", "type", "season"):     seasons,
-		reading("embyfin_items", "type", "episode"):    episodes,
-		reading("embyfin_items", "type", "album"):      albums,
-		reading("embyfin_items", "type", "track"):      tracks,
-		reading("embyfin_items", "type", "collection"): 1,
-
-		reading("embyfin_libraries"): 4,
+	held := func(library, kind string) string {
+		return reading("embyfin_library_items", "library", library, "type", kind)
 	}
-	if backend == "emby" {
-		want[reading("embyfin_library_items", "library", musicLibrary, "type", "artist")] = artists
-		want[reading("embyfin_library_items", "library", "Playlists", "type", "playlist")] = 1
-		want[reading("embyfin_items", "type", "artist")] = artists
-		want[reading("embyfin_items", "type", "playlist")] = 1
-		want[reading("embyfin_libraries")] = 5
+	all := func(kind string) string { return reading("embyfin_items", "type", kind) }
+
+	want := map[string]float64{
+		held(filmLibrary, "movie"):            films,
+		held(showLibrary, "series"):           series,
+		held(showLibrary, "season"):           seasons,
+		held(showLibrary, "episode"):          episodes,
+		held(musicLibrary, "album"):           albums,
+		held(musicLibrary, "track"):           tracks,
+		held(clipLibrary, "music_video"):      musicVideos,
+		held(homeLibrary, "video"):            homeVideos,
+		held(homeLibrary, "photo"):            photos,
+		held(bookLibrary, "book"):             books,
+		held(mixedLibrary, "movie"):           mixedFilms,
+		held(mixedLibrary, "series"):          mixedSeries,
+		held(mixedLibrary, "season"):          mixedSeasons,
+		held(mixedLibrary, "episode"):         mixedEpisodes,
+		held(mixedLibrary, "video"):           0,
+		held(collectionLibrary, "collection"): 1,
+
+		all("movie"):       films + mixedFilms,
+		all("series"):      series + mixedSeries,
+		all("season"):      seasons + mixedSeasons,
+		all("episode"):     episodes + mixedEpisodes,
+		all("music_video"): musicVideos,
+		all("video"):       homeVideos,
+		all("photo"):       photos,
+		all("book"):        books,
+		all("collection"):  1,
+	}
+
+	absent := []string{held(musicLibrary, "artist"), all("artist"), all("playlist"), held(audiobookLibrary, "album"), held(audiobookLibrary, "track")}
+	if backend == emby {
+		want[held(musicLibrary, "artist")] = artists
+		want[held(audiobookLibrary, "album")] = audiobooks
+		want[held(audiobookLibrary, "track")] = chapters
+		want[held(playlistLibrary, "playlist")] = 1
+		want[all("artist")] = artists
+		want[all("album")] = albums + audiobooks
+		want[all("track")] = tracks + chapters
+		want[all("playlist")] = 1
+		want[reading("embyfin_libraries")] = float64(len(libraries)) + 2
+
+		absent = []string{all("audiobook"), held(bookLibrary, "audiobook"), held(audiobookLibrary, "audiobook")}
+	} else {
+		want[held(bookLibrary, "audiobook")] = 0
+		want[held(audiobookLibrary, "book")] = 0
+		want[held(audiobookLibrary, "audiobook")] = chapters
+		want[all("album")] = albums
+		want[all("track")] = tracks
+		want[all("audiobook")] = chapters
+		want[reading("embyfin_libraries")] = float64(len(libraries)) + 1
 	}
 
 	// the libraries of collections and of playlists appear a moment after the first of each is made
@@ -84,18 +120,10 @@ func TestWhatTheLibrariesHold(t *testing.T) {
 	})
 	expect(t, text, want)
 
-	if backend == "jellyfin" {
-		for _, name := range []string{reading("embyfin_library_items", "library", musicLibrary, "type", "artist"), reading("embyfin_items", "type", "artist"), reading("embyfin_items", "type", "playlist")} {
-			if got, found := value(text, name); found {
-				t.Errorf("%s = %v, want no such reading on jellyfin", name, got)
-			}
-		}
-	}
-
-	// a kind no library is of is not on the page at all, rather than there at 0
-	for _, kind := range []string{"book", "audiobook", "photo", "video", "music_video"} {
-		if got, found := value(text, reading("embyfin_items", "type", kind)); found {
-			t.Errorf("the page counts %v of kind %s, which no library here is of", got, kind)
+	// a kind this server does not count, or does not count there, is not on the page at all, rather than there at 0
+	for _, name := range absent {
+		if got, found := value(text, name); found {
+			t.Errorf("%s = %v, want no such reading on %s", name, got, backend)
 		}
 	}
 }
@@ -181,4 +209,59 @@ func TestTheScheduledTasks(t *testing.T) {
 	if ended, _ := value(text, reading("embyfin_scheduled_task_last_run_timestamp_seconds", "task", scan)); time.Since(time.Unix(int64(ended), 0)) > time.Hour {
 		t.Errorf("the task %q last ended at %v, want within the hour", scan, time.Unix(int64(ended), 0))
 	}
+}
+
+// While the scan of every library runs the page says so and how far it has got, and once it ends the page says when and no longer how far. A scan
+// of a catalogue this small is over in a moment, so it is asked for and watched up to five times, until one is caught running.
+func TestAScanUnderWay(t *testing.T) {
+	live(t)
+
+	ended := func(text string) float64 {
+		at, _ := value(text, reading("embyfin_library_scan_last_run_timestamp_seconds"))
+
+		return at
+	}
+
+	var caught bool
+	for attempt := 0; attempt < 5 && !caught; attempt++ {
+		before := ended(scrape(t, poll.RoundSessions))
+		if err := client.RefreshLibrary(t.Context()); err != nil {
+			t.Fatalf("asking for a scan of every library: %v", err)
+		}
+
+		// until the scan has a newer end than it had, looking again every few milliseconds
+		deadline := time.Now().Add(scanPatience)
+		for {
+			text := scrape(t, poll.RoundSessions)
+			running, _ := value(text, reading("embyfin_library_scan_running"))
+			progress, found := value(text, reading("embyfin_library_scan_progress_ratio"))
+
+			if running == 1 {
+				if !caught {
+					t.Logf("caught the scan running at the %d. try, %.0f%% of the way through", attempt+1, 100*progress)
+				}
+				caught = true
+				if !found || progress < 0 || progress > 1 {
+					t.Errorf("the scan is running and its progress is %v (on the page: %t), want from 0 to 1", progress, found)
+				}
+			} else if found {
+				t.Errorf("no scan is running and the page gives its progress as %v", progress)
+			}
+
+			if running == 0 && ended(text) > before {
+				break
+			}
+			if time.Now().After(deadline) {
+				t.Fatalf("the scan asked for did not end in %s:\n%s", scanPatience, text)
+			}
+
+			time.Sleep(20 * time.Millisecond)
+		}
+	}
+	if !caught {
+		t.Error("five scans ran and none was caught running")
+	}
+
+	// the last of them finished as it should, so the tests after this one find the server as they expect it
+	expect(t, scrape(t, poll.RoundSessions), map[string]float64{reading("embyfin_library_scan_running"): 0, reading("embyfin_library_scan_last_run_ok"): 1})
 }
