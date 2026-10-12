@@ -1,0 +1,300 @@
+package embyfin
+
+import (
+	"cmp"
+	"slices"
+	"time"
+
+	"github.com/katbyte/go-kt/pointer"
+
+	"github.com/katbyte/embyfin-mcp/sdk/jf/12.1.0/jf"
+)
+
+// Jellyfin DTOs to neutral types, one function per DTO. Jellyfin's enums are
+// named string types in the typed client; the neutral types keep them as the
+// plain strings both servers send.
+
+func itemsFromJF(dtos []jf.BaseItemDto) []Item {
+	items := make([]Item, 0, len(dtos))
+	for i := range dtos {
+		items = append(items, itemFromJF(&dtos[i]))
+	}
+
+	return items
+}
+
+// lockedFromJF is an item's locked fields, by name.
+func lockedFromJF(fields []jf.MetadataField) []string {
+	out := make([]string, 0, len(fields))
+	for _, f := range fields {
+		out = append(out, string(f))
+	}
+
+	return out
+}
+
+func itemFromJF(d *jf.BaseItemDto) Item {
+	it := Item{
+		ID:                string(d.Id),
+		Name:              d.Name,
+		OriginalTitle:     d.OriginalTitle,
+		SortName:          d.SortName,
+		Settings:          settingsOf(d.ForcedSortName, lockedFromJF(d.LockedFields)),
+		Type:              string(d.Type),
+		ProductionYear:    d.ProductionYear,
+		PremiereDate:      jfDate(d.PremiereDate),
+		DateCreated:       jfDate(d.DateCreated),
+		Path:              d.Path,
+		ParentID:          string(d.ParentId),
+		Overview:          d.Overview,
+		Genres:            d.Genres,
+		Tags:              d.Tags,
+		Studios:           nameRefsFromJF(d.Studios),
+		OfficialRating:    d.OfficialRating,
+		CommunityRating:   float64(d.CommunityRating),
+		RunTimeTicks:      d.RunTimeTicks,
+		ProviderIDs:       d.ProviderIds,
+		Etag:              d.Etag,
+		ImageTags:         d.ImageTags,
+		SeriesName:        d.SeriesName,
+		SeriesID:          string(d.SeriesId),
+		Album:             d.Album,
+		AlbumArtist:       d.AlbumArtist,
+		Artists:           d.Artists,
+		ParentIndexNumber: d.ParentIndexNumber,
+		IndexNumber:       d.IndexNumber,
+		IndexNumberEnd:    d.IndexNumberEnd,
+		PlaylistItemID:    string(d.PlaylistItemId),
+		IsMissing:         d.LocationType == locationVirtual,
+		IsFolder:          pointer.From(d.IsFolder),
+		UserData:          userDataFromJF(d.UserData),
+		MediaSourceCount:  d.MediaSourceCount,
+	}
+	if len(d.MediaSources) > 0 {
+		it.MediaSources = make([]MediaSource, 0, len(d.MediaSources))
+		for i := range d.MediaSources {
+			it.MediaSources = append(it.MediaSources, mediaSourceFromJF(&d.MediaSources[i]))
+		}
+	}
+	if len(d.People) > 0 {
+		it.People = make([]Person, 0, len(d.People))
+		for _, p := range d.People {
+			it.People = append(it.People, Person{Name: p.Name, ID: p.Id, Role: p.Role, Type: string(p.Type)})
+		}
+	}
+
+	return it
+}
+
+func mediaSourceFromJF(d *jf.MediaSourceInfo) MediaSource {
+	ms := MediaSource{ItemID: string(d.Id), Name: d.Name, Container: d.Container, Size: d.Size, Bitrate: int64(d.Bitrate), Path: d.Path, RunTimeTicks: d.RunTimeTicks}
+	if len(d.MediaStreams) > 0 {
+		ms.MediaStreams = make([]MediaStream, 0, len(d.MediaStreams))
+		for i := range d.MediaStreams {
+			ms.MediaStreams = append(ms.MediaStreams, mediaStreamFromJF(&d.MediaStreams[i]))
+		}
+	}
+
+	return ms
+}
+
+func mediaStreamFromJF(d *jf.MediaStream) MediaStream {
+	return MediaStream{
+		Type: string(d.Type), Codec: d.Codec, Language: d.Language, Width: d.Width, Height: d.Height,
+		BitRate: int64(d.BitRate), Channels: d.Channels, DisplayTitle: d.DisplayTitle, IsExternal: pointer.From(d.IsExternal),
+		IsForced: pointer.From(d.IsForced),
+		// the servers give both; AverageFrameRate is the one over the whole
+		// file, RealFrameRate the container's nominal one, and either is
+		// enough to tell 23.976 from 60
+		FrameRate:       cmp.Or(d.AverageFrameRate, d.RealFrameRate),
+		ColourTransfer:  d.ColorTransfer,
+		ColourPrimaries: d.ColorPrimaries,
+		VideoRange:      string(d.VideoRange),
+		VideoRangeType:  string(d.VideoRangeType),
+		AspectRatio:     d.AspectRatio,
+	}
+}
+
+func userDataFromJF(d *jf.UserItemDataDto) *UserData {
+	if d == nil {
+		return nil
+	}
+
+	return &UserData{
+		Played: pointer.From(d.Played), PlayCount: d.PlayCount, IsFavourite: pointer.From(d.IsFavorite),
+		LastPlayedDate: jfDate(d.LastPlayedDate), PlaybackPositionTicks: d.PlaybackPositionTicks,
+		PlayedPercentage: d.PlayedPercentage, UnplayedItemCount: d.UnplayedItemCount, Rated: d.Likes != nil || d.Rating != 0,
+	}
+}
+
+func nameRefsFromJF(pairs []jf.NameGuidPair) []NameRef {
+	if len(pairs) == 0 {
+		return nil
+	}
+	out := make([]NameRef, 0, len(pairs))
+	for _, p := range pairs {
+		out = append(out, NameRef{Name: p.Name, ID: p.Id})
+	}
+
+	return out
+}
+
+func virtualFolderFromJF(d *jf.VirtualFolderInfo) VirtualFolder {
+	f := VirtualFolder{Name: d.Name, CollectionType: string(d.CollectionType), Locations: d.Locations, ItemID: string(d.ItemId)}
+	if o := d.LibraryOptions; o != nil {
+		// no list at all is every saver
+		f.SavesNfo = o.MetadataSavers == nil || slices.Contains(o.MetadataSavers, nfoSaver)
+		if len(o.TypeOptions) > 0 {
+			f.MetadataFetchers = make(map[string][]string, len(o.TypeOptions))
+			for _, t := range o.TypeOptions {
+				f.MetadataFetchers[t.Type] = t.MetadataFetchers
+			}
+		}
+	}
+
+	return f
+}
+
+func userFromJF(d *jf.UserDto) User {
+	u := User{ID: string(d.Id), Name: d.Name, LastActivityDate: jfDate(d.LastActivityDate), LastLoginDate: jfDate(d.LastLoginDate)}
+	if p := d.Policy; p != nil {
+		u.Policy = UserPolicy{
+			IsAdministrator: pointer.From(p.IsAdministrator), IsDisabled: pointer.From(p.IsDisabled), IsHidden: pointer.From(p.IsHidden),
+			EnableAllFolders: pointer.From(p.EnableAllFolders), EnabledFolders: p.EnabledFolders,
+			EnableContentDeletion: pointer.From(p.EnableContentDeletion), EnableRemoteAccess: pointer.From(p.EnableRemoteAccess),
+			BlockedTags: p.BlockedTags, AllowedTags: p.AllowedTags, BlockUnratedItems: unrated(p.BlockUnratedItems), BlockedFolders: p.BlockedMediaFolders,
+			EnableAllChannels: pointer.From(p.EnableAllChannels), MaxParentalRating: p.MaxParentalRating,
+		}
+	}
+	if c := d.Configuration; c != nil {
+		u.Preferences = Preferences{
+			AudioLanguage: c.AudioLanguagePreference, SubtitleLanguage: c.SubtitleLanguagePreference,
+			SubtitleMode: string(c.SubtitleMode), PlayDefaultAudioTrack: pointer.From(c.PlayDefaultAudioTrack),
+		}
+	}
+
+	return u
+}
+
+func sessionFromJF(d *jf.SessionInfoDto) Session {
+	s := Session{
+		ID: string(d.Id), UserName: d.UserName, Client: d.Client, AppVersion: d.ApplicationVersion, DeviceName: d.DeviceName,
+		RemoteEndPoint: d.RemoteEndPoint, LastActivityDate: jfDate(d.LastActivityDate),
+	}
+	if d.NowPlayingItem != nil {
+		it := itemFromJF(d.NowPlayingItem)
+		s.NowPlayingItem = &it
+	}
+	if d.PlayState != nil {
+		s.PlayState = PlayState{
+			PositionTicks: d.PlayState.PositionTicks, IsPaused: d.PlayState.IsPaused,
+			PlayMethod: string(d.PlayState.PlayMethod), MediaSourceID: string(d.PlayState.MediaSourceId),
+		}
+	}
+	if t := d.TranscodingInfo; t != nil {
+		s.Transcoding = &Transcoding{
+			Container: t.Container, VideoCodec: t.VideoCodec, AudioCodec: t.AudioCodec,
+			VideoDirect: t.IsVideoDirect, AudioDirect: t.IsAudioDirect,
+			Bitrate: t.Bitrate, Width: t.Width, Height: t.Height, AudioChannels: t.AudioChannels,
+			Framerate: float64(t.Framerate), Completion: t.CompletionPercentage,
+			HardwareAcceleration: string(t.HardwareAccelerationType),
+		}
+		for _, r := range t.TranscodeReasons {
+			s.Transcoding.Reasons = append(s.Transcoding.Reasons, string(r))
+		}
+	}
+
+	return s
+}
+
+func taskFromJF(d *jf.TaskInfo) Task {
+	t := Task{
+		ID: string(d.Id), Key: d.Key, Name: d.Name, Category: d.Category, Description: d.Description, State: string(d.State),
+		Progress: d.CurrentProgressPercentage, Hidden: d.IsHidden,
+	}
+	for i := range d.Triggers {
+		tr := &d.Triggers[i]
+		t.Triggers = append(t.Triggers, TaskTrigger{
+			Type: string(tr.Type), DayOfWeek: string(tr.DayOfWeek), TimeOfDay: time.Duration(tr.TimeOfDayTicks) * tick,
+			Interval: time.Duration(tr.IntervalTicks) * tick, MaxRuntime: time.Duration(tr.MaxRuntimeTicks) * tick,
+		})
+	}
+	if r := d.LastExecutionResult; r != nil {
+		t.LastExecutionResult = &TaskResult{
+			Status: string(r.Status), StartTimeUtc: jfDate(r.StartTimeUtc), EndTimeUtc: jfDate(r.EndTimeUtc),
+			ErrorMessage: r.ErrorMessage, LongErrorMessage: r.LongErrorMessage,
+		}
+	}
+
+	return t
+}
+
+func activityFromJF(d *jf.ActivityLogEntry) ActivityEntry {
+	return ActivityEntry{
+		Name: d.Name, Type: d.Type, Date: jfDate(d.Date), Severity: string(d.Severity),
+		ShortOverview: d.ShortOverview, UserID: string(d.UserId), ItemID: string(d.ItemId),
+	}
+}
+
+func deviceFromJF(d *jf.DeviceInfoDto) Device {
+	return Device{
+		Name: d.Name, AppName: d.AppName, AppVersion: d.AppVersion,
+		LastUserName: d.LastUserName, DateLastActivity: jfDate(d.DateLastActivity), ID: d.Id,
+	}
+}
+
+func logFileFromJF(d *jf.LogFile) LogFile {
+	return LogFile{Name: d.Name, Size: d.Size, DateCreated: jfDate(d.DateCreated), DateModified: jfDate(d.DateModified)}
+}
+
+func systemInfoFromJF(d *jf.SystemInfo) *SystemInfo {
+	return &SystemInfo{
+		// SystemArchitecture is not read: Jellyfin 12.2 answers X64 on an
+		// arm64 machine, where its own log says Arm64
+		ServerName: d.ServerName, Version: d.Version, ID: d.Id, OperatingSystem: d.OperatingSystem,
+		HasPendingRestart: d.HasPendingRestart, HasUpdateAvailable: d.HasUpdateAvailable,
+		IsShuttingDown: d.IsShuttingDown, CanSelfRestart: d.CanSelfRestart,
+		Paths: systemPaths(d.ProgramDataPath, d.LogPath, d.CachePath, d.InternalMetadataPath, d.TranscodingTempPath),
+	}
+}
+
+func countsFromJF(d *jf.ItemCounts) *ItemCounts {
+	return &ItemCounts{
+		MovieCount: d.MovieCount, SeriesCount: d.SeriesCount, EpisodeCount: d.EpisodeCount, AlbumCount: d.AlbumCount,
+		SongCount: d.SongCount, MusicVideoCount: d.MusicVideoCount, BoxSetCount: d.BoxSetCount, TrailerCount: d.TrailerCount,
+		ArtistCount: d.ArtistCount, BookCount: d.BookCount, ProgramCount: d.ProgramCount, ItemCount: d.ItemCount,
+	}
+}
+
+func remoteSearchResultFromJF(d *jf.RemoteSearchResult) RemoteSearchResult {
+	return RemoteSearchResult{
+		Name: d.Name, ProductionYear: d.ProductionYear, PremiereDate: jfDate(d.PremiereDate), Overview: d.Overview,
+		ProviderIDs: d.ProviderIds, SearchProviderName: d.SearchProviderName, ImageURL: d.ImageUrl,
+	}
+}
+
+func remoteSearchResultToJF(r *RemoteSearchResult) jf.RemoteSearchResult {
+	return jf.RemoteSearchResult{
+		Name: r.Name, ProductionYear: r.ProductionYear, PremiereDate: dateOf[jf.Time](r.PremiereDate), Overview: r.Overview,
+		ProviderIds: r.ProviderIDs, SearchProviderName: r.SearchProviderName, ImageUrl: r.ImageURL,
+	}
+}
+
+func imageInfoFromJF(d *jf.ImageInfo) ImageInfo {
+	return ImageInfo{ImageType: string(d.ImageType), Width: d.Width, Height: d.Height, Size: d.Size, Path: d.Path}
+}
+
+func remoteImageFromJF(d *jf.RemoteImageInfo) RemoteImage {
+	return RemoteImage{
+		ProviderName: d.ProviderName, URL: d.Url, Type: string(d.Type), Width: d.Width, Height: d.Height,
+		Language: d.Language, CommunityRating: d.CommunityRating, VoteCount: d.VoteCount,
+	}
+}
+
+func remoteSubtitleFromJF(d *jf.RemoteSubtitleInfo) RemoteSubtitle {
+	return RemoteSubtitle{
+		ID: d.Id, Name: d.Name, ProviderName: d.ProviderName, Format: d.Format,
+		ThreeLetterISOLanguageName: d.ThreeLetterISOLanguageName, DownloadCount: d.DownloadCount,
+		CommunityRating: float64(d.CommunityRating), Comment: d.Comment,
+	}
+}

@@ -1,0 +1,13 @@
+.claude/
+.DS_Store
+.idea/
+dist/
+embyfin-metrics
+.tools/bin/
+.tools/venv/
+.tools/npm/
+__pycache__/
+.env
+.embyfin-metrics
+.coverage/
+.testenv-*.sh

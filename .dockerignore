@@ -1,0 +1,12 @@
+.git
+.github
+.idea
+.tools/bin
+.tools/venv
+.tools/npm
+.coverage
+dist
+embyfin-metrics
+*.md
+docker-compose.yml
+.env*

@@ -1,0 +1,286 @@
+// Package embyfin is the backend-neutral client the tools use: one Client
+// that speaks to either Emby or Jellyfin and hides the differences between
+// them, so everything above it stays backend-agnostic.
+//
+// The layer is thin. It holds one of the two typed clients generated from
+// the servers' OpenAPI documents, sdk/emby or sdk/jf (chosen by Backend in
+// New), and every method branches per backend: it calls the typed operation
+// with typed parameters and bodies, then converts the typed DTOs into the
+// neutral types (Item, VirtualFolder, User, Session, ...) with one explicit
+// field-mapping function per DTO per backend (emby.go, jf.go). Every
+// difference between the servers lives here, next to a comment saying which
+// server it is for; api-defs/README.md lists them under "Conventions worth
+// knowing".
+//
+// The typed clients are generated (make generate) and must not be edited by
+// hand. Where a document is wrong about its server's shape (a parameter it
+// leaves out, a field it lacks) the fix is a workaround in
+// sdk/emby/workarounds or sdk/jf/workarounds, so the generated clients carry it; what
+// stays here is behaviour no document can express, next to a comment saying
+// which server it is for and the live test that found it.
+package embyfin
+
+import (
+	"context"
+	"errors"
+	"fmt"
+	"strconv"
+	"strings"
+	"sync"
+	"time"
+
+	embyclient "github.com/katbyte/embyfin-mcp/sdk/emby/4.10.0.40/client"
+	"github.com/katbyte/embyfin-mcp/sdk/emby/4.10.0.40/emby"
+	jfclient "github.com/katbyte/embyfin-mcp/sdk/jf/12.1.0/client"
+	"github.com/katbyte/embyfin-mcp/sdk/jf/12.1.0/jf"
+	"github.com/katbyte/go-kt/chttp"
+	apiclient "github.com/katbyte/pandorest/client"
+)
+
+type Backend string
+
+const (
+	Emby     Backend = "emby"
+	Jellyfin Backend = "jellyfin"
+)
+
+// Client talks to one media server through the typed client for its backend;
+// exactly one of emby and jf is set.
+type Client struct {
+	backend Backend
+	baseURL string
+	emby    *embyclient.Client
+	jf      *jfclient.Client
+	// settle is how long to wait between checks that a change the server
+	// applies in the background has landed
+	settle time.Duration
+	// saveGrain is how finely Emby tells one save of an item from the next:
+	// to the second (see unsavedFor)
+	saveGrain time.Duration
+	// userGrace is how long Jellyfin is given before an account is deleted (see DeleteUser)
+	userGrace time.Duration
+	// admin is the id of an account that sees everything, chosen once, for
+	// the reads only a user's view answers (see FullViewerID)
+	adminMu sync.Mutex
+	admin   string
+}
+
+// New returns a client for the server of that kind at baseURL. opts are the
+// shared base client's, for what the application decides rather than the
+// server: a logger to trace its requests to, or a transport of its own.
+func New(backend Backend, baseURL, token string, opts ...apiclient.Option) (*Client, error) {
+	switch backend {
+	case Emby, Jellyfin:
+	default:
+		return nil, fmt.Errorf("unknown backend %q (want %q or %q)", backend, Emby, Jellyfin)
+	}
+	if baseURL == "" {
+		return nil, errors.New("server URL is required (--server / EMBYFIN_SERVER)")
+	}
+	if token == "" {
+		return nil, errors.New("API token is required (--token / EMBYFIN_TOKEN)")
+	}
+
+	c := &Client{backend: backend, baseURL: strings.TrimRight(baseURL, "/"), settle: 250 * time.Millisecond, saveGrain: time.Second, userGrace: 3 * time.Second}
+	var err error
+	// this layer's rule for sending a read again, which a caller's own option replaces
+	opts = append([]apiclient.Option{apiclient.WithRetry(readRetry)}, opts...)
+	if backend == Emby {
+		c.emby, err = embyclient.New(baseURL, token, opts...)
+	} else {
+		c.jf, err = jfclient.New(baseURL, token, opts...)
+	}
+	if err != nil {
+		return nil, err
+	}
+
+	return c, nil
+}
+
+func (c *Client) Backend() Backend { return c.backend }
+
+// EmbyAPIVersion and JellyfinAPIVersion are the versions of the two servers' API documents this package is built on, so whoever uses it can say exactly
+// which pair it is for. They follow the SDKs imported above, and change only when one of those does.
+const (
+	EmbyAPIVersion     = emby.APIVersion
+	JellyfinAPIVersion = jf.APIVersion
+)
+
+// APIVersion is the version of the server's API document the SDK in use was
+// generated from, which is not always the server's own version.
+func (c *Client) APIVersion() string {
+	if c.isEmby() {
+		return EmbyAPIVersion
+	}
+
+	return JellyfinAPIVersion
+}
+
+// BaseURL is the server address the client was created with, without a
+// trailing slash.
+func (c *Client) BaseURL() string { return c.baseURL }
+
+// isEmby reports whether the client talks to Emby; the other branch of every
+// method is Jellyfin.
+func (c *Client) isEmby() bool { return c.backend == Emby }
+
+// readRetry is how a read is sent again when the server, or the reverse
+// proxy in front of it, answers 502, 503 or 504, or drops the connection:
+// four tries in all, two, four and eight seconds apart. A sweep of a large
+// library is thousands of reads over hours, and one gateway hiccup failed all
+// of it (seen against a real Emby behind a proxy: a 502 after nearly three
+// hours). A write or a delete is never sent again (see chttp.Retry).
+var readRetry = chttp.Retry{Tries: 4, Wait: func(attempt int) time.Duration { return 2 * time.Second << attempt }}
+
+// ErrNoResult is a lookup the server answered with nothing at all rather than
+// a 404: Emby answers 204 for a null result on any JSON operation (a lookup
+// that finds nothing among them), which the typed client hands back as a nil
+// model with no error. This layer wraps it into the error it returns for
+// such a lookup, and IsNotFound reads it as not found.
+var ErrNoResult = errors.New("the server answered with nothing")
+
+// IsNotFound reports whether err is a 404 from the server, or a lookup it
+// answered with nothing (ErrNoResult).
+func IsNotFound(err error) bool {
+	return apiclient.IsNotFound(err) || errors.Is(err, ErrNoResult)
+}
+
+// base is the shared client the typed one sends through.
+func (c *Client) base() *apiclient.Client {
+	if c.isEmby() {
+		return c.emby.Client
+	}
+
+	return c.jf.Client
+}
+
+// LooksLikeID says whether s is shaped like the server's item ids: Emby
+// numbers its items, and Jellyfin gives them Guids (32 hex digits, or 36
+// with the dashes). Emby answers an id of another shape with a 500
+// ("Unrecognized Guid format"), so a name is not asked after as an id.
+func (c *Client) LooksLikeID(s string) bool {
+	if s == "" {
+		return false
+	}
+	if c.isEmby() {
+		return strings.Trim(s, "0123456789") == ""
+	}
+	hex := strings.ReplaceAll(s, "-", "")
+
+	return (len(s) == 32 || len(s) == 36 && len(hex) == 32) && strings.Trim(strings.ToLower(hex), "0123456789abcdef") == ""
+}
+
+// list splits a comma-separated option into the typed slice a Jellyfin
+// parameter takes (the typed client joins it back with commas on the wire).
+func list[T ~string](s string) []T {
+	if s == "" {
+		return nil
+	}
+	parts := strings.Split(s, ",")
+	out := make([]T, 0, len(parts))
+	for _, p := range parts {
+		if p = strings.TrimSpace(p); p != "" {
+			out = append(out, T(p))
+		}
+	}
+
+	return out
+}
+
+// intList is list for numeric options such as years.
+func intList(s string) ([]int, error) {
+	parts := list[string](s)
+	out := make([]int, 0, len(parts))
+	for _, p := range parts {
+		n, err := strconv.Atoi(p)
+		if err != nil {
+			return nil, fmt.Errorf("%q is not a number: %w", p, err)
+		}
+		out = append(out, n)
+	}
+
+	return out, nil
+}
+
+// embyID parses an Emby item id for the few Emby parameters the document
+// types as integers (Emby ids are numeric strings everywhere else).
+func embyID(id string) (int64, error) {
+	n, err := strconv.ParseInt(id, 10, 64)
+	if err != nil {
+		return 0, fmt.Errorf("item id %q is not an Emby id: %w", id, err)
+	}
+
+	return n, nil
+}
+
+// pause waits one settle interval, or until the context ends.
+func (c *Client) pause(ctx context.Context) error {
+	select {
+	case <-ctx.Done():
+		return ctx.Err()
+	case <-time.After(c.settle):
+		return nil
+	}
+}
+
+// dated is a date as either server's SDK holds one.
+type dated interface {
+	IsZero() bool
+	Format(layout string) string
+	UnreadDate() string
+}
+
+// How each server writes a date and time, so one read from it is given back as it came. Emby always writes seven digits of a second's fraction.
+// Jellyfin writes seven when the first three are zero, and otherwise as many as the time has (counted over some nine thousand dates answered by
+// Emby 4.10.1 and 4.11 and by Jellyfin 12.2).
+const (
+	sevenDigitsLayout = "2006-01-02T15:04:05.0000000Z07:00"
+	asWrittenLayout   = "2006-01-02T15:04:05.9999999Z07:00"
+)
+
+// embyDate and jfDate are a date from a server's SDK as the text this package's records carry: written the way that server writes one, "" for none,
+// and as the server sent it when it is in no form the SDK reads. Year 1, which is how both servers write a date they do not have, is none.
+func embyDate(d dated) string { return dateText(d, sevenDigitsLayout) }
+
+func jfDate(d dated) string {
+	if d.Format(".000") == ".000" {
+		return dateText(d, sevenDigitsLayout)
+	}
+
+	return dateText(d, asWrittenLayout)
+}
+
+func dateText(d dated, layout string) string {
+	if unread := d.UnreadDate(); unread != "" {
+		return unread
+	}
+	if d.IsZero() {
+		return ""
+	}
+
+	return d.Format(layout)
+}
+
+// dateOf is the text of a date this package carried, back as the SDK's own type, for a record that goes back to the server. Text in no form the SDK
+// reads cannot be sent as a date, and is left out.
+func dateOf[T any, P interface {
+	*T
+	UnmarshalJSON(data []byte) error
+}](text string) T {
+	var d T
+	if text != "" {
+		_ = P(&d).UnmarshalJSON([]byte(strconv.Quote(text)))
+	}
+
+	return d
+}
+
+// nz is n as the pointer a generated option takes, nil for 0: the options
+// here keep 0 for "not asked", and only a season or an image index means 0.
+func nz[N int | int64](n N) *N {
+	if n == 0 {
+		return nil
+	}
+
+	return &n
+}

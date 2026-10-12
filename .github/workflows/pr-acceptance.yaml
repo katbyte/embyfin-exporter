@@ -1,0 +1,57 @@
+---
+name: acceptance
+on:
+  push:
+    branches: [ 'main' ]
+  pull_request:
+    types: ['opened', 'synchronize']
+    paths:
+      - '**.go'
+      - 'go.mod'
+      - 'go.sum'
+      - 'vendor/**'
+      - 'makefile'
+      - '.scripts/testenv.sh'
+      - 'acceptance/**'
+      - '.github/workflows/pr-acceptance.yaml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  # one job per server, so a failure names which of the two answered otherwise
+  acceptance:
+    name: acceptance (against a real ${{ matrix.backend }})
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    strategy:
+      fail-fast: false
+      matrix:
+        backend: [emby, jellyfin]
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
+        with:
+          go-version-file: ./.go-version
+
+      # ffmpeg makes the fixture films and songs and jq reads the setup answers. ffmpeg is not
+      # on the runner image, so install it rather than assume it is there.
+      - name: Install prerequisites
+        run: |
+          sudo apt-get update -qq
+          sudo apt-get install -y -qq ffmpeg
+          command -v ffmpeg jq docker
+
+      # make owns the container's life, so CI runs exactly what a developer runs. The server is
+      # given no way out to the internet, so this needs no network beyond its image.
+      - name: Run the live suite
+        run: make testacc-${{ matrix.backend }}
+
+      - name: Tear down
+        if: always()
+        env:
+          EMBYFIN_METRICS_TEST_BACKEND: ${{ matrix.backend }}
+        run: .scripts/testenv.sh down || true

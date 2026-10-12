@@ -1,0 +1,39 @@
+# Default always-on deployment: runs the released image from ghcr.io and serves the metrics page
+# for a Prometheus, or a Grafana Alloy, on the same host to scrape.
+# To run a local build instead: make docker, then set image: embyfin-metrics (or add build: .).
+# The two API keys come from a gitignored .env next to this file, see .env.example.
+# The image's own healthcheck asks /healthz on the default port; add a healthcheck here if
+# EMBYFIN_METRICS_LISTEN names another.
+
+networks:
+  net:
+    name: net
+
+services:
+  embyfin-metrics:
+    image: ghcr.io/katbyte/embyfin-metrics:latest
+    container_name: embyfin-metrics
+    hostname: embyfin-metrics
+    restart: always
+    networks:
+      net:
+    # only the host itself can reach the page: whatever scrapes it runs there. Drop the address
+    # to let the rest of the network in, since the page needs no password
+    ports:
+      - "127.0.0.1:9096:9096"
+    env_file:
+      - .env
+    environment:
+      - "TZ=America/Vancouver"
+      # leave a server's address and key out to report on the other alone
+      - "EMBYFIN_METRICS_EMBY_SERVER=http://nas:8096"
+      - "EMBYFIN_METRICS_JELLYFIN_SERVER=http://nas:8097"
+      - "EMBYFIN_METRICS_LISTEN=:9096"
+      - "EMBYFIN_METRICS_LOG=INFO"
+      # - "EMBYFIN_METRICS_LABELS=hostname=nas"   # labels for every reading, when whatever scrapes the page does not add its own
+      # - "EMBYFIN_METRICS_SESSIONS_INTERVAL=15s" # how often sessions, streams, scheduled tasks and the server's own state are read
+      # - "EMBYFIN_METRICS_LIBRARY_INTERVAL=5m"   # how often libraries, item counts, users and devices are read
+    logging:
+      options:
+        max-size: 100m
+        max-file: "1"

@@ -1,0 +1,129 @@
+# HELP embyfin_devices How many devices the server knows of, which is every one it has ever seen.
+# TYPE embyfin_devices gauge
+embyfin_devices{server="emby"} 7
+# HELP embyfin_devices_active Devices seen within the window: the last day, 7 days or 30 days.
+# TYPE embyfin_devices_active gauge
+embyfin_devices_active{server="emby",window="1d"} 1
+embyfin_devices_active{server="emby",window="30d"} 3
+embyfin_devices_active{server="emby",window="7d"} 2
+# HELP embyfin_items Items in every library of the server added together, by kind.
+# TYPE embyfin_items gauge
+embyfin_items{server="emby",type="episode"} 9000
+embyfin_items{server="emby",type="movie"} 1500
+embyfin_items{server="emby",type="season"} 400
+embyfin_items{server="emby",type="series"} 80
+# HELP embyfin_libraries How many libraries the server has.
+# TYPE embyfin_libraries gauge
+embyfin_libraries{server="emby"} 3
+# HELP embyfin_library_items Items in each library, by kind.
+# TYPE embyfin_library_items gauge
+embyfin_library_items{library="Kids",server="emby",type="movie"} 300
+embyfin_library_items{library="Movies",server="emby",type="movie"} 1200
+embyfin_library_items{library="TV",server="emby",type="episode"} 9000
+embyfin_library_items{library="TV",server="emby",type="season"} 400
+embyfin_library_items{library="TV",server="emby",type="series"} 80
+# HELP embyfin_library_scan_last_run_duration_seconds How long the last scan of every library took.
+# TYPE embyfin_library_scan_last_run_duration_seconds gauge
+embyfin_library_scan_last_run_duration_seconds{server="emby"} 90
+# HELP embyfin_library_scan_last_run_ok Whether the last scan of every library finished as it should (1) or not (0).
+# TYPE embyfin_library_scan_last_run_ok gauge
+embyfin_library_scan_last_run_ok{server="emby"} 1
+# HELP embyfin_library_scan_last_run_timestamp_seconds When the last scan of every library ended, in seconds since 1970.
+# TYPE embyfin_library_scan_last_run_timestamp_seconds gauge
+embyfin_library_scan_last_run_timestamp_seconds{server="emby"} 9.466812e+08
+# HELP embyfin_library_scan_progress_ratio How far the scan of every library has got, from 0 to 1, while it runs.
+# TYPE embyfin_library_scan_progress_ratio gauge
+embyfin_library_scan_progress_ratio{server="emby"} 0.25
+# HELP embyfin_library_scan_running Whether the scan of every library is running (1) or not (0).
+# TYPE embyfin_library_scan_running gauge
+embyfin_library_scan_running{server="emby"} 1
+# HELP embyfin_metrics_build_info Always 1, with the version of the tool that wrote the page.
+# TYPE embyfin_metrics_build_info gauge
+embyfin_metrics_build_info{commit="",goversion="go",version="dev"} 1
+# HELP embyfin_poll_duration_seconds How long the last poll of the server took, by which: sessions or library.
+# TYPE embyfin_poll_duration_seconds gauge
+embyfin_poll_duration_seconds{poll="library",server="emby"} 3
+embyfin_poll_duration_seconds{poll="sessions",server="emby"} 0.25
+embyfin_poll_duration_seconds{poll="sessions",server="jellyfin"} 15
+# HELP embyfin_poll_failures_total How many polls of the server have failed since embyfin-metrics started.
+# TYPE embyfin_poll_failures_total counter
+embyfin_poll_failures_total{poll="library",server="emby"} 2
+embyfin_poll_failures_total{poll="sessions",server="emby"} 0
+embyfin_poll_failures_total{poll="sessions",server="jellyfin"} 1
+# HELP embyfin_poll_last_success_timestamp_seconds When a poll of the server was last answered in full, in seconds since 1970.
+# TYPE embyfin_poll_last_success_timestamp_seconds gauge
+embyfin_poll_last_success_timestamp_seconds{poll="library",server="emby"} 9.4668474e+08
+embyfin_poll_last_success_timestamp_seconds{poll="sessions",server="emby"} 9.466848e+08
+# HELP embyfin_scheduled_task_last_run_failed Whether the last run of each scheduled task that has run failed (1) or not (0).
+# TYPE embyfin_scheduled_task_last_run_failed gauge
+embyfin_scheduled_task_last_run_failed{server="emby",task="Export Library to Trakt"} 1
+embyfin_scheduled_task_last_run_failed{server="emby",task="Refresh Guide"} 0
+embyfin_scheduled_task_last_run_failed{server="emby",task="Scan media library"} 0
+# HELP embyfin_scheduled_task_last_run_timestamp_seconds When the last run of each scheduled task ended, in seconds since 1970.
+# TYPE embyfin_scheduled_task_last_run_timestamp_seconds gauge
+embyfin_scheduled_task_last_run_timestamp_seconds{server="emby",task="Export Library to Trakt"} 9.466776e+08
+embyfin_scheduled_task_last_run_timestamp_seconds{server="emby",task="Refresh Guide"} 9.46674e+08
+embyfin_scheduled_task_last_run_timestamp_seconds{server="emby",task="Scan media library"} 9.466812e+08
+# HELP embyfin_scheduled_tasks The server's scheduled tasks, by what they are doing.
+# TYPE embyfin_scheduled_tasks gauge
+embyfin_scheduled_tasks{server="emby",state="cancelling"} 0
+embyfin_scheduled_tasks{server="emby",state="idle"} 3
+embyfin_scheduled_tasks{server="emby",state="running"} 1
+# HELP embyfin_scheduled_tasks_failed Scheduled tasks whose last run failed.
+# TYPE embyfin_scheduled_tasks_failed gauge
+embyfin_scheduled_tasks_failed{server="emby"} 1
+# HELP embyfin_server_info Always 1, with the server's name, its version and the version of its API the client was built from.
+# TYPE embyfin_server_info gauge
+embyfin_server_info{name="nas",sdk_api_version="4.10.0.40",server="emby",version="4.10.0.4"} 1
+# HELP embyfin_server_restart_pending Whether the server is waiting to be restarted (1) or not (0).
+# TYPE embyfin_server_restart_pending gauge
+embyfin_server_restart_pending{server="emby"} 1
+# HELP embyfin_server_update_available Whether the server says a newer version of itself is available (1) or not (0).
+# TYPE embyfin_server_update_available gauge
+embyfin_server_update_available{server="emby"} 0
+# HELP embyfin_sessions Devices connected to the server, by what they are doing.
+# TYPE embyfin_sessions gauge
+embyfin_sessions{server="emby",state="idle"} 2
+embyfin_sessions{server="emby",state="paused"} 1
+embyfin_sessions{server="emby",state="playing"} 2
+# HELP embyfin_streams Sessions playing or paused, by how what they play reaches the device.
+# TYPE embyfin_streams gauge
+embyfin_streams{method="direct_play",server="emby"} 1
+embyfin_streams{method="direct_stream",server="emby"} 0
+embyfin_streams{method="transcode",server="emby"} 2
+embyfin_streams{method="unknown",server="emby"} 0
+# HELP embyfin_streams_by_type Sessions playing or paused, by the kind of thing they play.
+# TYPE embyfin_streams_by_type gauge
+embyfin_streams_by_type{server="emby",type="audiobook"} 0
+embyfin_streams_by_type{server="emby",type="episode"} 1
+embyfin_streams_by_type{server="emby",type="movie"} 1
+embyfin_streams_by_type{server="emby",type="music_video"} 0
+embyfin_streams_by_type{server="emby",type="other"} 0
+embyfin_streams_by_type{server="emby",type="track"} 1
+embyfin_streams_by_type{server="emby",type="video"} 0
+# HELP embyfin_transcode_bytes_per_second How many bytes a second the streams the server is making come to between them: their bitrates added together, over 8.
+# TYPE embyfin_transcode_bytes_per_second gauge
+embyfin_transcode_bytes_per_second{server="emby"} 1.5625e+06
+# HELP embyfin_transcode_reasons Sessions the server is making a stream for, by each reason it gives for not sending the file as it is. A session with two reasons is under both.
+# TYPE embyfin_transcode_reasons gauge
+embyfin_transcode_reasons{reason="audio_codec_not_supported",server="emby"} 1
+embyfin_transcode_reasons{reason="container_bitrate_exceeds_limit",server="emby"} 2
+# HELP embyfin_up Whether the server answered the last time it was asked for its sessions (1) or not (0).
+# TYPE embyfin_up gauge
+embyfin_up{server="emby"} 1
+embyfin_up{server="jellyfin"} 0
+# HELP embyfin_users How many accounts the server has.
+# TYPE embyfin_users gauge
+embyfin_users{server="emby"} 4
+# HELP embyfin_users_active Accounts seen within the window: the last day, 7 days or 30 days.
+# TYPE embyfin_users_active gauge
+embyfin_users_active{server="emby",window="1d"} 1
+embyfin_users_active{server="emby",window="30d"} 3
+embyfin_users_active{server="emby",window="7d"} 2
+# HELP embyfin_users_disabled Accounts that have been disabled.
+# TYPE embyfin_users_disabled gauge
+embyfin_users_disabled{server="emby"} 1
+# HELP embyfin_video_transcodes Sessions whose picture the server is re-encoding, by what does the work.
+# TYPE embyfin_video_transcodes gauge
+embyfin_video_transcodes{encoder="hardware",server="emby"} 1
+embyfin_video_transcodes{encoder="software",server="emby"} 0
