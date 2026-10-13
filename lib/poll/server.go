@@ -168,7 +168,19 @@ type Run struct {
 type Library struct {
 	Name  string
 	Items map[string]int
+	// Added is how many of its items were added within each window, by the window's label: films, episodes, tracks and the like, not the shows
+	// and albums that hold them. It is nil for a server that cannot count them.
+	Added map[string]int
 }
+
+// Window is a stretch of time back from now that things are counted within, and the label the page gives it.
+type Window struct {
+	Label string
+	Span  time.Duration
+}
+
+// Windows is the stretches the page counts within: the last day, 7 days and 30 days.
+var Windows = []Window{{"1d", 24 * time.Hour}, {"7d", 7 * 24 * time.Hour}, {"30d", 30 * 24 * time.Hour}}
 
 // User is one account.
 type User struct {

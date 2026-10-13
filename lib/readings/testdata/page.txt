@@ -35,6 +35,17 @@ embyfin_library_items{library="Movies",server="emby",type="movie"} 1200
 embyfin_library_items{library="TV",server="emby",type="episode"} 9000
 embyfin_library_items{library="TV",server="emby",type="season"} 400
 embyfin_library_items{library="TV",server="emby",type="series"} 80
+# HELP embyfin_library_items_added Items added to each library within the window: the last day, 7 days or 30 days. Films, episodes, tracks and the like, not the shows and albums that hold them. From Emby, which alone can count them.
+# TYPE embyfin_library_items_added gauge
+embyfin_library_items_added{library="Kids",server="emby",window="1d"} 0
+embyfin_library_items_added{library="Kids",server="emby",window="30d"} 0
+embyfin_library_items_added{library="Kids",server="emby",window="7d"} 0
+embyfin_library_items_added{library="Movies",server="emby",window="1d"} 0
+embyfin_library_items_added{library="Movies",server="emby",window="30d"} 12
+embyfin_library_items_added{library="Movies",server="emby",window="7d"} 3
+embyfin_library_items_added{library="TV",server="emby",window="1d"} 6
+embyfin_library_items_added{library="TV",server="emby",window="30d"} 150
+embyfin_library_items_added{library="TV",server="emby",window="7d"} 40
 # HELP embyfin_library_scan_last_run_duration_seconds How long the last scan of every library took.
 # TYPE embyfin_library_scan_last_run_duration_seconds gauge
 embyfin_library_scan_last_run_duration_seconds{server="emby"} 90

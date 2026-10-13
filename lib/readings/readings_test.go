@@ -70,9 +70,9 @@ func emby() *fixed {
 			{Name: "Vacuum Database", State: poll.TaskIdle},
 		}),
 		Libraries: answered([]poll.Library{
-			{Name: "Movies", Items: map[string]int{"movie": 1200}},
-			{Name: "Kids", Items: map[string]int{"movie": 300}},
-			{Name: "TV", Items: map[string]int{"series": 80, "season": 400, "episode": 9000}},
+			{Name: "Movies", Items: map[string]int{"movie": 1200}, Added: map[string]int{"1d": 0, "7d": 3, "30d": 12}},
+			{Name: "Kids", Items: map[string]int{"movie": 300}, Added: map[string]int{"1d": 0, "7d": 0, "30d": 0}},
+			{Name: "TV", Items: map[string]int{"series": 80, "season": 400, "episode": 9000}, Added: map[string]int{"1d": 6, "7d": 40, "30d": 150}},
 		}),
 		Users:   answered([]poll.User{{Name: "ada", LastActive: ago(time.Hour)}, {Name: "grace", LastActive: ago(3 * day)}, {LastActive: ago(20 * day)}, {Disabled: true}}),
 		Devices: answered([]poll.Device{{LastActive: ago(time.Hour)}, {LastActive: ago(2 * day)}, {LastActive: ago(10 * day)}, {LastActive: ago(40 * day)}, {LastActive: ago(400 * day)}, {}, {}}),
@@ -417,23 +417,51 @@ func TestTheWholeServerIsItsLibrariesAddedTogether(t *testing.T) {
 	}
 }
 
-// Two readings with the same labels would lose the whole page, so two libraries of one name are added together.
+// Two readings with the same labels would lose the whole page, so two libraries of one name are added together, in what they hold and in what is
+// new in them.
 func TestTwoLibrariesOfOneNameAreAddedTogether(t *testing.T) {
 	t.Parallel()
 
 	got := write(t, &fixed{Kind: "emby", Libraries: answered([]poll.Library{
-		{Name: "Films", Items: map[string]int{"movie": 10}},
-		{Name: "Films", Items: map[string]int{"movie": 5, "video": 1}},
+		{Name: "Films", Items: map[string]int{"movie": 10}, Added: map[string]int{"1d": 1, "7d": 2, "30d": 3}},
+		{Name: "Films", Items: map[string]int{"movie": 5, "video": 1}, Added: map[string]int{"1d": 0, "7d": 4, "30d": 4}},
 	})})
 	for _, want := range []string{
 		`embyfin_libraries{server="emby"} 2`,
 		`embyfin_library_items{library="Films",server="emby",type="movie"} 15`,
 		`embyfin_library_items{library="Films",server="emby",type="video"} 1`,
 		`embyfin_items{server="emby",type="movie"} 15`,
+		`embyfin_library_items_added{library="Films",server="emby",window="1d"} 1`,
+		`embyfin_library_items_added{library="Films",server="emby",window="7d"} 6`,
+		`embyfin_library_items_added{library="Films",server="emby",window="30d"} 7`,
 	} {
 		if !has(got, want) {
 			t.Errorf("the page lacks %s:\n%s", want, got)
 		}
+	}
+}
+
+// What is new in each library within a day, a week and a month is on the page for a server that can count it, at 0 where nothing is. A server
+// that cannot count it has no such reading, which is not the same as nothing new.
+func TestWhatIsNewInEachLibrary(t *testing.T) {
+	t.Parallel()
+
+	got := write(t, emby())
+	for _, want := range []string{
+		`embyfin_library_items_added{library="TV",server="emby",window="1d"} 6`,
+		`embyfin_library_items_added{library="TV",server="emby",window="7d"} 40`,
+		`embyfin_library_items_added{library="TV",server="emby",window="30d"} 150`,
+		`embyfin_library_items_added{library="Movies",server="emby",window="7d"} 3`,
+		`embyfin_library_items_added{library="Kids",server="emby",window="30d"} 0`,
+	} {
+		if !has(got, want) {
+			t.Errorf("the page lacks %s:\n%s", want, got)
+		}
+	}
+
+	quiet := write(t, &fixed{Kind: "jellyfin", Libraries: answered([]poll.Library{{Name: "Films", Items: map[string]int{"movie": 10}}})})
+	if has(quiet, "embyfin_library_items_added") || !has(quiet, `embyfin_library_items{library="Films",server="jellyfin",type="movie"} 10`) {
+		t.Errorf("a server that cannot count what is new should have its libraries on the page and nothing of what is new:\n%s", quiet)
 	}
 }
 

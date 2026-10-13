@@ -53,6 +53,7 @@ Every reading starts `embyfin_` and has a `server` label, `emby` or `jellyfin`.
 | `embyfin_libraries` | | how many libraries the server has |
 | `embyfin_library_items` | `library`, `type` | items in each library by kind, see [what is counted](#what-is-counted) |
 | `embyfin_items` | `type` | the same kinds with every library of the server added together |
+| `embyfin_library_items_added` | `library`, `window` | items added to each library within the last `1d`, `7d` or `30d`; Emby only, see [what is new](#what-is-new) |
 | `embyfin_users` | | how many accounts the server has |
 | `embyfin_users_disabled` | | how many of them have been disabled |
 | `embyfin_users_active` | `window` | accounts seen within the last `1d`, `7d` or `30d` |
@@ -97,6 +98,12 @@ A library is counted for the kinds its type holds, so a film library is not aske
 The counts are each server's own, so the two can differ over the same files: Emby counts every file of a film or an episode it holds in several versions, where Jellyfin counts the film once.
 
 `embyfin_items` is the libraries added together and not the server's own total, which also counts what is in no library: the theme songs, trailers and extras kept beside a film, and albums no track belongs to any more.
+
+### What is new
+
+`embyfin_library_items_added` is how many of a library's items were added within the last day, 7 days and 30 days: its films, episodes, tracks, books and the like, and not the shows, seasons and albums that hold them. Read at the end of each day, the `1d` window is what was added that day.
+
+Only Emby can count them: it is asked for the count and hands over no items. Jellyfin has no such question, and reading its newest items to count them takes over a second a thousand on a large library, so its page says nothing of what is new. For Jellyfin, and for what has gone as well as what has come, `delta(embyfin_library_items[1d])` is how much each library grew.
 
 A session's `method` goes by what the server is doing where it says: a stream it is making is a `direct_stream` when nothing in it is re-encoded and a `transcode` when anything is, whatever the device called it. Only with no stream being made is it the device's own word.
 
@@ -319,7 +326,7 @@ The page itself, its `/metrics` and `/healthz` routes and the labels are [go-kt]
 
 The live tests (`acceptance/`) are where a real server gets to answer otherwise. [`.scripts/testenv.sh`](.scripts/testenv.sh) starts an Emby or a Jellyfin in Docker with no way out to the internet, lays out a small made-up catalogue for it, gives it the Playback Reporting plugin, gets it through its setup and mints a key. The catalogue has something of every kind the page counts: films, series, music, music videos, a home video and photos, books, an audiobook, and a folder that mixes a film with a series. The suite then checks the page against the server each time it changes something:
 
-- it makes a library of each type, a collection and a playlist, and checks every count
+- it makes a library of each type, a collection and a playlist, and checks every count, and on Emby that all of it is counted as new
 - it signs a device in and plays, pauses and stops a film, then plays one thing of each kind
 - it has the server re-encode a film for a device, and only repack one for another
 - it checks the line each playing session has of its own: whose it is, the film, the device and its app for a program told to name them, none of them for one that was not, and gone once stopped

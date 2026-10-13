@@ -38,7 +38,9 @@ type Server struct {
 	reports reporter
 	files   fileRates
 	log     activities
-	detail  Detail
+	// arrivals is nil for a server that cannot count what is new in a library, which Jellyfin cannot
+	arrivals newcomers
+	detail   Detail
 
 	// history is whether the server was last seen to have the Playback Reporting plugin (2) or not (1), so the log says so once
 	history atomic.Int32
@@ -59,7 +61,12 @@ func Connect(kind, address, token string, detail Detail) (*Server, error) {
 		return nil, fmt.Errorf("%s: %w", kind, err)
 	}
 
-	return &Server{client: c, reports: d, files: d, log: d, detail: detail}, nil
+	s := &Server{client: c, reports: d, files: d, log: d, detail: detail}
+	if c.Backend() == embyfin.Emby {
+		s.arrivals = d
+	}
+
+	return s, nil
 }
 
 // Kind is "emby" or "jellyfin".
@@ -187,6 +194,8 @@ func (s *Server) Libraries(ctx context.Context) ([]poll.Library, error) {
 		return nil, err
 	}
 
+	now := time.Now()
+
 	out := make([]poll.Library, 0, len(folders))
 	for i := range folders {
 		folder := &folders[i]
@@ -198,13 +207,20 @@ func (s *Server) Libraries(ctx context.Context) ([]poll.Library, error) {
 			continue
 		}
 
-		for _, k := range kindsIn(s.client.Backend(), folder.CollectionType) {
+		kinds := kindsIn(s.client.Backend(), folder.CollectionType)
+		for _, k := range kinds {
 			n, err := s.client.Count(ctx, embyfin.SearchOptions{ParentID: folder.ItemID, IncludeItemTypes: k.server})
 			if err != nil {
 				return nil, fmt.Errorf("counting the %s kind in the %s library: %w", k.label, folder.Name, err)
 			}
 			library.Items[k.label] = n
 		}
+
+		added, err := s.added(ctx, folder.ItemID, kinds, now)
+		if err != nil {
+			return nil, fmt.Errorf("counting what is new in the %s library: %w", folder.Name, err)
+		}
+		library.Added = added
 
 		out = append(out, library)
 	}

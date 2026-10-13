@@ -265,3 +265,28 @@ func TestAScanUnderWay(t *testing.T) {
 	// the last of them finished as it should, so the tests after this one find the server as they expect it
 	expect(t, scrape(t, poll.RoundSessions), map[string]float64{reading("embyfin_library_scan_running"): 0, reading("embyfin_library_scan_last_run_ok"): 1})
 }
+
+// What is new in each library within a day, a week and a month. Everything in the catalogue was laid down minutes ago, so on Emby each library's
+// films, episodes or tracks are all new in every window, and its shows, seasons and albums are not counted among them. Jellyfin cannot count what
+// is new, and its page says nothing of it.
+func TestWhatIsNewInEachLibrary(t *testing.T) {
+	live(t)
+
+	text := scrape(t, poll.RoundLibrary)
+
+	if backend != emby {
+		if lines := every(text, "embyfin_library_items_added"); len(lines) != 0 {
+			t.Errorf("the page says what is new in a library of a server that cannot count it: %v", lines)
+		}
+
+		return
+	}
+
+	want := map[string]float64{}
+	for library, n := range map[string]float64{filmLibrary: films, showLibrary: episodes, musicLibrary: tracks, clipLibrary: musicVideos, homeLibrary: homeVideos + photos, bookLibrary: books, audiobookLibrary: chapters, mixedLibrary: mixedFilms + mixedEpisodes} {
+		for _, window := range []string{"1d", "7d", "30d"} {
+			want[reading("embyfin_library_items_added", "library", library, "window", window)] = n
+		}
+	}
+	expect(t, text, want)
+}

@@ -16,15 +16,6 @@ const Namespace = "embyfin"
 // serverLabel says which server a reading is of: "emby" or "jellyfin".
 const serverLabel = "server"
 
-// day is the unit the windows below are counted in.
-const day = 24 * time.Hour
-
-// windows is how recently an account or a device has to have been seen to count as active, under the label each is given.
-var windows = []struct {
-	label string
-	span  time.Duration
-}{{"1d", day}, {"7d", 7 * day}, {"30d", 30 * day}}
-
 // all is every reading the page can hold, for Describe.
 var all []*prometheus.Desc
 
@@ -73,6 +64,7 @@ var (
 
 	libraries    = reading("libraries", "How many libraries the server has.")
 	libraryItems = reading("library_items", "Items in each library, by kind.", "library", "type")
+	libraryAdded = reading("library_items_added", "Items added to each library within the window: the last day, 7 days or 30 days. Films, episodes, tracks and the like, not the shows and albums that hold them. From Emby, which alone can count them.", "library", "window")
 	items        = reading("items", "Items in every library of the server added together, by kind.", "type")
 
 	users         = reading("users", "How many accounts the server has.")
@@ -401,7 +393,7 @@ func (w writer) libraries(s *poll.State) {
 	w.count(libraries, len(s.Libraries.Value))
 
 	// two libraries of one name are added together: two readings with the same labels would spoil the whole page
-	byName, total := map[string]map[string]int{}, map[string]int{}
+	byName, total, added := map[string]map[string]int{}, map[string]int{}, map[string]map[string]int{}
 	for _, library := range s.Libraries.Value {
 		if byName[library.Name] == nil {
 			byName[library.Name] = map[string]int{}
@@ -409,6 +401,20 @@ func (w writer) libraries(s *poll.State) {
 		for kind, n := range library.Items {
 			byName[library.Name][kind] += n
 			total[kind] += n
+		}
+
+		// only a server that can count what is new says anything of it
+		if library.Added != nil && added[library.Name] == nil {
+			added[library.Name] = map[string]int{}
+		}
+		for window, n := range library.Added {
+			added[library.Name][window] += n
+		}
+	}
+
+	for name, windows := range added {
+		for window, n := range windows {
+			w.count(libraryAdded, n, name, window)
 		}
 	}
 
@@ -476,14 +482,14 @@ func (w writer) devices(s *poll.State, now time.Time) {
 
 // active counts how many of those times fall within each window of now. One that was never seen has no time and is in none.
 func (w writer) active(d *prometheus.Desc, seen []time.Time, now time.Time) {
-	for _, window := range windows {
+	for _, window := range poll.Windows {
 		var active int
 		for _, at := range seen {
-			if !at.IsZero() && now.Sub(at) <= window.span {
+			if !at.IsZero() && now.Sub(at) <= window.Span {
 				active++
 			}
 		}
-		w.count(d, active, window.label)
+		w.count(d, active, window.Label)
 	}
 }
 
