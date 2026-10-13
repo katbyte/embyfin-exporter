@@ -34,6 +34,13 @@ Every reading starts `embyfin_` and has a `server` label, `emby` or `jellyfin`.
 | `embyfin_video_transcodes` | `encoder` | sessions whose picture the server is re-encoding, the work that loads a CPU or a GPU, by whether `hardware` or `software` is encoding it |
 | `embyfin_transcode_reasons` | `reason` | sessions the server is making a stream for, by each reason it gives for not sending the file as it is: `container_not_supported`, `subtitle_codec_not_supported` and so on, see [why a stream is made](#why-a-stream-is-made) |
 | `embyfin_transcode_bits_per_second` | | the bitrate of the streams the server is making, added together, in bits a second |
+| `embyfin_streams_by_network` | `network` | sessions playing or paused, by where the device is: `home` on the server's own network, `remote` from outside it, or `unknown` |
+| `embyfin_streams_bits_per_second` | `network` | the bitrate of what is playing as it leaves the server, added together, by where the devices are |
+| `embyfin_session_info` | `session`, `user`, `title`, `type`, `device`, `client`, `method`, `state`, `network`, `reasons` | always 1, one for each session playing or paused, see [who is streaming now](#who-is-streaming-now) |
+| `embyfin_session_bits_per_second` | `session` | what each session plays comes to as it leaves the server: the stream the server makes, or the file's own when it is sent as it is |
+| `embyfin_session_position_seconds` | `session` | how far through what it is playing each session is |
+| `embyfin_session_runtime_seconds` | `session` | how long the whole of it is |
+| `embyfin_client_transcode_reasons` | `device`, `client`, `reason` | sessions the server is making a stream for, by the device, its app and each reason; only when devices are named |
 | `embyfin_scheduled_tasks` | `state` | the server's scheduled tasks that are `idle`, `running` or `cancelling` |
 | `embyfin_scheduled_tasks_failed` | | scheduled tasks whose last run failed; one that was cancelled is not counted |
 | `embyfin_scheduled_task_last_run_failed` | `task` | which they are: for each task that has run, 1 when its last run failed and 0 when not, under the name the server's own dashboard lists the task by |
@@ -94,6 +101,24 @@ Two scheduled tasks of one name are one `task` on the page, failed if either did
 
 `embyfin_transcode_bits_per_second` is what the servers say those streams come to, added together, in bits a second as the servers and every player give a bitrate. A file sent as it is adds nothing to it.
 
+### Who is streaming now
+
+Each session that is playing or paused has a line of its own, `embyfin_session_info`, under the server's own id for the session. It is there while the session plays and gone when it stops, and one with nothing playing has none.
+
+Left alone the line says what kind of thing is playing, how it reaches the device, whether it is paused and whether the device is at `home` or `remote`. Whose session it is (`user`), what it is playing (`title`), and on what (`device`, and `client` for the app) are empty unless [you ask for them](#nobodys-name-is-on-it-unless-you-ask). A title is written to be read: `Dark - S01E02 - Lies`, `Heat (1995)`, `Pink Floyd - Breathe`. `reasons` is why the server is making a stream of it, when it is, with commas between them.
+
+The numbers are readings of their own under the same `session`, for a table to put beside the line:
+
+```promql
+embyfin_session_info                                                                   # who is streaming what, on what
+embyfin_session_bits_per_second * on (server, session) group_left (user, title) embyfin_session_info
+embyfin_session_position_seconds / on (server, session) embyfin_session_runtime_seconds   # how far through, from 0 to 1
+```
+
+**Home or remote is worked out from the address a session connects from**, and the address itself is never on the page: an address that only works on a private network, or on the server's own machine, is `home`, and any other is `remote`. A server behind a proxy that does not pass the real address on sees every device at the proxy's address, and so at home.
+
+**`embyfin_streams_bits_per_second{network="remote"}` is what is going out of the house**: for each stream, what the server is making for it, or what the file itself comes to when it is sent as it is.
+
 ### What was played
 
 Neither server keeps a record of how long anything was played. The [Playback Reporting](https://github.com/faush01/playback_reporting) plugin does, on Emby and on [Jellyfin](https://github.com/jellyfin/jellyfin-plugin-playbackreporting), and the readings of what was played are its sums. A server without the plugin has `embyfin_playback_reporting_installed` at 0 and none of them; nothing else on the page changes.
@@ -122,15 +147,16 @@ The plugin is asked with a `POST`, which is the only way it takes a question, an
 
 ### Nobody's name is on it unless you ask
 
-Left alone there is no user name, device name, client address or title of what is playing anywhere on the page, only counts. The nearest it comes is the kind of thing playing, a film or an episode, and the names of the server's own scheduled tasks. A metrics store that keeps names and titles is a viewing history, so it is yours to ask for:
+Left alone there is no user name, device name, client address or title of what is playing anywhere on the page, only counts and each session's state. The nearest it comes is the kind of thing playing, a film or an episode, and the names of the server's own scheduled tasks. A metrics store that keeps names and titles is a viewing history, so it is yours to ask for:
 
 | `EMBYFIN_METRICS_DETAIL` | Adds |
 |---|---|
-| `users` | the time each account has played, and when it was last seen |
-| `titles` | the time each show and each film has been played |
-| `all` | both, and whatever a later version can name |
+| `users` | whose each session is, the time each account has played, and when it was last seen |
+| `titles` | what each session is playing, and the time each show and each film has been played |
+| `devices` | the device and the app each session plays on, and which of them each reason for a stream belongs to |
+| `all` | all three, and whatever a later version can name |
 
-Words are joined with commas: `users,titles`. A word left out is never asked of the server at all, so it cannot reach a label by accident. A device's name and a client's address are never on the page whatever is asked.
+Words are joined with commas: `users,titles`. What a word left out would name is left behind in the server's answer, or never asked of the server at all, so it cannot reach a label by accident. The address a device connects from is never on the page whatever is asked.
 
 ### When a server stops answering
 
@@ -168,7 +194,7 @@ All options can be passed as command-line flags, environment variables, or via a
 | `EMBYFIN_METRICS_JELLYFIN_TOKEN` | `--jellyfin-token` | its API key (dashboard → API Keys) |
 | `EMBYFIN_METRICS_LISTEN` | `--listen` | the address the page is served on, default `:9096` |
 | `EMBYFIN_METRICS_LABELS` | `--labels` | labels to put on every reading, as `name=value,name=value`, e.g. `hostname=nas`; none by default. A label named as one a reading already has, `server` say, stops the program with its name |
-| `EMBYFIN_METRICS_DETAIL` | `--detail` | who and what the page may name, as a list of `users`, `titles` or `all`; nobody and nothing by default, see [nobody's name is on it unless you ask](#nobodys-name-is-on-it-unless-you-ask). A word it does not know stops the program |
+| `EMBYFIN_METRICS_DETAIL` | `--detail` | who and what the page may name, as a list of `users`, `titles`, `devices` or `all`; nobody and nothing by default, see [nobody's name is on it unless you ask](#nobodys-name-is-on-it-unless-you-ask). A word it does not know stops the program |
 | `EMBYFIN_METRICS_SESSIONS_INTERVAL` | `--sessions-interval` | how often sessions, streams, scheduled tasks and the server's own state are read, default `15s` |
 | `EMBYFIN_METRICS_LIBRARY_INTERVAL` | `--library-interval` | how often libraries, item counts, users and devices are read, default `5m` |
 | `EMBYFIN_METRICS_HISTORY_INTERVAL` | `--history-interval` | how often what was played is read, from a server with the Playback Reporting plugin, default `30s` |
@@ -248,6 +274,7 @@ embyfin_scheduled_task_last_run_failed == 1                        # which sched
 sum by (server, reason) (embyfin_transcode_reasons)                # why streams are being made
 embyfin_transcode_bits_per_second / 1e6                            # what the server's own streams come to, in megabits a second
 sum by (server) (increase(embyfin_playback_seconds_total[1d]))     # seconds played in the last day
+embyfin_streams_bits_per_second{network="remote"} / 1e6            # megabits a second going out of the house
 ```
 
 ## Development
@@ -270,6 +297,7 @@ The live tests (`acceptance/`) are where a real server gets to answer otherwise.
 - it makes a library of each type, a collection and a playlist, and checks every count
 - it signs a device in and plays, pauses and stops a film, then plays one thing of each kind
 - it has the server re-encode a film for a device, and only repack one for another
+- it checks the line each playing session has of its own: whose it is, the film, the device and its app for a program told to name them, none of them for one that was not, and gone once stopped
 - it asks for a scan and catches it under way
 - it plays a film and watches the time played go up on the page while it plays, under the account and the title only for a program told to name them
 - it lays plays down in the plugin's record in this week, the last and three weeks back, and checks each is under its own week or off the page

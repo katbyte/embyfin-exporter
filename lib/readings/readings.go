@@ -3,6 +3,7 @@ package readings
 
 import (
 	"slices"
+	"strings"
 	"time"
 
 	"github.com/katbyte/embyfin-metrics/lib/poll"
@@ -51,6 +52,14 @@ var (
 	videoTranscodes  = reading("video_transcodes", "Sessions whose picture the server is re-encoding, by what does the work.", "encoder")
 	transcodeReasons = reading("transcode_reasons", "Sessions the server is making a stream for, by each reason it gives for not sending the file as it is. A session with two reasons is under both.", "reason")
 	transcodeBitrate = reading("transcode_bits_per_second", "The bitrate of the streams the server is making, added together, in bits a second.")
+	streamsByNetwork = reading("streams_by_network", "Sessions playing or paused, by where the device is: home on the server's own network, remote from outside it, or unknown.", "network")
+	streamsBitrate   = reading("streams_bits_per_second", "The bitrate of what is playing as it leaves the server, added together, in bits a second, by where the devices are.", "network")
+	clientReasons    = reading("client_transcode_reasons", "Sessions the server is making a stream for, by the device, its app and each reason the server gives. Only when the settings ask for devices to be named.", "device", "client", "reason")
+
+	sessionInfo     = reading("session_info", "Always 1, for each session playing or paused: the kind of thing it plays, how it reaches the device, whether it is paused, whether the device is at home or remote, and why the server makes a stream of it when it does. Whose it is, what it plays and on what are filled in only when the settings ask.", "session", "user", "title", "type", "device", "client", "method", "state", "network", "reasons")
+	sessionBitrate  = reading("session_bits_per_second", "How many bits a second what each session plays comes to as it leaves the server: the stream the server makes, or the file's own when it is sent as it is.", "session")
+	sessionPosition = reading("session_position_seconds", "How far through what it is playing each session is.", "session")
+	sessionRuntime  = reading("session_runtime_seconds", "How long the whole of what each session is playing is.", "session")
 
 	scheduledTasks       = reading("scheduled_tasks", "The server's scheduled tasks, by what they are doing.", "state")
 	scheduledTasksFailed = reading("scheduled_tasks_failed", "Scheduled tasks whose last run failed.")
@@ -190,16 +199,21 @@ func (w writer) info(s *poll.State) {
 	w.flag(updateAvailable, i.UpdateAvailable)
 }
 
-// sessions counts the devices by state and the playing ones by method and by kind. Every state, method and kind is written, at 0 when there is
-// none, so a reading does not vanish when the last stream stops. The reasons are the servers' own and there is no saying which there may be, so a
-// reason is on the page only while a stream has it.
+// stream tells one device and app's reason for a stream from another's.
+type stream struct{ device, client, reason string }
+
+// sessions counts the devices by state and the playing ones by method, by kind and by where they are, and then says of each playing one what it
+// is doing. Every state, method, kind and network is written, at 0 when there is none, so a reading does not vanish when the last stream stops.
+// The reasons are the servers' own and there is no saying which there may be, so a reason is on the page only while a stream has it.
 func (w writer) sessions(s *poll.State) {
 	if !s.Sessions.Known() {
 		return
 	}
 
 	states, methods, kinds, reasons := map[poll.SessionState]int{}, map[poll.Method]int{}, map[poll.Kind]int{}, map[string]int{}
+	networks, outgoing, byClient := map[poll.Network]int{}, map[poll.Network]int{}, map[stream]int{}
 	var hardware, software, bitrate int
+	var playing []poll.Session
 	for _, session := range s.Sessions.Value {
 		if session.State != poll.Playing && session.State != poll.Paused {
 			states[poll.Idle]++
@@ -207,17 +221,20 @@ func (w writer) sessions(s *poll.State) {
 		}
 		states[session.State]++
 
-		if slices.Contains(poll.Methods, session.Method) {
-			methods[session.Method]++
-		} else {
-			methods[poll.UnknownMethod]++
+		// what the server does not say, or says in a word not known here, is still counted
+		if !slices.Contains(poll.Methods, session.Method) {
+			session.Method = poll.UnknownMethod
 		}
-
-		if slices.Contains(poll.Kinds, session.Kind) {
-			kinds[session.Kind]++
-		} else {
-			kinds[poll.OtherKind]++
+		if !slices.Contains(poll.Kinds, session.Kind) {
+			session.Kind = poll.OtherKind
 		}
+		if !slices.Contains(poll.Networks, session.Network) {
+			session.Network = poll.UnknownNetwork
+		}
+		methods[session.Method]++
+		kinds[session.Kind]++
+		networks[session.Network]++
+		outgoing[session.Network] += session.Outgoing
 
 		if session.VideoTranscode && session.Hardware {
 			hardware++
@@ -228,7 +245,13 @@ func (w writer) sessions(s *poll.State) {
 		bitrate += session.Bitrate
 		for _, reason := range session.Reasons {
 			reasons[reason]++
+			// a device has a name only when the settings ask for one
+			if session.Device != "" || session.Client != "" {
+				byClient[stream{session.Device, session.Client, reason}]++
+			}
 		}
+
+		playing = append(playing, session)
 	}
 
 	for _, state := range poll.SessionStates {
@@ -245,6 +268,38 @@ func (w writer) sessions(s *poll.State) {
 	w.count(transcodeBitrate, bitrate)
 	for reason, n := range reasons {
 		w.count(transcodeReasons, n, reason)
+	}
+	for _, network := range poll.Networks {
+		w.count(streamsByNetwork, networks[network], string(network))
+		w.count(streamsBitrate, outgoing[network], string(network))
+	}
+	for by, n := range byClient {
+		w.count(clientReasons, n, by.device, by.client, by.reason)
+	}
+
+	w.playing(playing)
+}
+
+// playing says of each session playing or paused what it is doing, under the server's own id for the session, which is what ties its readings
+// together. A session with no id cannot be told from another and is left out, and so is a second one of the same id: two readings with the same
+// labels would spoil the whole page. How fast it is being sent and how long it is are on the page only when the server says.
+func (w writer) playing(sessions []poll.Session) {
+	written := map[string]bool{}
+	for i := range sessions {
+		session := &sessions[i]
+		if session.ID == "" || written[session.ID] {
+			continue
+		}
+		written[session.ID] = true
+
+		w.gauge(sessionInfo, 1, session.ID, session.User, session.Title, string(session.Kind), session.Device, session.Client, string(session.Method), string(session.State), string(session.Network), strings.Join(session.Reasons, ","))
+		w.gauge(sessionPosition, session.Position.Seconds(), session.ID)
+		if session.Outgoing > 0 {
+			w.count(sessionBitrate, session.Outgoing, session.ID)
+		}
+		if session.Runtime > 0 {
+			w.gauge(sessionRuntime, session.Runtime.Seconds(), session.ID)
+		}
 	}
 }
 

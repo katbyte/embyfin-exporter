@@ -21,12 +21,13 @@ import (
 	apiclient "github.com/katbyte/pandorest/client"
 )
 
-// Detail is what the page may say of who plays what, which is nothing unless the settings ask. A name or a title that was not asked for is never
-// asked of the server, so it cannot reach the page by mistake.
+// Detail is what the page may say of who plays what on what, which is nothing unless the settings ask. A name or a title that was not asked for
+// is left behind in the server's answer, or never asked of the server at all, so it cannot reach the page by mistake.
 type Detail struct {
-	// Users names accounts, and Titles shows and films.
-	Users  bool
-	Titles bool
+	// Users names accounts, Titles what is played, and Devices the devices and the apps it is played on.
+	Users   bool
+	Titles  bool
+	Devices bool
 }
 
 // unknownUser is whose a play was when the account has since been deleted, in the plugin's own word for them.
@@ -39,14 +40,14 @@ type reporter interface {
 	Query(ctx context.Context, sql string, names bool) (rows [][]string, installed bool, err error)
 }
 
-// plugin asks the Playback Reporting plugin of a real server. The plugin is no part of either server's own API, so embyfin-mcp has no call for it:
-// the request is made here, through the same kind of client that makes embyfin-mcp's.
-type plugin struct {
+// direct asks a real server the two things embyfin-mcp has no call for, through the same kind of client that makes embyfin-mcp's requests: what its
+// Playback Reporting plugin has recorded, the plugin being no part of either server's own API, and what the file a session plays comes to.
+type direct struct {
 	base *apiclient.Client
 }
 
-// connectPlugin is the plugin of the server of that kind at address, asked with the server's own key.
-func connectPlugin(backend embyfin.Backend, address, token string, opts ...apiclient.Option) (*plugin, error) {
+// connectDirect is the server of that kind at address, asked with its own key.
+func connectDirect(backend embyfin.Backend, address, token string, opts ...apiclient.Option) (*direct, error) {
 	connect := jf.New
 	if backend == embyfin.Emby {
 		connect = emby.New
@@ -57,7 +58,7 @@ func connectPlugin(backend embyfin.Backend, address, token string, opts ...apicl
 		return nil, err
 	}
 
-	return &plugin{base: base}, nil
+	return &direct{base: base}, nil
 }
 
 // nothingFound is how the plugin's message begins when a question ran and gave no rows.
@@ -92,8 +93,8 @@ func (c *cell) UnmarshalJSON(data []byte) error {
 
 // Query sends the question with a POST, the only way the plugin takes one. It is still only a read: the question is one this program wrote, and it
 // asks for sums.
-func (p *plugin) Query(ctx context.Context, sql string, names bool) (rows [][]string, installed bool, err error) {
-	req, err := p.base.NewRequest(ctx, apiclient.RequestOptions{ExpectedStatusCodes: []int{http.StatusOK}, HTTPMethod: http.MethodPost, Path: "/user_usage_stats/submit_custom_query"})
+func (d *direct) Query(ctx context.Context, sql string, names bool) (rows [][]string, installed bool, err error) {
+	req, err := d.base.NewRequest(ctx, apiclient.RequestOptions{ExpectedStatusCodes: []int{http.StatusOK}, HTTPMethod: http.MethodPost, Path: "/user_usage_stats/submit_custom_query"})
 	if err != nil {
 		return nil, false, err
 	}

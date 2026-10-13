@@ -73,7 +73,7 @@ func configureFlags(root *cobra.Command) error {
 	pflags.String("jellyfin-token", "", "the Jellyfin API key (consider exporting to EMBYFIN_METRICS_JELLYFIN_TOKEN instead)")
 	pflags.String("listen", defaultListen, "serve the metrics page on this address")
 	pflags.String("labels", "", "labels to put on every reading, as name=value,name=value: hostname=nas say, when the page is not scraped on the servers' own host")
-	pflags.String("detail", "", "who and what the page may name, as a list of users, titles or all: nobody and nothing unless asked, so no account's name or title is on the page by default")
+	pflags.String("detail", "", "who and what the page may name, as a list of users, titles, devices or all: nobody and nothing unless asked, so no account's or device's name and no title is on the page by default")
 	pflags.Duration("sessions-interval", defaultSessionsInterval, "how often sessions, streams, scheduled tasks and the server's own state are read")
 	pflags.Duration("library-interval", defaultLibraryInterval, "how often libraries, item counts, users and devices are read")
 	pflags.Duration("history-interval", defaultHistoryInterval, "how often what was played is read, from a server with the Playback Reporting plugin")
@@ -198,9 +198,10 @@ func (f *FlagData) targets() ([]target, error) {
 
 // The words --detail takes, and the one that stands for all of them, now and in versions to come.
 const (
-	detailUsers  = "users"
-	detailTitles = "titles"
-	detailAll    = "all"
+	detailUsers   = "users"
+	detailTitles  = "titles"
+	detailDevices = "devices"
+	detailAll     = "all"
 )
 
 // detail is who and what the settings let the page name: nobody and nothing unless they say so. A word not known is a mistake said now, since a
@@ -214,10 +215,12 @@ func (f *FlagData) detail() (mediaserver.Detail, error) {
 			d.Users = true
 		case detailTitles:
 			d.Titles = true
+		case detailDevices:
+			d.Devices = true
 		case detailAll:
-			d = mediaserver.Detail{Users: true, Titles: true}
+			d = mediaserver.Detail{Users: true, Titles: true, Devices: true}
 		default:
-			return mediaserver.Detail{}, fmt.Errorf("--detail (%s) takes %s, %s or %s, with commas between them, and not %q", envNames["detail"], detailUsers, detailTitles, detailAll, strings.TrimSpace(word))
+			return mediaserver.Detail{}, fmt.Errorf("--detail (%s) takes %s, %s, %s or %s, with commas between them, and not %q", envNames["detail"], detailUsers, detailTitles, detailDevices, detailAll, strings.TrimSpace(word))
 		}
 	}
 
@@ -226,16 +229,21 @@ func (f *FlagData) detail() (mediaserver.Detail, error) {
 
 // named is what the page will name, for the log: it should be plain from the first line that a page has people on it.
 func named(d mediaserver.Detail) string {
-	switch {
-	case d.Users && d.Titles:
-		return "naming accounts and titles"
-	case d.Users:
-		return "naming accounts"
-	case d.Titles:
-		return "naming titles"
-	default:
+	var what []string
+	if d.Users {
+		what = append(what, "accounts")
+	}
+	if d.Titles {
+		what = append(what, "titles")
+	}
+	if d.Devices {
+		what = append(what, "devices")
+	}
+	if len(what) == 0 {
 		return "naming nobody"
 	}
+
+	return "naming " + strings.Join(what, ", ")
 }
 
 // connector makes the client that asks one server its questions, naming accounts and titles only as far as detail allows.

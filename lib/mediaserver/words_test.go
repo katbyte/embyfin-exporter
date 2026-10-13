@@ -275,3 +275,75 @@ func TestBetween(t *testing.T) {
 		}
 	}
 }
+
+// Where a device is, from the address a server gives for it, in each way a server has been seen to write one: at home on a private network or
+// the server's own machine, remote on any other, and unknown when there is no address to read.
+func TestNetwork(t *testing.T) {
+	t.Parallel()
+
+	for address, want := range map[string]poll.Network{
+		"192.168.1.20":        poll.Home,
+		"10.1.2.3":            poll.Home,
+		"172.17.0.1":          poll.Home,
+		"127.0.0.1":           poll.Home,
+		"192.168.1.20:51234":  poll.Home,
+		"::1":                 poll.Home,
+		"::ffff:192.168.1.20": poll.Home,
+		"fd12:3456::1":        poll.Home,
+		"fe80::1%eth0":        poll.Home,
+		"[fe80::1]:8096":      poll.Home,
+		"169.254.10.10":       poll.Home,
+		"203.0.113.7":         poll.Remote,
+		"203.0.113.7:443":     poll.Remote,
+		"2001:db8::1":         poll.Remote,
+		"::ffff:203.0.113.7":  poll.Remote,
+		"[2001:db8::1]:443":   poll.Remote,
+		// an address a carrier or a mesh network shares out is not one of the house's own
+		"100.64.0.5":           poll.Remote,
+		"":                     poll.UnknownNetwork,
+		"0.0.0.0":              poll.UnknownNetwork,
+		"the-phone-in-the-den": poll.UnknownNetwork,
+	} {
+		if got := network(address); got != want {
+			t.Errorf("network(%q) = %q, want %q", address, got, want)
+		}
+	}
+}
+
+// What a session is playing, written to be read: an episode with its show and number, a film with its year, a song with who it is by.
+func TestNowPlaying(t *testing.T) {
+	t.Parallel()
+
+	one, two := 1, 2
+
+	for want, item := range map[string]embyfin.Item{
+		"Dark - S01E02 - Lies":         {Name: "Lies", Type: "Episode", SeriesName: "Dark", ParentIndexNumber: &one, IndexNumber: &two},
+		"Dark - A Special":             {Name: "A Special", Type: "Episode", SeriesName: "Dark"},
+		"An Episode Of Nothing":        {Name: "An Episode Of Nothing", Type: "Episode"},
+		"Heat (1995)":                  {Name: "Heat", Type: "Movie", ProductionYear: 1995},
+		"Alien (1979)":                 {Name: "Alien (1979)", Type: "Movie", ProductionYear: 1979},
+		"A Film Of No Year":            {Name: "A Film Of No Year", Type: "Movie"},
+		"Pink Floyd - Breathe":         {Name: "Breathe", Type: "Audio", Artists: []string{"Pink Floyd", "Someone Else"}, ProductionYear: 1973},
+		"A Song By Nobody":             {Name: "A Song By Nobody", Type: "Audio"},
+		"A Clip":                       {Name: "A Clip", Type: "Video", ProductionYear: 2020},
+		"Channel 4":                    {Name: "Channel 4", Type: "TvChannel"},
+		"Gorillaz - Clint Eastwood":    {Name: "Clint Eastwood", Type: "MusicVideo", Artists: []string{"Gorillaz"}},
+		"Frank Herbert - Arrakis":      {Name: "Arrakis", Type: "AudioBook", Artists: []string{"Frank Herbert"}},
+		"A Thing With An Empty Artist": {Name: "A Thing With An Empty Artist", Type: "Audio", Artists: []string{""}},
+	} {
+		if got := nowPlaying(&item); got != want {
+			t.Errorf("nowPlaying(%+v) = %q, want %q", item, got, want)
+		}
+	}
+}
+
+// The servers count time in ten-millionths of a second, and a time below nothing is none.
+func TestTicks(t *testing.T) {
+	t.Parallel()
+
+	for n, want := range map[int64]time.Duration{0: 0, 10_000_000: time.Second, 26_302_510_000: 2630251 * time.Millisecond, -5: 0} {
+		if got := ticks(n); got != want {
+			t.Errorf("ticks(%d) = %s, want %s", n, got, want)
+		}
+	}
+}

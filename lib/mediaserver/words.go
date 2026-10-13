@@ -5,6 +5,8 @@
 package mediaserver
 
 import (
+	"fmt"
+	"net/netip"
 	"slices"
 	"strings"
 	"time"
@@ -123,6 +125,52 @@ func method(playMethod string) poll.Method {
 		return poll.Transcode
 	default:
 		return poll.UnknownMethod
+	}
+}
+
+// ticks is a length of time as the servers count one, in ten-millionths of a second.
+func ticks(n int64) time.Duration {
+	return time.Duration(max(n, 0)) * 100
+}
+
+// network is where a session's device is, from the address the server says it connects from: at home when the address is one that only works on a
+// private network or on the server's own machine, and remote for any other. The address goes no further than this.
+func network(address string) poll.Network {
+	addr, err := netip.ParseAddr(address)
+	if err != nil {
+		// with a port after it
+		withPort, err := netip.ParseAddrPort(address)
+		if err != nil {
+			return poll.UnknownNetwork
+		}
+		addr = withPort.Addr()
+	}
+
+	switch addr = addr.Unmap(); {
+	case addr.IsUnspecified():
+		return poll.UnknownNetwork
+	case addr.IsLoopback(), addr.IsPrivate(), addr.IsLinkLocalUnicast():
+		return poll.Home
+	default:
+		return poll.Remote
+	}
+}
+
+// nowPlaying is what a session is playing, written for someone to read: an episode with its show, season and number, a film with its year, a song
+// with who it is by, and anything else by its name alone.
+func nowPlaying(item *embyfin.Item) string {
+	switch {
+	case strings.EqualFold(item.Type, episode.server) && item.SeriesName != "" && item.ParentIndexNumber != nil && item.IndexNumber != nil:
+		return fmt.Sprintf("%s - S%02dE%02d - %s", item.SeriesName, *item.ParentIndexNumber, *item.IndexNumber, item.Name)
+	case strings.EqualFold(item.Type, episode.server) && item.SeriesName != "":
+		return item.SeriesName + " - " + item.Name
+	// a film the server has looked nothing up for is named as its folder is, which may have the year in it already
+	case strings.EqualFold(item.Type, movie.server) && item.ProductionYear > 0 && !strings.HasSuffix(item.Name, fmt.Sprintf("(%d)", item.ProductionYear)):
+		return fmt.Sprintf("%s (%d)", item.Name, item.ProductionYear)
+	case len(item.Artists) > 0 && item.Artists[0] != "":
+		return item.Artists[0] + " - " + item.Name
+	default:
+		return item.Name
 	}
 }
 

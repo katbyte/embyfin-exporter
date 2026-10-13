@@ -9,6 +9,7 @@ import (
 	"io"
 	"net"
 	"net/http"
+	"regexp"
 	"strings"
 	"testing"
 	"time"
@@ -189,8 +190,8 @@ func TestTheProgramServesThePage(t *testing.T) {
 		t.Error("the key is on the page")
 	}
 	// nobody asked for anyone to be named
-	if strings.Contains(text, `user="`) || strings.Contains(text, `title="`) {
-		t.Errorf("the page names an account or a title when no setting asked for one:\n%s", text)
+	if found := named.FindAllString(text, -1); len(found) != 0 {
+		t.Errorf("the page names %v when no setting asked for anyone to be named:\n%s", found, text)
 	}
 
 	if later, ok := served(t, base, func(later string) bool { return asked(later) > asked(text) }); !ok {
@@ -216,7 +217,7 @@ func TestTheProgramNamesAccountsWhenAskedTo(t *testing.T) {
 	if !ok {
 		t.Fatalf("told to name accounts, the page never showed when %s was last seen:\n%s", user, text)
 	}
-	if strings.Contains(text, `title="`) {
-		t.Errorf("told to name accounts alone, the page names a title:\n%s", text)
+	if found := regexp.MustCompile(`(title|device|client)="[^"]`).FindAllString(text, -1); len(found) != 0 {
+		t.Errorf("told to name accounts alone, the page names %v:\n%s", found, text)
 	}
 }

@@ -4,6 +4,7 @@ import (
 	"cmp"
 	"context"
 	"fmt"
+	"slices"
 	"sync/atomic"
 	"time"
 
@@ -35,6 +36,7 @@ type client interface {
 type Server struct {
 	client  client
 	reports reporter
+	files   fileRates
 	detail  Detail
 
 	// history is whether the server was last seen to have the Playback Reporting plugin (2) or not (1), so the log says so once
@@ -51,12 +53,12 @@ func Connect(kind, address, token string, detail Detail) (*Server, error) {
 		return nil, fmt.Errorf("%s: %w", kind, err)
 	}
 
-	reports, err := connectPlugin(c.Backend(), address, token, opts...)
+	d, err := connectDirect(c.Backend(), address, token, opts...)
 	if err != nil {
 		return nil, fmt.Errorf("%s: %w", kind, err)
 	}
 
-	return &Server{client: c, reports: reports, detail: detail}, nil
+	return &Server{client: c, reports: d, files: d, detail: detail}, nil
 }
 
 // Kind is "emby" or "jellyfin".
@@ -77,23 +79,51 @@ func (s *Server) Sessions(ctx context.Context) ([]poll.Session, error) {
 		return nil, err
 	}
 
+	rates := s.fileRates(ctx, sessions)
+
 	out := make([]poll.Session, 0, len(sessions))
 	for i := range sessions {
-		out = append(out, session(&sessions[i]))
+		out = append(out, session(&sessions[i], s.detail, rates[sessions[i].ID]))
 	}
 
 	return out, nil
 }
 
+// fileRates is what the file each session plays comes to, by the session's id, asked only when some session is being sent a file as it is: a
+// stream the server makes has a bitrate of its own. It is an extra, so when it cannot be had the sessions are still the sessions, less that.
+func (s *Server) fileRates(ctx context.Context, sessions []embyfin.Session) map[string]int {
+	if s.files == nil || !slices.ContainsFunc(sessions, func(session embyfin.Session) bool { return session.NowPlayingItem != nil && session.Transcoding == nil }) {
+		return nil
+	}
+
+	rates, err := s.files.FileRates(ctx)
+	if err != nil {
+		clog.Log.Debugf("%s: what the files being played come to could not be read: %s", s.Kind(), err)
+	}
+
+	return rates
+}
+
 // session is what one session is doing and how. What the server is doing says more than the device's word for it: a stream the server is making
-// is a direct stream when nothing in it is re-encoded and a transcode when anything is, whatever the device called it.
-func session(s *embyfin.Session) poll.Session {
+// is a direct stream when nothing in it is re-encoded and a transcode when anything is, whatever the device called it. Whose it is, what it plays
+// and on what are handed on only as far as detail allows, and where it connects from only as home or remote.
+func session(s *embyfin.Session, detail Detail, fileRate int) poll.Session {
 	state := sessionState(s.NowPlayingItem != nil, s.PlayState.IsPaused)
 	if state == poll.Idle {
 		return poll.Session{State: state}
 	}
 
-	out := poll.Session{State: state, Method: method(s.PlayState.PlayMethod), Kind: playing(s.NowPlayingItem.Type)}
+	item := s.NowPlayingItem
+	out := poll.Session{ID: s.ID, State: state, Method: method(s.PlayState.PlayMethod), Kind: playing(item.Type), Network: network(s.RemoteEndPoint), Outgoing: max(fileRate, 0), Position: ticks(s.PlayState.PositionTicks), Runtime: ticks(item.RunTimeTicks)}
+	if detail.Users {
+		out.User = s.UserName
+	}
+	if detail.Titles {
+		out.Title = nowPlaying(item)
+	}
+	if detail.Devices {
+		out.Device, out.Client = s.DeviceName, s.Client
+	}
 
 	t := s.Transcoding
 	if t == nil {
@@ -109,6 +139,8 @@ func session(s *embyfin.Session) poll.Session {
 	out.Hardware = picture && hardware(t.EncoderHardware, t.HardwareAcceleration)
 	out.Bitrate = max(t.Bitrate, 0)
 	out.Reasons = reasons(t.Reasons)
+	// what leaves the server is then the stream it makes and not the file
+	out.Outgoing = out.Bitrate
 
 	return out
 }

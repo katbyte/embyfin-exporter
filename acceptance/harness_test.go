@@ -13,6 +13,7 @@ import (
 	"net/http"
 	"os"
 	"path"
+	"regexp"
 	"slices"
 	"strconv"
 	"strings"
@@ -128,8 +129,13 @@ var client *embyfin.Client
 
 // asker is the program's own way of asking the server, made once and used by every scrape. One made for each scrape would leave its connections
 // open behind it, and a test that scrapes in a loop then holds hundreds open at once: enough to bring down the link to a Docker that runs in a
-// virtual machine, as it did on a Mac. It names nobody, as the program does unless told to; naming is the same told to name accounts and titles.
+// virtual machine, as it did on a Mac. It names nobody, as the program does unless told to; naming is the same told to name all it can: accounts,
+// titles and devices.
 var asker, naming *mediaserver.Server
+
+// named finds a label on a page that names someone or something: an account, a title, a device or its app, with anything in it. A page that
+// names nobody still has the labels, empty.
+var named = regexp.MustCompile(`(user|title|device|client)="[^"]`)
 
 // runSuite sets the server up, runs the tests, and returns the exit code. With no server named every test skips.
 func runSuite(m *testing.M) int {
@@ -148,8 +154,8 @@ func runSuite(m *testing.M) int {
 
 		return 1
 	}
-	if naming, err = mediaserver.Connect(backend, address, token, mediaserver.Detail{Users: true, Titles: true}); err != nil {
-		fmt.Fprintln(os.Stderr, "connecting to the test server as the program does when told to name accounts and titles:", err)
+	if naming, err = mediaserver.Connect(backend, address, token, mediaserver.Detail{Users: true, Titles: true, Devices: true}); err != nil {
+		fmt.Fprintln(os.Stderr, "connecting to the test server as the program does when told to name accounts, titles and devices:", err)
 
 		return 1
 	}
@@ -369,7 +375,7 @@ func scrape(t *testing.T, only ...poll.Round) string {
 	return page(t, asker, only...)
 }
 
-// scrapeNaming is scrape for a program told to name accounts and titles.
+// scrapeNaming is scrape for a program told to name accounts, titles and devices.
 func scrapeNaming(t *testing.T, only ...poll.Round) string {
 	t.Helper()
 

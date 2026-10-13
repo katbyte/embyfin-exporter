@@ -3,7 +3,9 @@ package readings_test
 import (
 	"flag"
 	"os"
+	"regexp"
 	"runtime"
+	"slices"
 	"strconv"
 	"strings"
 	"testing"
@@ -42,10 +44,11 @@ func answered[T any](value T) poll.Answer[T] {
 	return poll.Answer[T]{Value: value, At: time.Now()}
 }
 
-// emby is a server that has answered everything: five sessions of which three are playing or paused and two are streams the server is making, a
-// scan a quarter of the way through, a task that failed and one that was cancelled, three libraries, four accounts last seen an hour, three days and
-// twenty days ago and never, the last of them disabled, seven devices of which four were seen within the year, and two weeks' plays. It was asked
-// to name accounts and titles, so two of the accounts have names and the plays are also by account and by title.
+// emby is a server that has answered everything: five sessions of which three are playing or paused and two are streams the server is making,
+// one of them for a device outside the house, a scan a quarter of the way through, a task that failed and one that was cancelled, three libraries,
+// four accounts last seen an hour, three days and twenty days ago and never, the last of them disabled, seven devices of which four were seen
+// within the year, and two weeks' plays. It was asked to name all it can, so the sessions say whose they are, what they play and on what, two of
+// the accounts have names, and the plays are also by account and by title.
 func emby() *fixed {
 	now := time.Now()
 	ago := func(d time.Duration) time.Time { return now.Add(-d) }
@@ -54,9 +57,9 @@ func emby() *fixed {
 		Kind: "emby",
 		Info: answered(poll.Info{Name: "nas", Version: "4.10.0.4", APIVersion: "4.10.0.40", RestartPending: true}),
 		Sessions: answered([]poll.Session{
-			{State: poll.Playing, Method: poll.Transcode, Kind: poll.Episode, VideoTranscode: true, Hardware: true, Bitrate: 8000000, Reasons: []string{"container_bitrate_exceeds_limit"}},
-			{State: poll.Playing, Method: poll.Transcode, Kind: poll.Movie, Bitrate: 4500000, Reasons: []string{"audio_codec_not_supported", "container_bitrate_exceeds_limit"}},
-			{State: poll.Paused, Method: poll.DirectPlay, Kind: poll.Track},
+			{ID: "0a", State: poll.Playing, Method: poll.Transcode, Kind: poll.Episode, Network: poll.Remote, VideoTranscode: true, Hardware: true, Bitrate: 8000000, Reasons: []string{"container_bitrate_exceeds_limit"}, Outgoing: 8000000, Position: 10 * time.Minute, Runtime: 50 * time.Minute, User: "ada", Title: "Dark - S01E02 - Lies", Device: "the television in the den", Client: "Den Player"},
+			{ID: "0b", State: poll.Playing, Method: poll.Transcode, Kind: poll.Movie, Network: poll.Home, Bitrate: 4500000, Reasons: []string{"audio_codec_not_supported", "container_bitrate_exceeds_limit"}, Outgoing: 4500000, Runtime: 170 * time.Minute, User: "grace", Title: "Heat (1995)", Device: "the phone in the hall", Client: "Pocket Player"},
+			{ID: "0c", State: poll.Paused, Method: poll.DirectPlay, Kind: poll.Track, Network: poll.Home, Outgoing: 320000, Position: 65 * time.Second, Runtime: 4 * time.Minute, User: "ada", Title: "Pink Floyd - Breathe", Device: "the speaker on the shelf", Client: "Shelf Player"},
 			{State: poll.Idle},
 			{State: poll.Idle},
 		}),
@@ -181,7 +184,7 @@ func TestThePageFollowsTheNamingConventions(t *testing.T) {
 		t.Fatal(err)
 	}
 	for _, p := range problems {
-		if p.Metric == "embyfin_transcode_bits_per_second" && strings.Contains(p.Text, `instead of "bits"`) {
+		if strings.HasSuffix(p.Metric, "_bits_per_second") && strings.Contains(p.Text, `instead of "bits"`) {
 			continue
 		}
 
@@ -233,6 +236,10 @@ func TestEveryStateIsWrittenWhenNothingIsPlaying(t *testing.T) {
 		`embyfin_streams_by_type{server="emby",type="audiobook"} 0`,
 		`embyfin_streams_by_type{server="emby",type="other"} 0`,
 		`embyfin_transcode_bits_per_second{server="emby"} 0`,
+		`embyfin_streams_by_network{network="home",server="emby"} 0`,
+		`embyfin_streams_by_network{network="remote",server="emby"} 0`,
+		`embyfin_streams_by_network{network="unknown",server="emby"} 0`,
+		`embyfin_streams_bits_per_second{network="remote",server="emby"} 0`,
 		`embyfin_scheduled_tasks{server="emby",state="running"} 0`,
 		`embyfin_scheduled_tasks_failed{server="emby"} 0`,
 	} {
@@ -241,8 +248,8 @@ func TestEveryStateIsWrittenWhenNothingIsPlaying(t *testing.T) {
 		}
 	}
 
-	// with no scan among the tasks there is nothing to say of one, nor of a task with none listed or a reason with no stream
-	for _, absent := range []string{"embyfin_library_scan", "embyfin_scheduled_task_last_run", "embyfin_transcode_reasons"} {
+	// with no scan among the tasks there is nothing to say of one, nor of a task with none listed, a reason with no stream or a session with nothing playing
+	for _, absent := range []string{"embyfin_library_scan", "embyfin_scheduled_task_last_run", "embyfin_transcode_reasons", "embyfin_client_transcode_reasons", "embyfin_session_"} {
 		if has(got, absent) {
 			t.Errorf("the page has a reading of %s with nothing to report:\n%s", absent, got)
 		}
@@ -449,30 +456,117 @@ func TestWhatWasPlayed(t *testing.T) {
 	}
 }
 
-// A server that was not asked to name anyone has no name anywhere on its page: no account's, and no title of what was played. Its plays are still
-// there by kind and method, which say nothing of whose they were.
+// named finds a label on the page that names someone or something: an account, a title, a device or its app, with anything in it.
+var named = regexp.MustCompile(`(user|title|device|client)="[^"]`)
+
+// A server that was not asked to name anyone has no name anywhere on its page: no account's, no device's, and no title of what is playing or was
+// played. Its sessions and its plays are still there, by kind, method and where the device is, which say nothing of whose they are.
 func TestNobodyIsNamedUnlessAskedFor(t *testing.T) {
 	t.Parallel()
 
 	state := emby()
+	sessions := slices.Clone(state.Sessions.Value)
+	for i := range sessions {
+		sessions[i].User, sessions[i].Title, sessions[i].Device, sessions[i].Client = "", "", "", ""
+	}
+	state.Sessions = answered(sessions)
 	state.Users = answered([]poll.User{{LastActive: time.Now()}, {Disabled: true}})
 	history := state.History.Value
 	history.ByUser, history.ByTitle = nil, nil
 	state.History = answered(history)
 
 	got := write(t, state)
-	for _, label := range []string{`user="`, `title="`} {
-		if strings.Contains(got, label) {
-			t.Errorf("the page has a %s label when nobody was to be named:\n%s", label, got)
-		}
+	if found := named.FindAllString(got, -1); len(found) != 0 {
+		t.Errorf("the page names %v when nobody was to be named:\n%s", found, got)
 	}
-	for _, absent := range []string{"embyfin_user_playback_seconds_total", "embyfin_user_plays_total", "embyfin_user_last_seen", "embyfin_title_"} {
+	for _, absent := range []string{"embyfin_user_playback_seconds_total", "embyfin_user_plays_total", "embyfin_user_last_seen", "embyfin_title_", "embyfin_client_transcode_reasons"} {
 		if has(got, absent) {
 			t.Errorf("the page has a reading of %s when nobody was to be named", absent)
 		}
 	}
-	if !has(got, `embyfin_playback_seconds_total{method="direct_play",server="emby",type="episode",week="1999-12-27"} 60000`) || !has(got, `embyfin_users{server="emby"} 2`) {
-		t.Errorf("the page lacks the plays or the count of accounts, which name nobody:\n%s", got)
+	for _, want := range []string{
+		`embyfin_playback_seconds_total{method="direct_play",server="emby",type="episode",week="1999-12-27"} 60000`,
+		`embyfin_users{server="emby"} 2`,
+		`embyfin_session_info{client="",device="",method="transcode",network="remote",reasons="container_bitrate_exceeds_limit",server="emby",session="0a",state="playing",title="",type="episode",user=""} 1`,
+		`embyfin_session_bits_per_second{server="emby",session="0a"} 8e+06`,
+		`embyfin_streams_by_network{network="remote",server="emby"} 1`,
+	} {
+		if !has(got, want) {
+			t.Errorf("the page lacks %s, which names nobody:\n%s", want, got)
+		}
+	}
+}
+
+// Who is streaming now: each session playing or paused is on the page under the server's id for it, with whose it is, what it plays and on what
+// for a server asked to name them, how fast it is being sent, how far through it is and how long the whole is. Beside them, how many streams are
+// at home and how many remote with what each lot comes to, and which device and app each reason for a stream belongs to.
+func TestWhoIsStreamingNow(t *testing.T) {
+	t.Parallel()
+
+	got := write(t, emby())
+	for _, want := range []string{
+		`embyfin_session_info{client="Den Player",device="the television in the den",method="transcode",network="remote",reasons="container_bitrate_exceeds_limit",server="emby",session="0a",state="playing",title="Dark - S01E02 - Lies",type="episode",user="ada"} 1`,
+		`embyfin_session_info{client="Pocket Player",device="the phone in the hall",method="transcode",network="home",reasons="audio_codec_not_supported,container_bitrate_exceeds_limit",server="emby",session="0b",state="playing",title="Heat (1995)",type="movie",user="grace"} 1`,
+		`embyfin_session_info{client="Shelf Player",device="the speaker on the shelf",method="direct_play",network="home",reasons="",server="emby",session="0c",state="paused",title="Pink Floyd - Breathe",type="track",user="ada"} 1`,
+		`embyfin_session_bits_per_second{server="emby",session="0a"} 8e+06`,
+		`embyfin_session_bits_per_second{server="emby",session="0c"} 320000`,
+		`embyfin_session_position_seconds{server="emby",session="0a"} 600`,
+		`embyfin_session_position_seconds{server="emby",session="0b"} 0`,
+		`embyfin_session_runtime_seconds{server="emby",session="0a"} 3000`,
+		`embyfin_session_runtime_seconds{server="emby",session="0c"} 240`,
+		`embyfin_streams_by_network{network="home",server="emby"} 2`,
+		`embyfin_streams_by_network{network="remote",server="emby"} 1`,
+		`embyfin_streams_by_network{network="unknown",server="emby"} 0`,
+		`embyfin_streams_bits_per_second{network="home",server="emby"} 4.82e+06`,
+		`embyfin_streams_bits_per_second{network="remote",server="emby"} 8e+06`,
+		`embyfin_client_transcode_reasons{client="Den Player",device="the television in the den",reason="container_bitrate_exceeds_limit",server="emby"} 1`,
+		`embyfin_client_transcode_reasons{client="Pocket Player",device="the phone in the hall",reason="audio_codec_not_supported",server="emby"} 1`,
+		`embyfin_client_transcode_reasons{client="Pocket Player",device="the phone in the hall",reason="container_bitrate_exceeds_limit",server="emby"} 1`,
+	} {
+		if !has(got, want) {
+			t.Errorf("the page lacks %s:\n%s", want, got)
+		}
+	}
+
+	// the two with nothing playing are counted and no more than that
+	if n := len(scraped(got, "embyfin_session_info")); n != 3 {
+		t.Errorf("the page has %d sessions on it one by one, want the three playing or paused", n)
+	}
+}
+
+// A session is on the page one by one only when it can be told from the rest: one with no id is still counted and has no reading of its own, and
+// of two with one id only the first has, since two readings with the same labels would lose the whole page. What a server does not say of a
+// session, how fast it is sent or how long the thing is, is left off and not written as 0.
+func TestASessionThatCannotBeToldApart(t *testing.T) {
+	t.Parallel()
+
+	got := write(t, &fixed{Kind: "emby", Sessions: answered([]poll.Session{
+		{State: poll.Playing, Method: poll.DirectPlay, Kind: poll.Movie, Network: poll.Home},
+		{ID: "twin", State: poll.Playing, Method: poll.DirectPlay, Kind: poll.Movie, Network: poll.Home, Position: time.Minute},
+		{ID: "twin", State: poll.Paused, Method: poll.Transcode, Kind: poll.Episode, Network: poll.Remote, Outgoing: 5, Runtime: time.Hour},
+		{ID: "odd", State: poll.Playing, Method: "remux", Kind: "game", Network: "the moon"},
+	})})
+
+	for _, want := range []string{
+		`embyfin_sessions{server="emby",state="playing"} 3`,
+		`embyfin_streams_by_network{network="home",server="emby"} 2`,
+		`embyfin_streams_by_network{network="unknown",server="emby"} 1`,
+		`embyfin_session_info{client="",device="",method="direct_play",network="home",reasons="",server="emby",session="twin",state="playing",title="",type="movie",user=""} 1`,
+		`embyfin_session_position_seconds{server="emby",session="twin"} 60`,
+		// what the server says in words not known here is unknown and other one by one too, as it is in the counts
+		`embyfin_session_info{client="",device="",method="unknown",network="unknown",reasons="",server="emby",session="odd",state="playing",title="",type="other",user=""} 1`,
+	} {
+		if !has(got, want) {
+			t.Errorf("the page lacks %s:\n%s", want, got)
+		}
+	}
+	if n := len(scraped(got, "embyfin_session_info")); n != 2 {
+		t.Errorf("the page has %d sessions on it one by one, want the two that can be told apart:\n%s", n, got)
+	}
+	for _, absent := range []string{"embyfin_session_bits_per_second", "embyfin_session_runtime_seconds"} {
+		if has(got, absent) {
+			t.Errorf("the page has a reading of %s that no server gave:\n%s", absent, got)
+		}
 	}
 }
 
@@ -580,16 +674,17 @@ func asked(plays []play, now time.Time) poll.History {
 func scraped(text, name string) map[string]float64 {
 	out := map[string]float64{}
 	for _, line := range lines(text) {
-		labels, value, found := strings.Cut(strings.TrimPrefix(line, name), " ")
-		if !strings.HasPrefix(line, name+"{") || !found {
+		// the value comes after the last space: a label may have spaces of its own
+		at := strings.LastIndex(line, " ")
+		if !strings.HasPrefix(line, name+"{") || at < 0 {
 			continue
 		}
 
-		n, err := strconv.ParseFloat(value, 64)
+		n, err := strconv.ParseFloat(line[at+1:], 64)
 		if err != nil {
 			panic(err)
 		}
-		out[labels] = n
+		out[strings.TrimPrefix(line[:at], name)] = n
 	}
 
 	return out

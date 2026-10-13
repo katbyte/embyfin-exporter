@@ -1,3 +1,8 @@
+# HELP embyfin_client_transcode_reasons Sessions the server is making a stream for, by the device, its app and each reason the server gives. Only when the settings ask for devices to be named.
+# TYPE embyfin_client_transcode_reasons gauge
+embyfin_client_transcode_reasons{client="Den Player",device="the television in the den",reason="container_bitrate_exceeds_limit",server="emby"} 1
+embyfin_client_transcode_reasons{client="Pocket Player",device="the phone in the hall",reason="audio_codec_not_supported",server="emby"} 1
+embyfin_client_transcode_reasons{client="Pocket Player",device="the phone in the hall",reason="container_bitrate_exceeds_limit",server="emby"} 1
 # HELP embyfin_devices How many devices the server knows of, which is every one it has ever seen.
 # TYPE embyfin_devices gauge
 embyfin_devices{server="emby"} 7
@@ -96,6 +101,26 @@ embyfin_server_restart_pending{server="emby"} 1
 # HELP embyfin_server_update_available Whether the server says a newer version of itself is available (1) or not (0).
 # TYPE embyfin_server_update_available gauge
 embyfin_server_update_available{server="emby"} 0
+# HELP embyfin_session_bits_per_second How many bits a second what each session plays comes to as it leaves the server: the stream the server makes, or the file's own when it is sent as it is.
+# TYPE embyfin_session_bits_per_second gauge
+embyfin_session_bits_per_second{server="emby",session="0a"} 8e+06
+embyfin_session_bits_per_second{server="emby",session="0b"} 4.5e+06
+embyfin_session_bits_per_second{server="emby",session="0c"} 320000
+# HELP embyfin_session_info Always 1, for each session playing or paused: the kind of thing it plays, how it reaches the device, whether it is paused, whether the device is at home or remote, and why the server makes a stream of it when it does. Whose it is, what it plays and on what are filled in only when the settings ask.
+# TYPE embyfin_session_info gauge
+embyfin_session_info{client="Den Player",device="the television in the den",method="transcode",network="remote",reasons="container_bitrate_exceeds_limit",server="emby",session="0a",state="playing",title="Dark - S01E02 - Lies",type="episode",user="ada"} 1
+embyfin_session_info{client="Pocket Player",device="the phone in the hall",method="transcode",network="home",reasons="audio_codec_not_supported,container_bitrate_exceeds_limit",server="emby",session="0b",state="playing",title="Heat (1995)",type="movie",user="grace"} 1
+embyfin_session_info{client="Shelf Player",device="the speaker on the shelf",method="direct_play",network="home",reasons="",server="emby",session="0c",state="paused",title="Pink Floyd - Breathe",type="track",user="ada"} 1
+# HELP embyfin_session_position_seconds How far through what it is playing each session is.
+# TYPE embyfin_session_position_seconds gauge
+embyfin_session_position_seconds{server="emby",session="0a"} 600
+embyfin_session_position_seconds{server="emby",session="0b"} 0
+embyfin_session_position_seconds{server="emby",session="0c"} 65
+# HELP embyfin_session_runtime_seconds How long the whole of what each session is playing is.
+# TYPE embyfin_session_runtime_seconds gauge
+embyfin_session_runtime_seconds{server="emby",session="0a"} 3000
+embyfin_session_runtime_seconds{server="emby",session="0b"} 10200
+embyfin_session_runtime_seconds{server="emby",session="0c"} 240
 # HELP embyfin_sessions Devices connected to the server, by what they are doing.
 # TYPE embyfin_sessions gauge
 embyfin_sessions{server="emby",state="idle"} 2
@@ -107,6 +132,16 @@ embyfin_streams{method="direct_play",server="emby"} 1
 embyfin_streams{method="direct_stream",server="emby"} 0
 embyfin_streams{method="transcode",server="emby"} 2
 embyfin_streams{method="unknown",server="emby"} 0
+# HELP embyfin_streams_bits_per_second The bitrate of what is playing as it leaves the server, added together, in bits a second, by where the devices are.
+# TYPE embyfin_streams_bits_per_second gauge
+embyfin_streams_bits_per_second{network="home",server="emby"} 4.82e+06
+embyfin_streams_bits_per_second{network="remote",server="emby"} 8e+06
+embyfin_streams_bits_per_second{network="unknown",server="emby"} 0
+# HELP embyfin_streams_by_network Sessions playing or paused, by where the device is: home on the server's own network, remote from outside it, or unknown.
+# TYPE embyfin_streams_by_network gauge
+embyfin_streams_by_network{network="home",server="emby"} 2
+embyfin_streams_by_network{network="remote",server="emby"} 1
+embyfin_streams_by_network{network="unknown",server="emby"} 0
 # HELP embyfin_streams_by_type Sessions playing or paused, by the kind of thing they play.
 # TYPE embyfin_streams_by_type gauge
 embyfin_streams_by_type{server="emby",type="audiobook"} 0

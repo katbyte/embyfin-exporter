@@ -1,8 +1,8 @@
 // Package poll asks each media server for its state on a schedule and keeps the last good answers, so the metrics page is served from memory and a
 // slow or stopped server never holds up a scrape.
 //
-// Nothing here says whose a session is or which film it is playing unless the settings ask for it: an account's name and a title are fields a server
-// leaves empty until it is told to fill them (see mediaserver.Detail), and there is no field for a device's name or an address at all.
+// Nothing here says whose a session is, what it is playing or on what unless the settings ask for it: an account's name, a title and a device's
+// name are fields a server leaves empty until it is told to fill them (see mediaserver.Detail), and there is no field for an address at all.
 package poll
 
 import (
@@ -83,12 +83,29 @@ const (
 // Kinds is every kind, in the order the page lists them.
 var Kinds = []Kind{Movie, Episode, Track, MusicVideo, Video, Audiobook, OtherKind}
 
+// Network is where a session's device is, as far as the address it connects from says. The address itself is kept nowhere.
+type Network string
+
+const (
+	// Home is on the server's own network, and Remote reaching it from outside.
+	Home   Network = "home"
+	Remote Network = "remote"
+	// UnknownNetwork is a session whose server gives no address that can be read.
+	UnknownNetwork Network = "unknown"
+)
+
+// Networks is every network, in the order the page lists them.
+var Networks = []Network{Home, Remote, UnknownNetwork}
+
 // Session is one device connected to a server.
 type Session struct {
+	// ID is the server's own id for the session, which tells one from another on the page and is nobody's name.
+	ID    string
 	State SessionState
-	// Method and Kind are set for a session that is playing or paused.
-	Method Method
-	Kind   Kind
+	// Method, Kind and Network are set for a session that is playing or paused, and so is everything below them.
+	Method  Method
+	Kind    Kind
+	Network Network
 	// VideoTranscode says the server is re-encoding the picture, which is the work that loads a GPU, and Hardware that a GPU is doing it.
 	VideoTranscode bool
 	Hardware       bool
@@ -96,6 +113,19 @@ type Session struct {
 	// and in the page's words. Both are empty for a file sent as it is.
 	Bitrate int
 	Reasons []string
+	// Outgoing is how many bits a second what is playing comes to as it leaves the server: the stream the server makes, or the file's own when it
+	// is sent as it is. 0 when the server does not say.
+	Outgoing int
+	// Position is how far through what is playing the session is, and Runtime how long the whole of it is.
+	Position time.Duration
+	Runtime  time.Duration
+
+	// User is whose the session is, Title what it is playing, and Device and Client the device and the app it plays on. Each is empty unless the
+	// settings ask for it.
+	User   string
+	Title  string
+	Device string
+	Client string
 }
 
 // TaskState is what a scheduled task is doing.

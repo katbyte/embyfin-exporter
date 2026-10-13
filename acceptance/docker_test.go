@@ -7,6 +7,7 @@ import (
 	"net/http"
 	"os"
 	"os/exec"
+	"regexp"
 	"strings"
 	"testing"
 	"time"
@@ -155,8 +156,8 @@ func TestTheImage(t *testing.T) {
 	if strings.Contains(text, token) {
 		t.Error("the key is on the page")
 	}
-	if strings.Contains(text, `title="`) {
-		t.Errorf("told to name accounts alone, the image's page names a title:\n%s", text)
+	if found := regexp.MustCompile(`(title|device|client)="[^"]`).FindAllString(text, -1); len(found) != 0 {
+		t.Errorf("told to name accounts alone, the image's page names %v:\n%s", found, text)
 	}
 
 	if status, body := get(t, base+pmetrics.HealthPath); status != http.StatusOK || strings.TrimSpace(body) != "ok" {

@@ -161,7 +161,7 @@ func TestTimePlayedIsOnThePageWhileItPlays(t *testing.T) {
 	if got := summed(plain, "embyfin_playback_seconds_total", "type", "movie", "method", "direct_play"); got < second-played(before) {
 		t.Errorf("the page that names nobody has %v seconds of films played as the file is, want at least the %v just played", got, second-played(before))
 	}
-	for _, private := range []string{user, admin, title, tablet, tabletApp, `user="`, `title="`} {
+	for _, private := range append([]string{user, admin, title, tablet, tabletApp}, named.FindAllString(plain, -1)...) {
 		if strings.Contains(plain, private) {
 			t.Errorf("the page of a program not told to name anyone has %q on it:\n%s", private, plain)
 		}
@@ -228,7 +228,7 @@ func TestPlaysAreKeptUnderTheWeekTheyBeganIn(t *testing.T) {
 	plugin(t, "UPDATE PlaybackActivity SET PlayDuration = 1600 WHERE ClientName = '"+byHand+"' AND ItemName = '"+show+" - s01e01 - One'")
 
 	// read by a program started afresh, which knows nothing of the page before
-	afresh, err := mediaserver.Connect(backend, address, token, mediaserver.Detail{Users: true, Titles: true})
+	afresh, err := mediaserver.Connect(backend, address, token, mediaserver.Detail{Users: true, Titles: true, Devices: true})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -244,7 +244,7 @@ func TestPlaysAreKeptUnderTheWeekTheyBeganIn(t *testing.T) {
 		reading("embyfin_playback_seconds_total", "type", "episode", "method", "direct_play", "week", lastWeek): 1600,
 		reading("embyfin_playback_seconds_total", "type", "movie", "method", "direct_stream", "week", lastWeek): 500,
 	})
-	for _, private := range []string{user, show, film, `user="`, `title="`} {
+	for _, private := range append([]string{user, show, film}, named.FindAllString(plain, -1)...) {
 		if strings.Contains(plain, private) {
 			t.Errorf("the page of a program not told to name anyone has %q on it:\n%s", private, plain)
 		}

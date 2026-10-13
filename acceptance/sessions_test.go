@@ -3,8 +3,10 @@
 package acceptance_test
 
 import (
+	"net/http"
 	"strings"
 	"testing"
+	"time"
 
 	"github.com/katbyte/embyfin-metrics/lib/poll"
 )
@@ -175,6 +177,27 @@ func TestASessionTheServerTranscodesFor(t *testing.T) {
 		}
 	}
 
+	// told to name devices, the page says whose television and which app each of those reasons belongs to, and what leaves the server for
+	// the session is the stream it is making
+	told := scrapeNaming(t, poll.RoundSessions)
+	theirs := every(told, "embyfin_client_transcode_reasons")
+	if len(theirs) != len(reasons) {
+		t.Errorf("the page gives %d reasons by device and %d in all, want the same: %v", len(theirs), len(reasons), theirs)
+	}
+	for _, line := range theirs {
+		if label(line, "device") != television || label(line, "client") != televisionApp || !strings.HasSuffix(line, " 1") {
+			t.Errorf("a reason by device reads %q, want it under %s and %s, counted once", line, television, televisionApp)
+		}
+	}
+	if lines := every(told, "embyfin_session_info"); len(lines) != 1 || label(lines[0], "method") != "transcode" || label(lines[0], "reasons") == "" {
+		t.Errorf("the session one by one reads %v, want one transcode with its reasons", lines)
+	} else if rate, _ := value(told, reading("embyfin_session_bits_per_second", "session", label(lines[0], "session"))); rate <= 0 || rate > 800000 {
+		t.Errorf("the session's stream comes to %v bits a second, want more than nothing and no more than 800000", rate)
+	}
+	if len(every(text, "embyfin_client_transcode_reasons")) != 0 {
+		t.Errorf("a page not told to name devices gives reasons by device:\n%s", text)
+	}
+
 	device.report(t, "/Sessions/Playing/Stopped", id, playSession, "Transcode", false)
 	if text, ok := eventually(t, func(text string) bool { return sessions(text, "playing") == 0 && streams(text, "transcode") == 0 }, poll.RoundSessions); !ok {
 		t.Errorf("stopped, the page still counts %v playing and %v transcodes", sessions(text, "playing"), streams(text, "transcode"))
@@ -273,5 +296,132 @@ func TestWhatIsPlayingIsCountedByKind(t *testing.T) {
 		if text, ok := eventually(t, func(text string) bool { return sessions(text, "playing") == 0 }, poll.RoundSessions); !ok {
 			t.Fatalf("the %s from %s stopped and the page still counts a session playing:\n%s", c.kind, c.library, text)
 		}
+	}
+}
+
+// label is what one label of a reading's line holds.
+func label(line, name string) string {
+	_, rest, found := strings.Cut(line, name+`="`)
+	if !found {
+		return ""
+	}
+	held, _, _ := strings.Cut(rest, `"`)
+
+	return held
+}
+
+// Who is streaming now. A film playing on a real server is a line of its own on the page of a program told to name everything: whose session it
+// is, the film in a form to be read, the device and its app, that it is the file as it is, playing, and on the server's own network, with what
+// the file comes to, how far through it is and how long it is. Paused it says so, and stopped it is gone. The page of a program told to name
+// nobody has the same line with none of the names.
+func TestWhoIsStreamingIsOnThePage(t *testing.T) {
+	live(t)
+
+	device := signIn(t, speaker, speakerApp)
+	id, title := film(t)
+	playSession, _ := device.howToPlay(t, id, map[string]any{})
+
+	// a second in, and then a second and a half
+	say := func(at string, ticks int, paused bool) {
+		t.Helper()
+
+		if status, raw := device.send(t, http.MethodPost, at, map[string]any{"ItemId": id, "PlaySessionId": playSession, "PositionTicks": ticks, "IsPaused": paused, "CanSeek": true, "PlayMethod": "DirectPlay"}); status/100 != 2 {
+			t.Fatalf("%s: HTTP %d: %.200s", at, status, raw)
+		}
+	}
+	say("/Sessions/Playing", 10_000_000, false)
+	// a stop the test already sent is answered either way
+	t.Cleanup(func() { say("/Sessions/Playing/Stopped", 15_000_000, false) })
+
+	mine := func(text string) []string {
+		var lines []string
+		for _, line := range every(text, "embyfin_session_info") {
+			if label(line, "device") == speaker {
+				lines = append(lines, line)
+			}
+		}
+
+		return lines
+	}
+
+	var text string
+	deadline := time.Now().Add(patience)
+	for text = scrapeNaming(t, poll.RoundSessions); len(mine(text)) != 1 && time.Now().Before(deadline); text = scrapeNaming(t, poll.RoundSessions) {
+		time.Sleep(500 * time.Millisecond)
+	}
+	if len(mine(text)) != 1 {
+		t.Fatalf("the film playing never showed as a session of its own:\n%s", strings.Join(every(text, "embyfin_session_info"), "\n"))
+	}
+
+	line := mine(text)[0]
+	session := label(line, "session")
+	for name, want := range map[string]string{"user": user, "device": speaker, "client": speakerApp, "type": "movie", "method": "direct_play", "state": "playing", "network": "home", "reasons": ""} {
+		if got := label(line, name); got != want {
+			t.Errorf("the session's %s = %q, want %q: %s", name, got, want, line)
+		}
+	}
+	// each server names the film in its own way, and either way the year it was made is there to tell it from another of the name
+	if got := label(line, "title"); !strings.HasPrefix(got, title) || !strings.HasSuffix(got, ")") {
+		t.Errorf("the session's title = %q, want %q with its year", got, title)
+	}
+	if session == "" || !strings.HasSuffix(line, " 1") {
+		t.Errorf("the session reads %q, want an id and the value 1", line)
+	}
+
+	// the fixture's film is two seconds of picture and sound at under a megabit a second
+	if rate, found := value(text, reading("embyfin_session_bits_per_second", "session", session)); !found || rate < 100_000 || rate > 2_000_000 {
+		t.Errorf("what the file comes to = %v bits a second (on the page: %t), want what a small clip does", rate, found)
+	}
+	if at, found := value(text, reading("embyfin_session_position_seconds", "session", session)); !found || at != 1 {
+		t.Errorf("how far through = %v seconds (on the page: %t), want the 1 the device said", at, found)
+	}
+	if long, found := value(text, reading("embyfin_session_runtime_seconds", "session", session)); !found || long < 1.5 || long > 3 {
+		t.Errorf("how long the film is = %v seconds (on the page: %t), want about 2", long, found)
+	}
+	expect(t, text, map[string]float64{
+		reading("embyfin_streams_by_network", "network", "home"):    1,
+		reading("embyfin_streams_by_network", "network", "remote"):  0,
+		reading("embyfin_streams_by_network", "network", "unknown"): 0,
+	})
+	if home, _ := value(text, reading("embyfin_streams_bits_per_second", "network", "home")); home < 100_000 {
+		t.Errorf("what leaves the server for devices at home = %v bits a second, want the film's", home)
+	}
+
+	// a program told to name nobody has the session and where it is, and no name, title, device or address
+	plain := scrape(t, poll.RoundSessions)
+	if lines := every(plain, "embyfin_session_info"); len(lines) != 1 || label(lines[0], "session") != session || label(lines[0], "network") != "home" || label(lines[0], "method") != "direct_play" {
+		t.Errorf("the page that names nobody reads %v, want the one session, at home, as the file is", lines)
+	}
+	for _, private := range append([]string{user, admin, title, speaker, speakerApp, "172.17.", "127.0.0.1"}, named.FindAllString(plain, -1)...) {
+		if strings.Contains(plain, private) {
+			t.Errorf("the page of a program not told to name anyone has %q on it:\n%s", private, plain)
+		}
+	}
+	if strings.Contains(text, "172.17.") || strings.Contains(text, "127.0.0.1") {
+		t.Errorf("an address is on the page of a program told to name everything:\n%s", text)
+	}
+
+	say("/Sessions/Playing/Progress", 15_000_000, true)
+	deadline = time.Now().Add(patience)
+	for text = scrapeNaming(t, poll.RoundSessions); time.Now().Before(deadline); text = scrapeNaming(t, poll.RoundSessions) {
+		if lines := mine(text); len(lines) == 1 && label(lines[0], "state") == "paused" {
+			break
+		}
+		time.Sleep(500 * time.Millisecond)
+	}
+	if lines := mine(text); len(lines) != 1 || label(lines[0], "state") != "paused" || label(lines[0], "session") != session {
+		t.Errorf("paused, the session reads %v, want the same one, paused", lines)
+	}
+	if at, _ := value(text, reading("embyfin_session_position_seconds", "session", session)); at != 1.5 {
+		t.Errorf("paused a second and a half in, the page says %v seconds", at)
+	}
+
+	say("/Sessions/Playing/Stopped", 15_000_000, false)
+	deadline = time.Now().Add(patience)
+	for text = scrapeNaming(t, poll.RoundSessions); len(mine(text)) != 0 && time.Now().Before(deadline); text = scrapeNaming(t, poll.RoundSessions) {
+		time.Sleep(500 * time.Millisecond)
+	}
+	if len(mine(text)) != 0 || len(every(text, "embyfin_session_position_seconds")) != 0 || len(every(text, "embyfin_session_bits_per_second")) != 0 {
+		t.Errorf("stopped, the session is still on the page:\n%s", strings.Join(append(every(text, "embyfin_session_info"), every(text, "embyfin_session_position_seconds")...), "\n"))
 	}
 }

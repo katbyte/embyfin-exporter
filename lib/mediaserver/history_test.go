@@ -18,8 +18,8 @@ import (
 	"github.com/katbyte/embyfin-metrics/lib/poll"
 )
 
-// everything is a server asked to name accounts and titles.
-var everything = Detail{Users: true, Titles: true}
+// everything is a server asked to name all it can: accounts, titles and devices.
+var everything = Detail{Users: true, Titles: true, Devices: true}
 
 // fakeReports answers in the plugin's place with the rows it is set to, and remembers the question and how often it was put.
 type fakeReports struct {
@@ -257,7 +257,7 @@ func TestTheWaysAPluginSaysItIsBusy(t *testing.T) {
 	} {
 		server, seen := canned(t, c.status, c.body)
 
-		p, err := connectPlugin(embyfin.Jellyfin, server.URL, testKey)
+		p, err := connectDirect(embyfin.Jellyfin, server.URL, testKey)
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -407,6 +407,39 @@ func TestNothingPlayedIsAnAnswer(t *testing.T) {
 		got, err := s.History(t.Context())
 		if err != nil || !got.Installed || len(got.Plays) != 0 || len(got.ByUser) != 0 || len(got.ByTitle) != 0 {
 			t.Errorf("%s: history = %+v and %v, want the plugin there, nothing played and no error", name, got, err)
+		}
+	}
+}
+
+// What the files being played come to, read from the sessions as each server really writes them: Emby gives a file a bitrate that is its picture's
+// alone and each stream its own, Jellyfin gives the file none, and either way it is the streams added together. A session with nothing playing has
+// none, and a file whose streams say nothing goes by its own.
+func TestFileRates(t *testing.T) {
+	t.Parallel()
+
+	server, seen := canned(t, http.StatusOK, `[
+		{"Id":"emby","NowPlayingItem":{"Name":"Alien","Bitrate":785759,"MediaStreams":[{"Type":"Video","BitRate":785759},{"Type":"Audio","BitRate":192000},{"Type":"Subtitle"}]}},
+		{"Id":"jellyfin","NowPlayingItem":{"Name":"Alien (1979)","MediaStreams":[{"Type":"Video","BitRate":593759},{"Type":"Audio","BitRate":192000}]}},
+		{"Id":"bare","NowPlayingItem":{"Name":"A Clip","Bitrate":500000,"MediaStreams":[{"Type":"Video"}]}},
+		{"Id":"silent","NowPlayingItem":{"Name":"A Photo"}},
+		{"Id":"idle"}
+	]`)
+
+	for _, backend := range []embyfin.Backend{embyfin.Emby, embyfin.Jellyfin} {
+		d, err := connectDirect(backend, server.URL, testKey)
+		if err != nil {
+			t.Fatal(err)
+		}
+
+		got, err := d.FileRates(t.Context())
+		if want := map[string]int{"emby": 977759, "jellyfin": 785759, "bare": 500000}; err != nil || !reflect.DeepEqual(got, want) {
+			t.Errorf("%s: file rates = %v and %v, want %v", backend, got, err, want)
+		}
+	}
+
+	for _, request := range seen() {
+		if request.method != http.MethodGet || request.path != "/Sessions" || !request.keyed {
+			t.Errorf("sent %s %s, keyed in a header: %t; want a keyed GET of /Sessions", request.method, request.path, request.keyed)
 		}
 	}
 }

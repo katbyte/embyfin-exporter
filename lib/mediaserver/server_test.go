@@ -131,6 +131,11 @@ func TestSessions(t *testing.T) {
 	} {
 		s := &Server{client: &fake{sessions: []embyfin.Session{c.session}}}
 
+		// none of these sessions says where it connects from, and what leaves the server for one it makes a stream for is that stream
+		if c.want.State != poll.Idle {
+			c.want.Network, c.want.Outgoing = poll.UnknownNetwork, c.want.Bitrate
+		}
+
 		got, err := s.Sessions(t.Context())
 		if err != nil {
 			t.Fatalf("%s: sessions: %v", name, err)
@@ -138,6 +143,131 @@ func TestSessions(t *testing.T) {
 		if len(got) != 1 || !reflect.DeepEqual(got[0], c.want) {
 			t.Errorf("%s: session = %+v, want %+v", name, got, c.want)
 		}
+	}
+}
+
+// fakeFiles answers for what the files being played come to, and counts how often it was asked.
+type fakeFiles struct {
+	rates map[string]int
+	err   error
+	asked int
+}
+
+func (f *fakeFiles) FileRates(context.Context) (map[string]int, error) {
+	f.asked++
+
+	return f.rates, f.err
+}
+
+// streaming is three sessions as a server gives them: an episode sent as the file is to a television at home, a film the server re-encodes for
+// a phone outside, and a tablet with nothing playing.
+func streaming() []embyfin.Session {
+	one, two := 1, 2
+
+	return []embyfin.Session{
+		{
+			ID: "aaa", UserName: "ada", DeviceName: "Ada's television", Client: "Den Player", RemoteEndPoint: "192.168.1.20",
+			NowPlayingItem: &embyfin.Item{Name: "Lies", Type: "Episode", SeriesName: "Dark", ParentIndexNumber: &one, IndexNumber: &two, RunTimeTicks: 30_000_000_000},
+			PlayState:      embyfin.PlayState{PositionTicks: 6_000_000_000, PlayMethod: "DirectPlay"},
+		},
+		{
+			ID: "bbb", UserName: "grace", DeviceName: "Grace's phone", Client: "Pocket Player", RemoteEndPoint: "203.0.113.7",
+			NowPlayingItem: &embyfin.Item{Name: "Heat", Type: "Movie", ProductionYear: 1995, RunTimeTicks: 102_000_000_000},
+			PlayState:      embyfin.PlayState{PositionTicks: 0, IsPaused: true, PlayMethod: "Transcode"},
+			Transcoding:    &embyfin.Transcoding{VideoCodec: "h264", AudioCodec: "aac", Bitrate: 4_000_000, Reasons: []string{"ContainerBitrateExceedsLimit"}},
+		},
+		{ID: "ccc", UserName: "ada", DeviceName: "Ada's tablet", Client: "Den Player", RemoteEndPoint: "192.168.1.21"},
+	}
+}
+
+// Who is streaming what, on what and from where: asked to name all of it, a session has whose it is, what it plays in a form to be read, the
+// device and its app, whether the device is at home or outside, how far through it is, and what leaves the server for it: the file's own bitrate
+// for a file sent as it is, and the stream's for one the server makes. A session with nothing playing has none of it.
+func TestWhoIsStreaming(t *testing.T) {
+	t.Parallel()
+
+	files := &fakeFiles{rates: map[string]int{"aaa": 9_000_000, "bbb": 20_000_000}}
+	s := &Server{client: &fake{sessions: streaming()}, files: files, detail: everything}
+
+	got, err := s.Sessions(t.Context())
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	want := []poll.Session{
+		{ID: "aaa", State: poll.Playing, Method: poll.DirectPlay, Kind: poll.Episode, Network: poll.Home, Outgoing: 9_000_000, Position: 10 * time.Minute, Runtime: 50 * time.Minute, User: "ada", Title: "Dark - S01E02 - Lies", Device: "Ada's television", Client: "Den Player"},
+		{ID: "bbb", State: poll.Paused, Method: poll.Transcode, Kind: poll.Movie, Network: poll.Remote, VideoTranscode: true, Bitrate: 4_000_000, Reasons: []string{"container_bitrate_exceeds_limit"}, Outgoing: 4_000_000, Runtime: 170 * time.Minute, User: "grace", Title: "Heat (1995)", Device: "Grace's phone", Client: "Pocket Player"},
+		{State: poll.Idle},
+	}
+	if !reflect.DeepEqual(got, want) {
+		t.Errorf("sessions =\n%+v\nwant\n%+v", got, want)
+	}
+	if files.asked != 1 {
+		t.Errorf("what the files come to was asked %d times, want once", files.asked)
+	}
+}
+
+// Each word of the settings names its own part of a session and no other, and with none of them a session has nobody's name, no title and no
+// device. Where it connects from is home or remote either way, and the address itself is in nothing that is handed on.
+func TestASessionNamesOnlyWhatIsAskedFor(t *testing.T) {
+	t.Parallel()
+
+	for name, c := range map[string]struct {
+		detail                      Detail
+		user, title, device, client string
+	}{
+		"nothing":  {Detail{}, "", "", "", ""},
+		"accounts": {Detail{Users: true}, "ada", "", "", ""},
+		"titles":   {Detail{Titles: true}, "", "Dark - S01E02 - Lies", "", ""},
+		"devices":  {Detail{Devices: true}, "", "", "Ada's television", "Den Player"},
+	} {
+		s := &Server{client: &fake{sessions: streaming()}, files: &fakeFiles{}, detail: c.detail}
+
+		got, err := s.Sessions(t.Context())
+		if err != nil {
+			t.Fatal(err)
+		}
+		if got[0].User != c.user || got[0].Title != c.title || got[0].Device != c.device || got[0].Client != c.client {
+			t.Errorf("asked for %s: session = %+v", name, got[0])
+		}
+		if got[0].ID != "aaa" || got[0].Network != poll.Home || got[1].Network != poll.Remote {
+			t.Errorf("asked for %s: the sessions' ids and networks = %q %q and %q, want them whatever is asked", name, got[0].ID, got[0].Network, got[1].Network)
+		}
+		if said := fmt.Sprintf("%+v", got); strings.Contains(said, "192.168.1.20") || strings.Contains(said, "203.0.113.7") {
+			t.Errorf("asked for %s: an address is handed on: %s", name, said)
+		}
+	}
+}
+
+// What the files come to is a second question to the server, so it is put only when some session is being sent a file as it is, and a server
+// that fails it still has its sessions, less what the files come to.
+func TestTheFilesAreAskedAfterOnlyWhenNeeded(t *testing.T) {
+	t.Parallel()
+
+	all := streaming()
+
+	for name, c := range map[string]struct {
+		sessions []embyfin.Session
+		asked    int
+	}{
+		"nobody connected":                 {nil, 0},
+		"nothing playing":                  {all[2:], 0},
+		"only a stream the server makes":   {all[1:], 0},
+		"a file sent as it is among them":  {all, 1},
+		"a file sent as it is and no more": {all[:1], 1},
+	} {
+		files := &fakeFiles{rates: map[string]int{"aaa": 9_000_000}}
+		s := &Server{client: &fake{sessions: c.sessions}, files: files}
+
+		if _, err := s.Sessions(t.Context()); err != nil || files.asked != c.asked {
+			t.Errorf("%s: what the files come to was asked %d times (%v), want %d", name, files.asked, err, c.asked)
+		}
+	}
+
+	failing := &Server{client: &fake{sessions: all}, files: &fakeFiles{err: errDown}}
+	got, err := failing.Sessions(t.Context())
+	if err != nil || len(got) != 3 || got[0].State != poll.Playing || got[0].Outgoing != 0 || got[1].Outgoing != 4_000_000 {
+		t.Errorf("with the second question failing, sessions = %+v and %v, want all three and only the stream's bitrate", got, err)
 	}
 }
 

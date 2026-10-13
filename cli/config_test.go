@@ -308,6 +308,22 @@ func TestPollers(t *testing.T) {
 	}
 }
 
+// The first line the program logs says what its page will name, so a page with people on it is not a surprise.
+func TestNamed(t *testing.T) {
+	t.Parallel()
+
+	for want, d := range map[string]mediaserver.Detail{
+		"naming nobody":                    {},
+		"naming accounts":                  {Users: true},
+		"naming titles, devices":           {Titles: true, Devices: true},
+		"naming accounts, titles, devices": {Users: true, Titles: true, Devices: true},
+	} {
+		if got := named(d); got != want {
+			t.Errorf("named(%+v) = %q, want %q", d, got, want)
+		}
+	}
+}
+
 // Who and what the page may name is nobody and nothing unless the settings say, a word at a time, in any case and with spaces or not.
 func TestDetail(t *testing.T) {
 	t.Parallel()
@@ -317,11 +333,13 @@ func TestDetail(t *testing.T) {
 		" ":              {},
 		"users":          {Users: true},
 		"titles":         {Titles: true},
+		"devices":        {Devices: true},
 		"users,titles":   {Users: true, Titles: true},
 		"Titles, USERS ": {Users: true, Titles: true},
 		"users,,users":   {Users: true},
-		"all":            {Users: true, Titles: true},
-		"all,users":      {Users: true, Titles: true},
+		"devices,titles": {Titles: true, Devices: true},
+		"all":            {Users: true, Titles: true, Devices: true},
+		"all,users":      {Users: true, Titles: true, Devices: true},
 	} {
 		f := FlagData{Detail: setting}
 		if got, err := f.detail(); err != nil || got != want {
@@ -329,7 +347,7 @@ func TestDetail(t *testing.T) {
 		}
 	}
 
-	for _, setting := range []string{"everyone", "users titles", "users;titles", "user", "devices"} {
+	for _, setting := range []string{"everyone", "users titles", "users;titles", "user", "addresses"} {
 		f := FlagData{Detail: setting}
 		if got, err := f.detail(); err == nil || got != (mediaserver.Detail{}) {
 			t.Errorf("--detail %q = %+v and %v, want an error and nobody named", setting, got, err)
