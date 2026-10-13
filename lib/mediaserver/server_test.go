@@ -309,6 +309,19 @@ func TestUsersAndDevices(t *testing.T) {
 	if len(users) != 2 || users[0].Disabled || !users[0].LastActive.Equal(time.Date(2026, 10, 8, 18, 5, 38, 390711900, time.UTC)) || !users[1].Disabled || !users[1].LastActive.IsZero() {
 		t.Errorf("users = %+v", users)
 	}
+	// whose an account is stays with the server unless the settings ask for accounts to be named
+	if users[0].Name != "" || users[1].Name != "" {
+		t.Errorf("users = %+v, want none of them named", users)
+	}
+
+	s.detail = Detail{Users: true}
+	if users, err = s.Users(t.Context()); err != nil || len(users) != 2 || users[0].Name != "one" || users[1].Name != "two" {
+		t.Errorf("asked to name accounts, users = %+v and %v", users, err)
+	}
+	s.detail = Detail{Titles: true}
+	if users, err = s.Users(t.Context()); err != nil || users[0].Name != "" {
+		t.Errorf("asked to name titles alone, users = %+v and %v, want none of them named", users, err)
+	}
 
 	devices, err := s.Devices(t.Context())
 	if err != nil {
@@ -363,7 +376,7 @@ func TestConnect(t *testing.T) {
 	t.Cleanup(server.Close)
 
 	for _, kind := range []string{"emby", "jellyfin"} {
-		s, err := Connect(kind, server.URL, testKey)
+		s, err := Connect(kind, server.URL, testKey, Detail{})
 		if err != nil {
 			t.Fatalf("%s: connect: %v", kind, err)
 		}
@@ -403,7 +416,7 @@ func TestTheKeyIsNotInAnError(t *testing.T) {
 
 	for name, address := range map[string]string{"refused": refusing.URL, "nothing there": gone.URL} {
 		for _, kind := range []string{"emby", "jellyfin"} {
-			s, err := Connect(kind, address, testKey)
+			s, err := Connect(kind, address, testKey, Detail{})
 			if err != nil {
 				t.Fatalf("%s, %s: connect: %v", name, kind, err)
 			}
@@ -425,7 +438,7 @@ func TestConnectRefusesWhatItCannotUse(t *testing.T) {
 		"no address":             {"emby", "", testKey},
 		"no key":                 {"jellyfin", "http://nas:8097", ""},
 	} {
-		if s, err := Connect(c.kind, c.address, c.key); err == nil || s != nil {
+		if s, err := Connect(c.kind, c.address, c.key, Detail{}); err == nil || s != nil {
 			t.Errorf("%s: connect = %v and %v, want an error", name, s, err)
 		}
 	}

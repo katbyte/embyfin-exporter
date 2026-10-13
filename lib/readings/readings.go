@@ -37,7 +37,7 @@ func reading(name, help string, labels ...string) *prometheus.Desc {
 
 var (
 	up              = reading("up", "Whether the server answered the last time it was asked for its sessions (1) or not (0).")
-	pollDuration    = reading("poll_duration_seconds", "How long the last poll of the server took, by which: sessions or library.", "poll")
+	pollDuration    = reading("poll_duration_seconds", "How long the last poll of the server took, by which: sessions, library or history.", "poll")
 	pollLastSuccess = reading("poll_last_success_timestamp_seconds", "When a poll of the server was last answered in full, in seconds since 1970.", "poll")
 	pollFailures    = reading("poll_failures_total", "How many polls of the server have failed since embyfin-metrics started.", "poll")
 
@@ -69,8 +69,17 @@ var (
 	users         = reading("users", "How many accounts the server has.")
 	usersDisabled = reading("users_disabled", "Accounts that have been disabled.")
 	usersActive   = reading("users_active", "Accounts seen within the window: the last day, 7 days or 30 days.", "window")
+	userLastSeen  = reading("user_last_seen_timestamp_seconds", "When each account last did anything, in seconds since 1970. Only when the settings ask for accounts to be named.", "user")
 	devices       = reading("devices", "How many devices the server knows of, which is every one it has ever seen.")
 	devicesActive = reading("devices_active", "Devices seen within the window: the last day, 7 days or 30 days.", "window")
+
+	historyInstalled = reading("playback_reporting_installed", "Whether the server has the Playback Reporting plugin, which is where the readings of what was played come from (1) or not (0).")
+	playbackSeconds  = reading("playback_seconds_total", "Seconds played, by the kind of thing and how it reached the device, as the server's Playback Reporting plugin has them. Plays are kept under the week they began in, named by its Monday; this week and the last are on the page, and neither ever goes down.", "week", "type", "method")
+	plays            = reading("plays_total", "Plays, by the week they began in, the kind of thing and how it reached the device. A play counts again each time how it reaches the device changes.", "week", "type", "method")
+	userSeconds      = reading("user_playback_seconds_total", "Seconds played, by the week the plays began in, account and the kind of thing. Only when the settings ask for accounts to be named.", "week", "user", "type")
+	userPlays        = reading("user_plays_total", "Plays, by the week they began in, account and the kind of thing. Only when the settings ask for accounts to be named.", "week", "user", "type")
+	titleSeconds     = reading("title_playback_seconds_total", "Seconds played of each show and each film, by the week the plays began in. Only when the settings ask for titles to be named.", "week", "title", "type")
+	titlePlays       = reading("title_plays_total", "Plays of each show and each film, by the week they began in. Only when the settings ask for titles to be named.", "week", "title", "type")
 )
 
 // Source is where one server's state comes from: a poller, or a test's own.
@@ -110,6 +119,7 @@ func (r *Readings) Collect(ch chan<- prometheus.Metric) {
 		w.libraries(&s)
 		w.users(&s, now)
 		w.devices(&s, now)
+		w.history(&s)
 	}
 }
 
@@ -127,6 +137,11 @@ func (w writer) gauge(d *prometheus.Desc, value float64, labels ...string) {
 // count is gauge for a whole number.
 func (w writer) count(d *prometheus.Desc, n int, labels ...string) {
 	w.gauge(d, float64(n), labels...)
+}
+
+// total writes one reading that only goes up, until it starts again from 0.
+func (w writer) total(d *prometheus.Desc, n int, labels ...string) {
+	w.ch <- prometheus.MustNewConstMetric(d, prometheus.CounterValue, float64(n), append([]string{w.server}, labels...)...)
 }
 
 // flag is gauge for a yes or no: 1 or 0.
@@ -157,7 +172,7 @@ func (w writer) rounds(s *poll.State) {
 		}
 
 		w.gauge(pollDuration, r.Took.Seconds(), string(round))
-		w.ch <- prometheus.MustNewConstMetric(pollFailures, prometheus.CounterValue, float64(r.Failures), w.server, string(round))
+		w.total(pollFailures, r.Failures, string(round))
 		if !r.LastSuccess.IsZero() {
 			w.at(pollLastSuccess, r.LastSuccess, string(round))
 		}
@@ -366,6 +381,18 @@ func (w writer) users(s *poll.State, now time.Time) {
 		seen = append(seen, user.LastActive)
 	}
 	w.active(usersActive, seen, now)
+
+	// an account has a name only when the settings ask for one. Two of one name are one on the page, seen when the later one was: two readings
+	// with the same labels would spoil the whole page
+	lastSeen := map[string]time.Time{}
+	for _, user := range s.Users.Value {
+		if user.Name != "" && user.LastActive.After(lastSeen[user.Name]) {
+			lastSeen[user.Name] = user.LastActive
+		}
+	}
+	for name, at := range lastSeen {
+		w.at(userLastSeen, at, name)
+	}
 }
 
 // devices counts the devices, and those seen within each window of now. A server keeps every device it has ever seen, so the windows say more of
@@ -394,5 +421,30 @@ func (w writer) active(d *prometheus.Desc, seen []time.Time, now time.Time) {
 			}
 		}
 		w.count(d, active, window.label)
+	}
+}
+
+// history is what was played in this week and the last, for a server whose Playback Reporting plugin keeps a record of it. Each reading is the
+// plugin's own sum of the plays begun in one week, so it comes back as it was after a restart and never goes down: a new week is a new reading
+// and not the old one started again. Only what has been played is written: there is no saying which accounts or titles there may be.
+func (w writer) history(s *poll.State) {
+	if !s.History.Known() {
+		return
+	}
+
+	h := s.History.Value
+	w.flag(historyInstalled, h.Installed)
+
+	for _, p := range h.Plays {
+		w.total(playbackSeconds, p.Seconds, p.Week, string(p.Kind), string(p.Method))
+		w.total(plays, p.Plays, p.Week, string(p.Kind), string(p.Method))
+	}
+	for _, p := range h.ByUser {
+		w.total(userSeconds, p.Seconds, p.Week, p.User, string(p.Kind))
+		w.total(userPlays, p.Plays, p.Week, p.User, string(p.Kind))
+	}
+	for _, p := range h.ByTitle {
+		w.total(titleSeconds, p.Seconds, p.Week, p.Title, string(p.Kind))
+		w.total(titlePlays, p.Plays, p.Week, p.Title, string(p.Kind))
 	}
 }

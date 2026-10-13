@@ -128,8 +128,8 @@ var client *embyfin.Client
 
 // asker is the program's own way of asking the server, made once and used by every scrape. One made for each scrape would leave its connections
 // open behind it, and a test that scrapes in a loop then holds hundreds open at once: enough to bring down the link to a Docker that runs in a
-// virtual machine, as it did on a Mac.
-var asker *mediaserver.Server
+// virtual machine, as it did on a Mac. It names nobody, as the program does unless told to; naming is the same told to name accounts and titles.
+var asker, naming *mediaserver.Server
 
 // runSuite sets the server up, runs the tests, and returns the exit code. With no server named every test skips.
 func runSuite(m *testing.M) int {
@@ -143,8 +143,13 @@ func runSuite(m *testing.M) int {
 
 		return 1
 	}
-	if asker, err = mediaserver.Connect(backend, address, token); err != nil {
+	if asker, err = mediaserver.Connect(backend, address, token, mediaserver.Detail{}); err != nil {
 		fmt.Fprintln(os.Stderr, "connecting to the test server as the program does:", err)
+
+		return 1
+	}
+	if naming, err = mediaserver.Connect(backend, address, token, mediaserver.Detail{Users: true, Titles: true}); err != nil {
+		fmt.Fprintln(os.Stderr, "connecting to the test server as the program does when told to name accounts and titles:", err)
 
 		return 1
 	}
@@ -357,11 +362,25 @@ func first(t *testing.T, library, kind string) (id, name string) {
 }
 
 // scrape asks the server everything once, as the program does when it starts, and gives back the page a scrape would then read. Only is the rounds
-// to ask, both when none is named.
+// to ask, every one when none is named. The page names nobody, as the program's does unless it is told to.
 func scrape(t *testing.T, only ...poll.Round) string {
 	t.Helper()
 
-	p, err := poll.New(asker, poll.Intervals{Sessions: time.Minute, Library: 5 * time.Minute})
+	return page(t, asker, only...)
+}
+
+// scrapeNaming is scrape for a program told to name accounts and titles.
+func scrapeNaming(t *testing.T, only ...poll.Round) string {
+	t.Helper()
+
+	return page(t, naming, only...)
+}
+
+// page is the page a scrape reads once server has been asked those rounds.
+func page(t *testing.T, server *mediaserver.Server, only ...poll.Round) string {
+	t.Helper()
+
+	p, err := poll.New(server, poll.Intervals{Sessions: time.Minute, Library: 5 * time.Minute, History: time.Minute})
 	if err != nil {
 		t.Fatal(err)
 	}

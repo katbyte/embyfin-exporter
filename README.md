@@ -9,7 +9,7 @@
 ![lint](https://github.com/katbyte/embyfin-metrics/actions/workflows/pr-golangci-lint.yaml/badge.svg)
 [![coverage](https://img.shields.io/endpoint?url=https://raw.githubusercontent.com/katbyte/embyfin-metrics/badges/coverage.json)](https://github.com/katbyte/embyfin-metrics/actions/workflows/coverage.yaml)
 
-One small program that reports the state of an [Emby](https://emby.media) and a [Jellyfin](https://jellyfin.org) server as a [Prometheus](https://prometheus.io) metrics page: how many libraries and what is in each, how many users, who is connected and how many of them are making the server transcode, whether a scan is running and how the last one went.
+One small program that reports the state of an [Emby](https://emby.media) and a [Jellyfin](https://jellyfin.org) server as a [Prometheus](https://prometheus.io) metrics page: how many libraries and what is in each, how many users, who is connected and how many of them are making the server transcode, whether a scan is running and how the last one went, and how much has been played.
 
 One container covers both servers, or either alone. It only ever reads from them.
 
@@ -22,7 +22,7 @@ Every reading starts `embyfin_` and has a `server` label, `emby` or `jellyfin`.
 | Reading | Labels | What it says |
 |---|---|---|
 | `embyfin_up` | | 1 when the server answered the last time it was asked for its sessions, 0 when not |
-| `embyfin_poll_duration_seconds` | `poll` | how long the last poll took; `poll` is `sessions` or `library` |
+| `embyfin_poll_duration_seconds` | `poll` | how long the last poll took; `poll` is `sessions`, `library` or `history` |
 | `embyfin_poll_last_success_timestamp_seconds` | `poll` | when a poll was last answered in full, so stale readings can be told from fresh ones |
 | `embyfin_poll_failures_total` | `poll` | polls that have failed since the program started |
 | `embyfin_server_info` | `name`, `version`, `sdk_api_version` | always 1; the server's name and version, and the version of its API the client was built from |
@@ -49,8 +49,16 @@ Every reading starts `embyfin_` and has a `server` label, `emby` or `jellyfin`.
 | `embyfin_users` | | how many accounts the server has |
 | `embyfin_users_disabled` | | how many of them have been disabled |
 | `embyfin_users_active` | `window` | accounts seen within the last `1d`, `7d` or `30d` |
+| `embyfin_user_last_seen_timestamp_seconds` | `user` | when each account last did anything; only when [accounts are named](#nobodys-name-is-on-it-unless-you-ask) |
 | `embyfin_devices` | | how many devices the server knows of, which is every one it has ever seen |
 | `embyfin_devices_active` | `window` | devices seen within the last `1d`, `7d` or `30d` |
+| `embyfin_playback_reporting_installed` | | 1 when the server has the Playback Reporting plugin, which the readings below come from, and 0 when it has not, see [what was played](#what-was-played) |
+| `embyfin_playback_seconds_total` | `week`, `type`, `method` | seconds played, by the kind of thing and how it reached the device |
+| `embyfin_plays_total` | `week`, `type`, `method` | how many plays that was |
+| `embyfin_user_playback_seconds_total` | `week`, `user`, `type` | seconds each account played, by the kind of thing; only when accounts are named |
+| `embyfin_user_plays_total` | `week`, `user`, `type` | how many plays that was |
+| `embyfin_title_playback_seconds_total` | `week`, `title`, `type` | seconds each show and each film was played; only when titles are named |
+| `embyfin_title_plays_total` | `week`, `title`, `type` | how many plays that was |
 | `embyfin_metrics_build_info` | `version`, `commit`, `goversion` | always 1; the version of embyfin-metrics that wrote the page (no `server` label) |
 
 The page holds nothing but these: none of the Go runtime's or the process's own readings.
@@ -86,13 +94,49 @@ Two scheduled tasks of one name are one `task` on the page, failed if either did
 
 `embyfin_transcode_bits_per_second` is what the servers say those streams come to, added together, in bits a second as the servers and every player give a bitrate. A file sent as it is adds nothing to it.
 
-### Nobody's name is on it
+### What was played
 
-There is no user name, device name, client address or title of what is playing anywhere on the page, only counts. The nearest it comes is the kind of thing playing, a film or an episode, and the names of the server's own scheduled tasks. A metrics store that kept those would be a viewing history, and labels that change with every play make a store slow. The code that writes the page is never handed them, so they cannot leak into a label by accident.
+Neither server keeps a record of how long anything was played. The [Playback Reporting](https://github.com/faush01/playback_reporting) plugin does, on Emby and on [Jellyfin](https://github.com/jellyfin/jellyfin-plugin-playbackreporting), and the readings of what was played are its sums. A server without the plugin has `embyfin_playback_reporting_installed` at 0 and none of them; nothing else on the page changes.
+
+Each is a counter, for a query to take the `increase()` of over a day or any other stretch:
+
+```promql
+sum(increase(embyfin_playback_seconds_total[1d])) / 3600                           # hours played in the last day
+sum by (user) (increase(embyfin_user_playback_seconds_total[1d])) / 60             # minutes each account played
+topk(10, sum by (title) (increase(embyfin_title_playback_seconds_total[7d])))      # the ten most watched of the week
+```
+
+**Add the weeks together.** Plays are kept under the week they began in, named by its Monday as the server's own clock has it, and the page carries this week and the last. So a reading never goes down and never starts again: a new week is a new reading, and a film begun late on Sunday goes on adding to the week it began in. Always `sum` the `week` label away, as the queries above do, and a stretch that runs across a week's end, a month's end or a restart of this program comes out right.
+
+**Time is counted as it is played**, not when the play ends: the plugin adds to a play's length every few seconds while it runs, so the readings can also say when in the day people watch.
+
+**After a restart the readings come back as they were**, since they are the plugin's sums and not this program's own count, and anything played while it was stopped is there when it returns. What was played before the program was first scraped is not: the store only has what it was given, and the plugin keeps the older days.
+
+**A play is one line of the plugin's record**, which is what its own Play Count counts: a play that changes how it reaches the device part way is two.
+
+**`method` is as for a session**: a stream the server made with nothing re-encoded is a `direct_stream`. `type` is the kinds a session has.
+
+**A title is a show or a film.** An episode is under its show, and there is no reading for each song or trailer. **An account is under its name**, and plays by accounts since deleted are together under `unknown`.
+
+The plugin is asked with a `POST`, which is the only way it takes a question, and it would run whatever it was sent. This program sends it one question, written in the program and asking for sums; it is still only a read.
+
+### Nobody's name is on it unless you ask
+
+Left alone there is no user name, device name, client address or title of what is playing anywhere on the page, only counts. The nearest it comes is the kind of thing playing, a film or an episode, and the names of the server's own scheduled tasks. A metrics store that keeps names and titles is a viewing history, so it is yours to ask for:
+
+| `EMBYFIN_METRICS_DETAIL` | Adds |
+|---|---|
+| `users` | the time each account has played, and when it was last seen |
+| `titles` | the time each show and each film has been played |
+| `all` | both, and whatever a later version can name |
+
+Words are joined with commas: `users,titles`. A word left out is never asked of the server at all, so it cannot reach a label by accident. A device's name and a client's address are never on the page whatever is asked.
 
 ### When a server stops answering
 
-`embyfin_up` goes to 0 at the next poll, and the other server's readings carry on. The stopped server's last readings stay on the page for three polls, to ride out a blip, and are then left off rather than shown as if they were current: three polls is 45 seconds for sessions and 15 minutes for libraries, at the default intervals. A reading that has never been answered is absent, not zero.
+`embyfin_up` goes to 0 at the next poll, and the other server's readings carry on. The stopped server's last readings stay on the page for three polls, to ride out a blip, and are then left off rather than shown as if they were current: three polls is 45 seconds for sessions, 90 seconds for what was played and 15 minutes for libraries, at the default intervals. A reading that has never been answered is absent, not zero.
+
+What was played is asked of a plugin and not of the server itself, so it has a poll of its own: a plugin that fails shows as `embyfin_poll_failures_total{poll="history"}` going up, and the server is still up.
 
 ## Installation
 
@@ -124,8 +168,10 @@ All options can be passed as command-line flags, environment variables, or via a
 | `EMBYFIN_METRICS_JELLYFIN_TOKEN` | `--jellyfin-token` | its API key (dashboard → API Keys) |
 | `EMBYFIN_METRICS_LISTEN` | `--listen` | the address the page is served on, default `:9096` |
 | `EMBYFIN_METRICS_LABELS` | `--labels` | labels to put on every reading, as `name=value,name=value`, e.g. `hostname=nas`; none by default. A label named as one a reading already has, `server` say, stops the program with its name |
+| `EMBYFIN_METRICS_DETAIL` | `--detail` | who and what the page may name, as a list of `users`, `titles` or `all`; nobody and nothing by default, see [nobody's name is on it unless you ask](#nobodys-name-is-on-it-unless-you-ask). A word it does not know stops the program |
 | `EMBYFIN_METRICS_SESSIONS_INTERVAL` | `--sessions-interval` | how often sessions, streams, scheduled tasks and the server's own state are read, default `15s` |
 | `EMBYFIN_METRICS_LIBRARY_INTERVAL` | `--library-interval` | how often libraries, item counts, users and devices are read, default `5m` |
+| `EMBYFIN_METRICS_HISTORY_INTERVAL` | `--history-interval` | how often what was played is read, from a server with the Playback Reporting plugin, default `30s` |
 | `EMBYFIN_METRICS_LOG` | | log level (`WARN` default): `INFO` adds what is being reported on and when a server comes back, `TRACE` every request to a server and its answer, with keys blanked. An answer names users and what they are playing, so `TRACE` is for finding a fault and not for leaving on |
 | `EMBYFIN_METRICS_CONFIG` | `--config` | read settings from this file and no other, in place of `./.embyfin-metrics` or `~/.embyfin-metrics` |
 
@@ -201,6 +247,7 @@ embyfin_library_scan_last_run_ok == 0                              # the last li
 embyfin_scheduled_task_last_run_failed == 1                        # which scheduled task's last run failed
 sum by (server, reason) (embyfin_transcode_reasons)                # why streams are being made
 embyfin_transcode_bits_per_second / 1e6                            # what the server's own streams come to, in megabits a second
+sum by (server) (increase(embyfin_playback_seconds_total[1d]))     # seconds played in the last day
 ```
 
 ## Development
@@ -218,16 +265,18 @@ The tests under `make test` need no Emby or Jellyfin: each runs against a server
 
 The page itself, its `/metrics` and `/healthz` routes and the labels are [go-kt](https://github.com/katbyte/go-kt)'s `pmetrics`, shared with the other tools that serve one; what is here is the readings (`lib/readings`) and the asking (`lib/poll`, `lib/mediaserver`).
 
-The live tests (`acceptance/`) are where a real server gets to answer otherwise. [`.scripts/testenv.sh`](.scripts/testenv.sh) starts an Emby or a Jellyfin in Docker with no way out to the internet, lays out a small made-up catalogue for it, gets it through its setup and mints a key. The catalogue has something of every kind the page counts: films, series, music, music videos, a home video and photos, books, an audiobook, and a folder that mixes a film with a series. The suite then checks the page against the server each time it changes something:
+The live tests (`acceptance/`) are where a real server gets to answer otherwise. [`.scripts/testenv.sh`](.scripts/testenv.sh) starts an Emby or a Jellyfin in Docker with no way out to the internet, lays out a small made-up catalogue for it, gives it the Playback Reporting plugin, gets it through its setup and mints a key. The catalogue has something of every kind the page counts: films, series, music, music videos, a home video and photos, books, an audiobook, and a folder that mixes a film with a series. The suite then checks the page against the server each time it changes something:
 
 - it makes a library of each type, a collection and a playlist, and checks every count
 - it signs a device in and plays, pauses and stops a film, then plays one thing of each kind
 - it has the server re-encode a film for a device, and only repack one for another
 - it asks for a scan and catches it under way
+- it plays a film and watches the time played go up on the page while it plays, under the account and the title only for a program told to name them
+- it lays plays down in the plugin's record in this week, the last and three weeks back, and checks each is under its own week or off the page
 - it runs `serve` and scrapes it over HTTP, then freezes the server's container to see it reported as down, its readings left off, and back again when thawed
-- it starts the image `make docker` builds beside the server, and checks it serves the page, passes its own health check and does not run as root
+- it starts the image `make docker` builds beside the server, and checks it serves the page, passes its own health check, does not run as root, and names accounts when its environment asks
 
-It needs `docker`, `ffmpeg` and `jq`, and takes about a minute for both servers once the images are there.
+It needs `docker`, `ffmpeg`, `jq` and `unzip`, and takes about two minutes for both servers once the images are there.
 
 ```bash
 make testacc BACKENDS=jellyfin                                             # one server only

@@ -4,6 +4,7 @@ import (
 	"flag"
 	"os"
 	"runtime"
+	"strconv"
 	"strings"
 	"testing"
 	"testing/synctest"
@@ -21,6 +22,12 @@ const saved = "testdata/page.txt"
 
 const day = 24 * time.Hour
 
+// The two weeks the saved page's plays began in, each named by its Monday: the page is written on the first day of 2000, a Saturday.
+const (
+	thisWeek = "1999-12-27"
+	lastWeek = "1999-12-20"
+)
+
 // update rewrites the saved page from what the code writes now: go test ./lib/readings -update. Read the difference before keeping it, since a
 // reading that is renamed is one somebody's dashboard no longer finds.
 var update = flag.Bool("update", false, "rewrite testdata/page.txt from the page as it is written now")
@@ -28,7 +35,7 @@ var update = flag.Bool("update", false, "rewrite testdata/page.txt from the page
 // fixed is a server whose state is whatever the test says.
 type fixed poll.State
 
-func (f fixed) State() poll.State { return poll.State(f) }
+func (f *fixed) State() poll.State { return poll.State(*f) }
 
 // answered is an answer given now.
 func answered[T any](value T) poll.Answer[T] {
@@ -37,12 +44,13 @@ func answered[T any](value T) poll.Answer[T] {
 
 // emby is a server that has answered everything: five sessions of which three are playing or paused and two are streams the server is making, a
 // scan a quarter of the way through, a task that failed and one that was cancelled, three libraries, four accounts last seen an hour, three days and
-// twenty days ago and never, the last of them disabled, and seven devices of which four were seen within the year.
-func emby() fixed {
+// twenty days ago and never, the last of them disabled, seven devices of which four were seen within the year, and two weeks' plays. It was asked
+// to name accounts and titles, so two of the accounts have names and the plays are also by account and by title.
+func emby() *fixed {
 	now := time.Now()
 	ago := func(d time.Duration) time.Time { return now.Add(-d) }
 
-	return fixed{
+	return &fixed{
 		Kind: "emby",
 		Info: answered(poll.Info{Name: "nas", Version: "4.10.0.4", APIVersion: "4.10.0.40", RestartPending: true}),
 		Sessions: answered([]poll.Session{
@@ -63,8 +71,30 @@ func emby() fixed {
 			{Name: "Kids", Items: map[string]int{"movie": 300}},
 			{Name: "TV", Items: map[string]int{"series": 80, "season": 400, "episode": 9000}},
 		}),
-		Users:   answered([]poll.User{{LastActive: ago(time.Hour)}, {LastActive: ago(3 * day)}, {LastActive: ago(20 * day)}, {Disabled: true}}),
+		Users:   answered([]poll.User{{Name: "ada", LastActive: ago(time.Hour)}, {Name: "grace", LastActive: ago(3 * day)}, {LastActive: ago(20 * day)}, {Disabled: true}}),
 		Devices: answered([]poll.Device{{LastActive: ago(time.Hour)}, {LastActive: ago(2 * day)}, {LastActive: ago(10 * day)}, {LastActive: ago(40 * day)}, {LastActive: ago(400 * day)}, {}, {}}),
+		History: answered(poll.History{
+			Installed: true,
+			Plays: []poll.Played{
+				{Week: lastWeek, Kind: poll.Episode, Method: poll.DirectPlay, Plays: 9, Seconds: 13500},
+				{Week: thisWeek, Kind: poll.Episode, Method: poll.DirectPlay, Plays: 40, Seconds: 60000},
+				{Week: thisWeek, Kind: poll.Episode, Method: poll.Transcode, Plays: 12, Seconds: 18000},
+				{Week: thisWeek, Kind: poll.Movie, Method: poll.DirectStream, Plays: 3, Seconds: 21600},
+			},
+			ByUser: []poll.Played{
+				{Week: lastWeek, User: "ada", Kind: poll.Episode, Plays: 9, Seconds: 13500},
+				{Week: thisWeek, User: "ada", Kind: poll.Episode, Plays: 30, Seconds: 48000},
+				{Week: thisWeek, User: "ada", Kind: poll.Movie, Plays: 3, Seconds: 21600},
+				{Week: thisWeek, User: "grace", Kind: poll.Episode, Plays: 20, Seconds: 27000},
+				{Week: thisWeek, User: "unknown", Kind: poll.Episode, Plays: 2, Seconds: 3000},
+			},
+			ByTitle: []poll.Played{
+				{Week: lastWeek, Title: "Dark", Kind: poll.Episode, Plays: 9, Seconds: 13500},
+				{Week: thisWeek, Title: "Dark", Kind: poll.Episode, Plays: 50, Seconds: 75000},
+				{Week: thisWeek, Title: "Severance", Kind: poll.Episode, Plays: 2, Seconds: 3000},
+				{Week: thisWeek, Title: "Heat", Kind: poll.Movie, Plays: 3, Seconds: 21600},
+			},
+		}),
 
 		SessionsRound: poll.RoundState{Ran: true, OK: true, Took: 250 * time.Millisecond, LastSuccess: now},
 		LibraryRound:  poll.RoundState{Ran: true, OK: true, Took: 3 * time.Second, LastSuccess: now.Add(-time.Minute), Failures: 2},
@@ -72,8 +102,8 @@ func emby() fixed {
 }
 
 // down is a server that has been asked once and did not answer.
-func down() fixed {
-	return fixed{Kind: "jellyfin", SessionsRound: poll.RoundState{Ran: true, Took: 15 * time.Second, Failures: 1}}
+func down() *fixed {
+	return &fixed{Kind: "jellyfin", SessionsRound: poll.RoundState{Ran: true, Took: 15 * time.Second, Failures: 1}}
 }
 
 // write is the page of these servers' readings as a scrape reads it: the readings, and the one line the page adds to say which build wrote it.
@@ -164,7 +194,7 @@ func TestThePageFollowsTheNamingConventions(t *testing.T) {
 func TestAServerThatNeverAnsweredHasNoReadingsOfItsState(t *testing.T) {
 	t.Parallel()
 
-	if got := lines(write(t, fixed{Kind: "emby"})); len(got) != 0 {
+	if got := lines(write(t, &fixed{Kind: "emby"})); len(got) != 0 {
 		t.Errorf("a server never asked has readings: %v", got)
 	}
 
@@ -184,7 +214,7 @@ func TestAServerThatNeverAnsweredHasNoReadingsOfItsState(t *testing.T) {
 func TestEveryStateIsWrittenWhenNothingIsPlaying(t *testing.T) {
 	t.Parallel()
 
-	got := write(t, fixed{Kind: "emby", Sessions: answered([]poll.Session{}), Tasks: answered([]poll.Task{})})
+	got := write(t, &fixed{Kind: "emby", Sessions: answered([]poll.Session{}), Tasks: answered([]poll.Task{})})
 	for _, want := range []string{
 		`embyfin_sessions{server="emby",state="playing"} 0`,
 		`embyfin_sessions{server="emby",state="paused"} 0`,
@@ -224,7 +254,7 @@ func TestEveryStateIsWrittenWhenNothingIsPlaying(t *testing.T) {
 func TestWhatTheServerDoesNotSayIsStillCounted(t *testing.T) {
 	t.Parallel()
 
-	got := write(t, fixed{
+	got := write(t, &fixed{
 		Kind:     "emby",
 		Sessions: answered([]poll.Session{{State: poll.Playing}, {State: poll.Paused, Method: "remux"}, {State: "buffering"}, {State: poll.Playing, Method: poll.DirectStream, VideoTranscode: true}}),
 		Tasks:    answered([]poll.Task{{State: "queued"}, {State: poll.TaskCancelling, LibraryScan: true}}),
@@ -280,7 +310,7 @@ func TestEachTaskThatHasRun(t *testing.T) {
 
 	synctest.Test(t, func(t *testing.T) {
 		now := time.Now()
-		got := write(t, fixed{Kind: "emby", Tasks: answered([]poll.Task{
+		got := write(t, &fixed{Kind: "emby", Tasks: answered([]poll.Task{
 			{Name: "Scan media library", LibraryScan: true, LastRun: &poll.Run{OK: true, Ended: now.Add(-time.Hour)}},
 			{Name: "Export Library to Trakt", LastRun: &poll.Run{Failed: true, Ended: now.Add(-2 * time.Hour)}},
 			{Name: "Refresh Guide", LastRun: &poll.Run{}},
@@ -317,7 +347,7 @@ func TestScanProgressIsOnlyThereWhileItRuns(t *testing.T) {
 	t.Parallel()
 
 	for state, want := range map[poll.TaskState]bool{poll.TaskRunning: true, poll.TaskCancelling: true, poll.TaskIdle: false} {
-		got := write(t, fixed{Kind: "emby", Tasks: answered([]poll.Task{{Name: "Scan media library", State: state, Progress: 0.4, LibraryScan: true}})})
+		got := write(t, &fixed{Kind: "emby", Tasks: answered([]poll.Task{{Name: "Scan media library", State: state, Progress: 0.4, LibraryScan: true}})})
 		if has(got, `embyfin_library_scan_progress_ratio{server="emby"} 0.4`) != want {
 			t.Errorf("a scan that is %s: progress on the page is %t, want %t:\n%s", state, !want, want, got)
 		}
@@ -368,7 +398,7 @@ func TestTheWholeServerIsItsLibrariesAddedTogether(t *testing.T) {
 func TestTwoLibrariesOfOneNameAreAddedTogether(t *testing.T) {
 	t.Parallel()
 
-	got := write(t, fixed{Kind: "emby", Libraries: answered([]poll.Library{
+	got := write(t, &fixed{Kind: "emby", Libraries: answered([]poll.Library{
 		{Name: "Films", Items: map[string]int{"movie": 10}},
 		{Name: "Films", Items: map[string]int{"movie": 5, "video": 1}},
 	})})
@@ -384,13 +414,120 @@ func TestTwoLibrariesOfOneNameAreAddedTogether(t *testing.T) {
 	}
 }
 
+// What was played in this week and the last, as the server's Playback Reporting plugin has it: by kind and method always, and by account and by
+// title for a server that was asked to name them. Each is a counter under the week its plays began in, for a query to take the increase of over a
+// day or any other stretch.
+func TestWhatWasPlayed(t *testing.T) {
+	t.Parallel()
+
+	got := write(t, emby())
+	for _, want := range []string{
+		`embyfin_playback_reporting_installed{server="emby"} 1`,
+		`embyfin_playback_seconds_total{method="direct_play",server="emby",type="episode",week="1999-12-27"} 60000`,
+		`embyfin_playback_seconds_total{method="direct_play",server="emby",type="episode",week="1999-12-20"} 13500`,
+		`embyfin_playback_seconds_total{method="transcode",server="emby",type="episode",week="1999-12-27"} 18000`,
+		`embyfin_playback_seconds_total{method="direct_stream",server="emby",type="movie",week="1999-12-27"} 21600`,
+		`embyfin_plays_total{method="direct_play",server="emby",type="episode",week="1999-12-27"} 40`,
+		`embyfin_user_playback_seconds_total{server="emby",type="episode",user="ada",week="1999-12-27"} 48000`,
+		`embyfin_user_playback_seconds_total{server="emby",type="episode",user="ada",week="1999-12-20"} 13500`,
+		`embyfin_user_playback_seconds_total{server="emby",type="movie",user="ada",week="1999-12-27"} 21600`,
+		`embyfin_user_playback_seconds_total{server="emby",type="episode",user="unknown",week="1999-12-27"} 3000`,
+		`embyfin_user_plays_total{server="emby",type="episode",user="grace",week="1999-12-27"} 20`,
+		`embyfin_title_playback_seconds_total{server="emby",title="Dark",type="episode",week="1999-12-27"} 75000`,
+		`embyfin_title_playback_seconds_total{server="emby",title="Heat",type="movie",week="1999-12-27"} 21600`,
+		`embyfin_title_plays_total{server="emby",title="Severance",type="episode",week="1999-12-27"} 2`,
+		`embyfin_user_last_seen_timestamp_seconds{server="emby",user="ada"}`,
+		`embyfin_user_last_seen_timestamp_seconds{server="emby",user="grace"}`,
+	} {
+		if !has(got, want) {
+			t.Errorf("the page lacks %s:\n%s", want, got)
+		}
+	}
+
+	if !strings.Contains(got, "# TYPE embyfin_user_playback_seconds_total counter") || !strings.Contains(got, "# TYPE embyfin_plays_total counter") {
+		t.Errorf("what was played is not written as counters:\n%s", got)
+	}
+}
+
+// A server that was not asked to name anyone has no name anywhere on its page: no account's, and no title of what was played. Its plays are still
+// there by kind and method, which say nothing of whose they were.
+func TestNobodyIsNamedUnlessAskedFor(t *testing.T) {
+	t.Parallel()
+
+	state := emby()
+	state.Users = answered([]poll.User{{LastActive: time.Now()}, {Disabled: true}})
+	history := state.History.Value
+	history.ByUser, history.ByTitle = nil, nil
+	state.History = answered(history)
+
+	got := write(t, state)
+	for _, label := range []string{`user="`, `title="`} {
+		if strings.Contains(got, label) {
+			t.Errorf("the page has a %s label when nobody was to be named:\n%s", label, got)
+		}
+	}
+	for _, absent := range []string{"embyfin_user_playback_seconds_total", "embyfin_user_plays_total", "embyfin_user_last_seen", "embyfin_title_"} {
+		if has(got, absent) {
+			t.Errorf("the page has a reading of %s when nobody was to be named", absent)
+		}
+	}
+	if !has(got, `embyfin_playback_seconds_total{method="direct_play",server="emby",type="episode",week="1999-12-27"} 60000`) || !has(got, `embyfin_users{server="emby"} 2`) {
+		t.Errorf("the page lacks the plays or the count of accounts, which name nobody:\n%s", got)
+	}
+}
+
+// A server without the Playback Reporting plugin says so and has no readings of what was played, which is not the same as nothing played. One
+// that has not been asked yet says nothing of the plugin either way.
+func TestAServerWithoutThePluginSaysSo(t *testing.T) {
+	t.Parallel()
+
+	got := write(t, &fixed{Kind: "jellyfin", History: answered(poll.History{})})
+	if !has(got, `embyfin_playback_reporting_installed{server="jellyfin"} 0`) {
+		t.Errorf("the page does not say the server lacks the plugin:\n%s", got)
+	}
+	for _, absent := range []string{"embyfin_playback_seconds_total", "embyfin_plays_total", "embyfin_user_", "embyfin_title_"} {
+		if has(got, absent) {
+			t.Errorf("the page has a reading of %s from a server with no record of what was played", absent)
+		}
+	}
+
+	if got := write(t, &fixed{Kind: "jellyfin", Sessions: answered([]poll.Session{})}); has(got, "embyfin_playback_reporting_installed") {
+		t.Errorf("the page says whether a server never asked has the plugin:\n%s", got)
+	}
+}
+
+// Two accounts of one name are one on the page, last seen when the later of them was, and an account never seen has no time to give.
+func TestWhenEachAccountWasLastSeen(t *testing.T) {
+	t.Parallel()
+
+	synctest.Test(t, func(t *testing.T) {
+		now := time.Now()
+		got := write(t, &fixed{Kind: "emby", Users: answered([]poll.User{
+			{Name: "ada", LastActive: now.Add(-3 * time.Hour)},
+			{Name: "ada", LastActive: now.Add(-time.Hour)},
+			{Name: "grace"},
+			{LastActive: now},
+		})})
+
+		var seen []string
+		for _, line := range lines(got) {
+			if strings.HasPrefix(line, "embyfin_user_last_seen") {
+				seen = append(seen, line)
+			}
+		}
+		if want := []string{`embyfin_user_last_seen_timestamp_seconds{server="emby",user="ada"} 9.466812e+08`}; strings.Join(seen, "\n") != strings.Join(want, "\n") {
+			t.Errorf("the accounts were last seen\n%s\nwant\n%s", strings.Join(seen, "\n"), strings.Join(want, "\n"))
+		}
+	})
+}
+
 // Whether an account counts as active is measured when the page is written, not when the server was asked: an account last seen 23 hours ago
 // stops being active within the day two hours later, with no poll in between.
 func TestActiveIsMeasuredWhenThePageIsWritten(t *testing.T) {
 	t.Parallel()
 
 	synctest.Test(t, func(t *testing.T) {
-		p := fixed{Kind: "emby", Users: answered([]poll.User{{LastActive: time.Now().Add(-23 * time.Hour)}})}
+		p := &fixed{Kind: "emby", Users: answered([]poll.User{{LastActive: time.Now().Add(-23 * time.Hour)}})}
 
 		if got := write(t, p); !has(got, `embyfin_users_active{server="emby",window="1d"} 1`) {
 			t.Errorf("an account seen 23 hours ago is not active within the day:\n%s", got)
@@ -402,4 +539,137 @@ func TestActiveIsMeasuredWhenThePageIsWritten(t *testing.T) {
 			t.Errorf("two hours on, the account should be active within 7 days and no longer within one:\n%s", got)
 		}
 	})
+}
+
+// play is one play in the plugin's record, for the model below: whose it was, when it began on the server's own clock and how long it ran.
+type play struct {
+	user  string
+	began time.Time
+	ran   time.Duration
+}
+
+// monday is the first moment of the week t is in.
+func monday(t time.Time) time.Time {
+	year, month, date := t.Date()
+
+	return time.Date(year, month, date-(int(t.Weekday())+6)%7, 0, 0, 0, 0, t.Location())
+}
+
+// asked is what a server whose plugin holds these plays answers at now, as the question put to the plugin has it: the plays begun in this week and
+// the last, as far as each has got, added up under the Monday of the week it began in.
+func asked(plays []play, now time.Time) poll.History {
+	type key struct{ week, user string }
+
+	sums := map[key]int{}
+	for _, p := range plays {
+		if p.began.After(now) || p.began.Before(monday(now).AddDate(0, 0, -7)) {
+			continue
+		}
+		sums[key{monday(p.began).Format(time.DateOnly), p.user}] += int(min(now.Sub(p.began), p.ran).Seconds())
+	}
+
+	h := poll.History{Installed: true}
+	for k, seconds := range sums {
+		h.ByUser = append(h.ByUser, poll.Played{Week: k.week, User: k.user, Kind: poll.Episode, Plays: 1, Seconds: seconds})
+	}
+
+	return h
+}
+
+// scraped is each reading of one name on a page, by its labels.
+func scraped(text, name string) map[string]float64 {
+	out := map[string]float64{}
+	for _, line := range lines(text) {
+		labels, value, found := strings.Cut(strings.TrimPrefix(line, name), " ")
+		if !strings.HasPrefix(line, name+"{") || !found {
+			continue
+		}
+
+		n, err := strconv.ParseFloat(value, 64)
+		if err != nil {
+			panic(err)
+		}
+		out[labels] = n
+	}
+
+	return out
+}
+
+// A query for the time played over any stretch has to come out right whatever falls inside the stretch: the end of a week, the end of a month,
+// a play running through both, the program being restarted. So the readings are scraped every half minute across the night of Sunday 31 May
+// 2026, which ends a week and a month, and added up the way a query does: each reading's rises, every reading added together.
+//
+// Nothing may be counted twice and nothing dropped. The one thing a query can miss is what a reading that is new stood at when it was first read:
+// 20 seconds into its first play here, and 3 minutes 20 for the play that began as the program stopped. A store that takes a new counter to have
+// started from nothing does not miss that either. No reading ever goes down, so there is no start-again for a query to allow for.
+func TestTheTimePlayedAddsUpAcrossAWeekEndAndARestart(t *testing.T) {
+	t.Parallel()
+
+	at := func(date, hour, minute int) time.Time {
+		return time.Date(2026, time.May, date, hour, minute, 0, 0, time.UTC)
+	}
+	plays := []play{
+		// the evening before, which is what ada's reading for the week stands at when the scraping starts
+		{"ada", at(30, 20, 0), time.Hour},
+		// through midnight, from the old week and month into the new
+		{"ada", at(31, 22, 0), 3 * time.Hour},
+		{"grace", at(31, 23, 30), time.Hour},
+		// begun in the new week
+		{"ada", at(32, 1, 30), time.Hour},
+		{"grace", at(32, 0, 45), 90 * time.Minute},
+	}
+	const played = (3+1+1)*3600 + 90*60
+
+	// the program is stopped at a quarter to one and back three minutes later, while three of the plays are running
+	stopped, back := at(32, 0, 45), at(32, 0, 48)
+
+	// scraped 20 seconds past each half minute, since nothing scrapes on the stroke of a play beginning
+	start := at(31, 21, 0).Add(20 * time.Second)
+
+	last, first := map[string]float64{}, map[string]float64{}
+	var rises, begun float64
+	for now := start; !now.After(at(32, 4, 0)); now = now.Add(30 * time.Second) {
+		if now.After(stopped) && now.Before(back) {
+			continue
+		}
+
+		// a page written by a program that knows nothing of the pages before it, as one just started does
+		for labels, value := range scraped(write(t, &fixed{Kind: "emby", History: answered(asked(plays, now))}), "embyfin_user_playback_seconds_total") {
+			before, seen := last[labels]
+			switch {
+			case now.Equal(start):
+				// where a reading stood before the stretch began is no part of the stretch
+			case !seen:
+				first[labels] = value
+				begun += value
+			case value < before:
+				t.Fatalf("at %s the reading %s went down from %v to %v", now.Format(time.DateTime), labels, before, value)
+			default:
+				rises += value - before
+			}
+			last[labels] = value
+		}
+	}
+
+	// ada's reading for the old week was there from the start; grace's for it and both for the new week began part way through
+	if len(last) != 4 || len(first) != 3 {
+		t.Fatalf("the readings were %v, of which new part way through %v; want ada's and grace's for each of the two weeks, three of them new", last, first)
+	}
+	if rises+begun != played {
+		t.Errorf("the rises come to %v seconds and what the new readings began at to %v, %v in all; want the %v played, no more and no less", rises, begun, rises+begun, played)
+	}
+	if begun != 20+20+200 {
+		t.Errorf("the new readings began at %v seconds between them, want 20 for two of them and 200 for the one whose play began as the program stopped", begun)
+	}
+
+	// a week on, the week before last is off the page and last week's readings stand where they stopped
+	later := scraped(write(t, &fixed{Kind: "emby", History: answered(asked(plays, at(39, 1, 0)))}), "embyfin_user_playback_seconds_total")
+	if len(later) != 2 {
+		t.Errorf("a week on the readings are %v, want only those of the week that began on 1 June", later)
+	}
+	for labels, value := range later {
+		if value != last[labels] {
+			t.Errorf("a week on %s reads %v, want the %v it stopped at", labels, value, last[labels])
+		}
+	}
 }

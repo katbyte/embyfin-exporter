@@ -12,7 +12,7 @@ import (
 	"github.com/katbyte/go-kt/outside"
 )
 
-// Round is one of the two schedules a server is asked on.
+// Round is one of the three schedules a server is asked on.
 type Round string
 
 const (
@@ -20,10 +20,13 @@ const (
 	RoundSessions Round = "sessions"
 	// RoundLibrary is what changes when a scan runs or someone is added: libraries and what they hold, users and devices.
 	RoundLibrary Round = "library"
+	// RoundHistory is what has been played, which a plugin answers and not the server itself: on a round of its own, a plugin that fails does not
+	// make the server look down.
+	RoundHistory Round = "history"
 )
 
-// Rounds is both rounds, in the order the page lists them.
-var Rounds = []Round{RoundSessions, RoundLibrary}
+// Rounds is every round, in the order the page lists them.
+var Rounds = []Round{RoundSessions, RoundLibrary, RoundHistory}
 
 // staleAfter is how many intervals an answer is served for once its round stops succeeding: long enough to ride out a failed round or two, short
 // enough that a server down for an hour is not still shown with the sessions it had.
@@ -33,15 +36,19 @@ const staleAfter = 3
 type Intervals struct {
 	Sessions time.Duration
 	Library  time.Duration
+	History  time.Duration
 }
 
 // of is the interval of one round.
 func (i Intervals) of(round Round) time.Duration {
-	if round == RoundLibrary {
+	switch round {
+	case RoundLibrary:
 		return i.Library
+	case RoundHistory:
+		return i.History
+	default:
+		return i.Sessions
 	}
-
-	return i.Sessions
 }
 
 // Answer is the last good answer to one question.
@@ -76,9 +83,11 @@ type State struct {
 	Libraries Answer[[]Library]
 	Users     Answer[[]User]
 	Devices   Answer[[]Device]
+	History   Answer[History]
 
 	SessionsRound RoundState
 	LibraryRound  RoundState
+	HistoryRound  RoundState
 }
 
 // Up says whether the server answered the last sessions round, the one that runs often enough to tell.
@@ -86,23 +95,22 @@ func (s *State) Up() bool { return s.SessionsRound.OK }
 
 // Round is how one round last went.
 func (s *State) Round(round Round) RoundState {
-	if round == RoundLibrary {
-		return s.LibraryRound
-	}
-
-	return s.SessionsRound
+	return *s.roundOf(round)
 }
 
 // roundOf is where one round's state is kept.
 func (s *State) roundOf(round Round) *RoundState {
-	if round == RoundLibrary {
+	switch round {
+	case RoundLibrary:
 		return &s.LibraryRound
+	case RoundHistory:
+		return &s.HistoryRound
+	default:
+		return &s.SessionsRound
 	}
-
-	return &s.SessionsRound
 }
 
-// Poller asks one server its questions on two schedules and remembers the last good answer to each.
+// Poller asks one server its questions on three schedules and remembers the last good answer to each.
 type Poller struct {
 	server Server
 	every  Intervals
@@ -113,8 +121,8 @@ type Poller struct {
 
 // New is a poller for one server. It asks nothing until Run or Poll.
 func New(server Server, every Intervals) (*Poller, error) {
-	if every.Sessions <= 0 || every.Library <= 0 {
-		return nil, fmt.Errorf("the intervals must be longer than nothing: sessions %s, library %s", every.Sessions, every.Library)
+	if every.Sessions <= 0 || every.Library <= 0 || every.History <= 0 {
+		return nil, fmt.Errorf("the intervals must be longer than nothing: sessions %s, library %s, history %s", every.Sessions, every.Library, every.History)
 	}
 
 	return &Poller{server: server, every: every, state: State{Kind: server.Kind()}}, nil
@@ -123,7 +131,7 @@ func New(server Server, every Intervals) (*Poller, error) {
 // Kind is which server this poller asks.
 func (p *Poller) Kind() string { return p.server.Kind() }
 
-// Run polls until the context ends: both rounds at once on start, then each on its own interval.
+// Run polls until the context ends: every round at once on start, then each on its own interval.
 func (p *Poller) Run(ctx context.Context) {
 	var wg sync.WaitGroup
 	for _, round := range Rounds {
@@ -203,19 +211,22 @@ func said(err error) string {
 
 // ask puts every question of one round, and gives back what failed.
 func (p *Poller) ask(ctx context.Context, round Round) error {
-	if round == RoundLibrary {
+	switch round {
+	case RoundLibrary:
 		return errors.Join(
 			keep(ctx, p, "libraries", p.server.Libraries, func(s *State) *Answer[[]Library] { return &s.Libraries }),
 			keep(ctx, p, "users", p.server.Users, func(s *State) *Answer[[]User] { return &s.Users }),
 			keep(ctx, p, "devices", p.server.Devices, func(s *State) *Answer[[]Device] { return &s.Devices }),
 		)
+	case RoundHistory:
+		return keep(ctx, p, "what was played", p.server.History, func(s *State) *Answer[History] { return &s.History })
+	default:
+		return errors.Join(
+			keep(ctx, p, "server info", p.server.Info, func(s *State) *Answer[Info] { return &s.Info }),
+			keep(ctx, p, "sessions", p.server.Sessions, func(s *State) *Answer[[]Session] { return &s.Sessions }),
+			keep(ctx, p, "scheduled tasks", p.server.Tasks, func(s *State) *Answer[[]Task] { return &s.Tasks }),
+		)
 	}
-
-	return errors.Join(
-		keep(ctx, p, "server info", p.server.Info, func(s *State) *Answer[Info] { return &s.Info }),
-		keep(ctx, p, "sessions", p.server.Sessions, func(s *State) *Answer[[]Session] { return &s.Sessions }),
-		keep(ctx, p, "scheduled tasks", p.server.Tasks, func(s *State) *Answer[[]Task] { return &s.Tasks }),
-	)
 }
 
 // keep puts one question and keeps its answer in the place into names. An answer is stored whole and never changed afterwards, so State can hand it
@@ -242,7 +253,7 @@ func (p *Poller) State() State {
 
 	s := p.state
 	now := time.Now()
-	sessions, library := staleAfter*p.every.Sessions, staleAfter*p.every.Library
+	sessions, library, history := staleAfter*p.every.Sessions, staleAfter*p.every.Library, staleAfter*p.every.History
 
 	fresh(&s.Info, now, sessions)
 	fresh(&s.Sessions, now, sessions)
@@ -250,6 +261,7 @@ func (p *Poller) State() State {
 	fresh(&s.Libraries, now, library)
 	fresh(&s.Users, now, library)
 	fresh(&s.Devices, now, library)
+	fresh(&s.History, now, history)
 
 	return s
 }

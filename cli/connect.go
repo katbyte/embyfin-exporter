@@ -6,8 +6,8 @@ import (
 )
 
 // connect makes the client that asks one server its questions: embyfin-mcp's, which speaks to either kind.
-func connect(kind, server, token string) (poll.Server, error) {
-	s, err := mediaserver.Connect(kind, server, token)
+func connect(kind, server, token string, detail mediaserver.Detail) (poll.Server, error) {
+	s, err := mediaserver.Connect(kind, server, token, detail)
 	if err != nil {
 		return nil, err
 	}

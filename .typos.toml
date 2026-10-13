@@ -26,3 +26,5 @@ locale = "en"
 # linter names
 decorder = "decorder"
 importas = "importas"
+# the Playback Reporting plugin's own spelling, in what it answers
+colums = "colums"

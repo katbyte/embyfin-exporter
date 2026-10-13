@@ -8,6 +8,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/katbyte/embyfin-metrics/lib/mediaserver"
 	"github.com/katbyte/embyfin-metrics/lib/poll"
 	"github.com/katbyte/embyfin-metrics/lib/readings"
 	"github.com/katbyte/go-kt/clog"
@@ -24,11 +25,13 @@ const (
 )
 
 // The defaults: sessions are read twice as often as a scrape every 30 seconds asks, so a reading is never older than one scrape, and libraries
-// every few minutes since they only change when a scan runs or someone is added.
+// every few minutes since they only change when a scan runs or someone is added. What was played is read once a scrape: it is a sum that only
+// grows, so one read late loses nothing.
 const (
 	defaultListen           = ":9096"
 	defaultSessionsInterval = 15 * time.Second
 	defaultLibraryInterval  = 5 * time.Minute
+	defaultHistoryInterval  = 30 * time.Second
 )
 
 type FlagData struct {
@@ -38,8 +41,10 @@ type FlagData struct {
 	JellyfinToken    string        `mapstructure:"jellyfin-token"`
 	Listen           string        `mapstructure:"listen"`
 	Labels           string        `mapstructure:"labels"`
+	Detail           string        `mapstructure:"detail"`
 	SessionsInterval time.Duration `mapstructure:"sessions-interval"`
 	LibraryInterval  time.Duration `mapstructure:"library-interval"`
+	HistoryInterval  time.Duration `mapstructure:"history-interval"`
 }
 
 // envNames binds each flag to its environment variable.
@@ -50,8 +55,10 @@ var envNames = map[string]string{ //nolint:gosec // G101: these are env var name
 	"jellyfin-token":    "EMBYFIN_METRICS_JELLYFIN_TOKEN",
 	"listen":            "EMBYFIN_METRICS_LISTEN",
 	"labels":            "EMBYFIN_METRICS_LABELS",
+	"detail":            "EMBYFIN_METRICS_DETAIL",
 	"sessions-interval": "EMBYFIN_METRICS_SESSIONS_INTERVAL",
 	"library-interval":  "EMBYFIN_METRICS_LIBRARY_INTERVAL",
+	"history-interval":  "EMBYFIN_METRICS_HISTORY_INTERVAL",
 }
 
 // persistent is the flag set configureFlags bound, for the one setting that has to be read before viper is: where the settings file is.
@@ -66,8 +73,10 @@ func configureFlags(root *cobra.Command) error {
 	pflags.String("jellyfin-token", "", "the Jellyfin API key (consider exporting to EMBYFIN_METRICS_JELLYFIN_TOKEN instead)")
 	pflags.String("listen", defaultListen, "serve the metrics page on this address")
 	pflags.String("labels", "", "labels to put on every reading, as name=value,name=value: hostname=nas say, when the page is not scraped on the servers' own host")
+	pflags.String("detail", "", "who and what the page may name, as a list of users, titles or all: nobody and nothing unless asked, so no account's name or title is on the page by default")
 	pflags.Duration("sessions-interval", defaultSessionsInterval, "how often sessions, streams, scheduled tasks and the server's own state are read")
 	pflags.Duration("library-interval", defaultLibraryInterval, "how often libraries, item counts, users and devices are read")
+	pflags.Duration("history-interval", defaultHistoryInterval, "how often what was played is read, from a server with the Playback Reporting plugin")
 	pflags.String("config", "", "read settings from this file and no other, in place of ./.embyfin-metrics or ~/.embyfin-metrics (or export EMBYFIN_METRICS_CONFIG)")
 
 	persistent = pflags
@@ -187,8 +196,50 @@ func (f *FlagData) targets() ([]target, error) {
 	return out, nil
 }
 
-// connector makes the client that asks one server its questions.
-type connector func(kind, server, token string) (poll.Server, error)
+// The words --detail takes, and the one that stands for all of them, now and in versions to come.
+const (
+	detailUsers  = "users"
+	detailTitles = "titles"
+	detailAll    = "all"
+)
+
+// detail is who and what the settings let the page name: nobody and nothing unless they say so. A word not known is a mistake said now, since a
+// page that quietly names less than was asked reads as a server with nothing played.
+func (f *FlagData) detail() (mediaserver.Detail, error) {
+	var d mediaserver.Detail
+	for word := range strings.SplitSeq(f.Detail, ",") {
+		switch strings.ToLower(strings.TrimSpace(word)) {
+		case "":
+		case detailUsers:
+			d.Users = true
+		case detailTitles:
+			d.Titles = true
+		case detailAll:
+			d = mediaserver.Detail{Users: true, Titles: true}
+		default:
+			return mediaserver.Detail{}, fmt.Errorf("--detail (%s) takes %s, %s or %s, with commas between them, and not %q", envNames["detail"], detailUsers, detailTitles, detailAll, strings.TrimSpace(word))
+		}
+	}
+
+	return d, nil
+}
+
+// named is what the page will name, for the log: it should be plain from the first line that a page has people on it.
+func named(d mediaserver.Detail) string {
+	switch {
+	case d.Users && d.Titles:
+		return "naming accounts and titles"
+	case d.Users:
+		return "naming accounts"
+	case d.Titles:
+		return "naming titles"
+	default:
+		return "naming nobody"
+	}
+}
+
+// connector makes the client that asks one server its questions, naming accounts and titles only as far as detail allows.
+type connector func(kind, server, token string, detail mediaserver.Detail) (poll.Server, error)
 
 // pollers is a poller for each server the settings name, none of them started.
 func (f *FlagData) pollers(connect connector) ([]*poll.Poller, error) {
@@ -197,20 +248,25 @@ func (f *FlagData) pollers(connect connector) ([]*poll.Poller, error) {
 		return nil, err
 	}
 
+	detail, err := f.detail()
+	if err != nil {
+		return nil, err
+	}
+
 	pollers := make([]*poll.Poller, 0, len(targets))
 	for _, t := range targets {
-		server, err := connect(t.kind, t.server, t.token)
+		server, err := connect(t.kind, t.server, t.token, detail)
 		if err != nil {
 			return nil, fmt.Errorf("%s: %w", t.kind, err)
 		}
 
-		p, err := poll.New(server, poll.Intervals{Sessions: f.SessionsInterval, Library: f.LibraryInterval})
+		p, err := poll.New(server, poll.Intervals{Sessions: f.SessionsInterval, Library: f.LibraryInterval, History: f.HistoryInterval})
 		if err != nil {
 			return nil, err
 		}
 
 		// the address is logged and the key never is
-		clog.Log.Infof("%s: reporting on %s, sessions every %s and libraries every %s", t.kind, t.server, f.SessionsInterval, f.LibraryInterval)
+		clog.Log.Infof("%s: reporting on %s, sessions every %s, libraries every %s and what was played every %s, %s", t.kind, t.server, f.SessionsInterval, f.LibraryInterval, f.HistoryInterval, named(detail))
 		pollers = append(pollers, p)
 	}
 

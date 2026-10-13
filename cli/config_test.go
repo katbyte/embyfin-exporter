@@ -8,6 +8,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/katbyte/embyfin-metrics/lib/mediaserver"
 	"github.com/katbyte/embyfin-metrics/lib/poll"
 	"github.com/katbyte/embyfin-metrics/lib/poll/polltest"
 	"github.com/spf13/cobra"
@@ -91,11 +92,15 @@ func TestDefaults(t *testing.T) {
 	alone(t)
 
 	f := must(t)
-	if f.Listen != ":9096" || f.SessionsInterval != 15*time.Second || f.LibraryInterval != 5*time.Minute {
-		t.Errorf("defaults = %s, sessions every %s, libraries every %s; want :9096, 15s and 5m", f.Listen, f.SessionsInterval, f.LibraryInterval)
+	if f.Listen != ":9096" || f.SessionsInterval != 15*time.Second || f.LibraryInterval != 5*time.Minute || f.HistoryInterval != 30*time.Second {
+		t.Errorf("defaults = %s, sessions every %s, libraries every %s, what was played every %s; want :9096, 15s, 5m and 30s", f.Listen, f.SessionsInterval, f.LibraryInterval, f.HistoryInterval)
 	}
 	if f.EmbyServer != "" || f.EmbyToken != "" || f.JellyfinServer != "" || f.JellyfinToken != "" || f.Labels != "" {
 		t.Errorf("a server or a label is set with nothing given: %+v", f)
+	}
+	// nobody is named unless someone asks
+	if d, err := f.detail(); err != nil || f.Detail != "" || d != (mediaserver.Detail{}) {
+		t.Errorf("with nothing given the page may name %+v (%q, %v), want nobody and nothing", d, f.Detail, err)
 	}
 }
 
@@ -109,12 +114,14 @@ func TestEveryFlagHasAnEnvironmentVariable(t *testing.T) {
 	t.Setenv("EMBYFIN_METRICS_JELLYFIN_TOKEN", "jellyfin-key")
 	t.Setenv("EMBYFIN_METRICS_LISTEN", "127.0.0.1:9000")
 	t.Setenv("EMBYFIN_METRICS_LABELS", "hostname=nas")
+	t.Setenv("EMBYFIN_METRICS_DETAIL", "users,titles")
 	t.Setenv("EMBYFIN_METRICS_SESSIONS_INTERVAL", "45s")
 	t.Setenv("EMBYFIN_METRICS_LIBRARY_INTERVAL", "10m")
+	t.Setenv("EMBYFIN_METRICS_HISTORY_INTERVAL", "2m")
 
 	want := FlagData{
 		EmbyServer: testEmby, EmbyToken: "emby-key", JellyfinServer: testJellyfin, JellyfinToken: "jellyfin-key",
-		Listen: "127.0.0.1:9000", Labels: "hostname=nas", SessionsInterval: 45 * time.Second, LibraryInterval: 10 * time.Minute,
+		Listen: "127.0.0.1:9000", Labels: "hostname=nas", Detail: "users,titles", SessionsInterval: 45 * time.Second, LibraryInterval: 10 * time.Minute, HistoryInterval: 2 * time.Minute,
 	}
 	if got := *must(t); got != want {
 		t.Errorf("from the environment = %+v, want %+v", got, want)
@@ -253,11 +260,15 @@ func TestTargets(t *testing.T) {
 func TestPollers(t *testing.T) {
 	t.Parallel()
 
-	f := FlagData{EmbyServer: testEmby, EmbyToken: "emby-key", JellyfinServer: testJellyfin, JellyfinToken: "jellyfin-key", SessionsInterval: time.Second, LibraryInterval: time.Minute}
+	f := FlagData{EmbyServer: testEmby, EmbyToken: "emby-key", JellyfinServer: testJellyfin, JellyfinToken: "jellyfin-key", Detail: "users", SessionsInterval: time.Second, LibraryInterval: time.Minute, HistoryInterval: time.Second}
 
 	var made []string
-	pollers, err := f.pollers(func(kind, server, token string) (poll.Server, error) {
+	pollers, err := f.pollers(func(kind, server, token string, detail mediaserver.Detail) (poll.Server, error) {
 		made = append(made, kind+" "+server+" "+token)
+		if detail != (mediaserver.Detail{Users: true}) {
+			t.Errorf("%s: made to name %+v, want accounts alone as the settings ask", kind, detail)
+		}
+
 		return &polltest.Server{Named: kind}, nil
 	})
 	if err != nil {
@@ -270,14 +281,59 @@ func TestPollers(t *testing.T) {
 		t.Errorf("clients made for %q, want %q", strings.Join(made, ","), want)
 	}
 
-	_, err = f.pollers(func(string, string, string) (poll.Server, error) { return nil, errors.New("no such host") })
+	_, err = f.pollers(func(string, string, string, mediaserver.Detail) (poll.Server, error) {
+		return nil, errors.New("no such host")
+	})
 	if err == nil || !strings.Contains(err.Error(), "emby: no such host") {
 		t.Errorf("a client that cannot be made = %v, want the error with the server it was for", err)
 	}
 
+	anything := func(kind, _, _ string, _ mediaserver.Detail) (poll.Server, error) {
+		return &polltest.Server{Named: kind}, nil
+	}
+
 	f.SessionsInterval = 0
-	if _, err := f.pollers(func(kind, _, _ string) (poll.Server, error) { return &polltest.Server{Named: kind}, nil }); err == nil {
+	if _, err := f.pollers(anything); err == nil {
 		t.Error("an interval of nothing was accepted")
+	}
+
+	// a word --detail does not know stops the program before any client is made, and the error says which word and which setting
+	f.SessionsInterval, f.Detail = time.Second, "users,everyone"
+	made = nil
+	if _, err := f.pollers(func(kind, _, _ string, _ mediaserver.Detail) (poll.Server, error) {
+		made = append(made, kind)
+		return &polltest.Server{Named: kind}, nil
+	}); err == nil || !strings.Contains(err.Error(), `"everyone"`) || !strings.Contains(err.Error(), "EMBYFIN_METRICS_DETAIL") || len(made) != 0 {
+		t.Errorf("--detail users,everyone = %v with %d clients made, want an error naming the word and the setting and no client", err, len(made))
+	}
+}
+
+// Who and what the page may name is nobody and nothing unless the settings say, a word at a time, in any case and with spaces or not.
+func TestDetail(t *testing.T) {
+	t.Parallel()
+
+	for setting, want := range map[string]mediaserver.Detail{
+		"":               {},
+		" ":              {},
+		"users":          {Users: true},
+		"titles":         {Titles: true},
+		"users,titles":   {Users: true, Titles: true},
+		"Titles, USERS ": {Users: true, Titles: true},
+		"users,,users":   {Users: true},
+		"all":            {Users: true, Titles: true},
+		"all,users":      {Users: true, Titles: true},
+	} {
+		f := FlagData{Detail: setting}
+		if got, err := f.detail(); err != nil || got != want {
+			t.Errorf("--detail %q = %+v and %v, want %+v", setting, got, err, want)
+		}
+	}
+
+	for _, setting := range []string{"everyone", "users titles", "users;titles", "user", "devices"} {
+		f := FlagData{Detail: setting}
+		if got, err := f.detail(); err == nil || got != (mediaserver.Detail{}) {
+			t.Errorf("--detail %q = %+v and %v, want an error and nobody named", setting, got, err)
+		}
 	}
 }
 
@@ -286,7 +342,7 @@ func TestConnect(t *testing.T) {
 	t.Parallel()
 
 	for _, kind := range []string{kindEmby, kindJellyfin} {
-		s, err := connect(kind, testEmby, testToken)
+		s, err := connect(kind, testEmby, testToken, mediaserver.Detail{})
 		if err != nil {
 			t.Fatalf("%s: connect: %v", kind, err)
 		}
@@ -295,7 +351,7 @@ func TestConnect(t *testing.T) {
 		}
 	}
 
-	if s, err := connect("plex", testEmby, testToken); err == nil || s != nil {
+	if s, err := connect("plex", testEmby, testToken, mediaserver.Detail{}); err == nil || s != nil {
 		t.Errorf("connect to a kind that is neither = %v and %v, want an error", s, err)
 	}
 }

@@ -1,8 +1,8 @@
 // Package poll asks each media server for its state on a schedule and keeps the last good answers, so the metrics page is served from memory and a
 // slow or stopped server never holds up a scrape.
 //
-// Nothing here says whose a session is or which film it is playing: the types have no field for a user's name, a device's, an address or a title, so
-// none of them can reach a label. The nearest they come is the kind of thing playing, a film or an episode, and the name of a scheduled task.
+// Nothing here says whose a session is or which film it is playing unless the settings ask for it: an account's name and a title are fields a server
+// leaves empty until it is told to fill them (see mediaserver.Detail), and there is no field for a device's name or an address at all.
 package poll
 
 import (
@@ -22,6 +22,8 @@ type Server interface {
 	Users(ctx context.Context) ([]User, error)
 	// Devices is every device the server knows of, which is every one it has ever seen.
 	Devices(ctx context.Context) ([]Device, error)
+	// History is what has been played in this week and the last, for a server that keeps a record of it.
+	History(ctx context.Context) (History, error)
 }
 
 // Info is what a server says of itself.
@@ -136,8 +138,10 @@ type Library struct {
 	Items map[string]int
 }
 
-// User is one account, less everything that says whose it is.
+// User is one account.
 type User struct {
+	// Name is whose it is, and empty unless the settings ask for accounts to be named.
+	Name     string
 	Disabled bool
 	// LastActive is the zero time for an account never seen.
 	LastActive time.Time
@@ -147,4 +151,33 @@ type User struct {
 type Device struct {
 	// LastActive is the zero time for a device the server gives no date for.
 	LastActive time.Time
+}
+
+// History is what a server's Playback Reporting plugin has of what was played in this week and the last, on the server's own clock. Each sum is
+// the plugin's own and is kept under the week its plays began in, so it is the same after a restart as before and never goes down: a play that runs
+// past midnight on Sunday goes on adding to the week it began in.
+type History struct {
+	// Installed is false for a server without the plugin, which then has nothing below.
+	Installed bool
+	// Plays is everything played, by the kind of thing and by how it reached the device.
+	Plays []Played
+	// ByUser is the same plays by account and kind, and ByTitle by show or film. Both are empty unless the settings ask for them.
+	ByUser  []Played
+	ByTitle []Played
+}
+
+// Played is how much was played of one kind in one week: how many plays there were and how long they ran between them. Which of the other fields
+// are set depends on the list it is in.
+type Played struct {
+	// Week is the Monday of the week the plays began in, as 2006-01-02.
+	Week   string
+	Kind   Kind
+	Method Method
+	// User is an account's name, and Title a show's or a film's.
+	User  string
+	Title string
+
+	// Plays counts a play again each time how it reaches the device changes part way, as the plugin does.
+	Plays   int
+	Seconds int
 }

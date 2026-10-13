@@ -17,6 +17,7 @@ const (
 	Libraries = "libraries"
 	Users     = "users"
 	Devices   = "devices"
+	History   = "history"
 )
 
 // Server answers each question with the value set for it. The zero value is an Emby with nothing on it; set the fields before it is polled.
@@ -30,6 +31,7 @@ type Server struct {
 	LibrariesAnswer []poll.Library
 	UsersAnswer     []poll.User
 	DevicesAnswer   []poll.Device
+	HistoryAnswer   poll.History
 
 	// Slow is how long every question takes to answer, or until the context ends if that is sooner.
 	Slow time.Duration
@@ -112,4 +114,8 @@ func (s *Server) Users(ctx context.Context) ([]poll.User, error) {
 
 func (s *Server) Devices(ctx context.Context) ([]poll.Device, error) {
 	return s.DevicesAnswer, s.answer(ctx, Devices)
+}
+
+func (s *Server) History(ctx context.Context) (poll.History, error) {
+	return s.HistoryAnswer, s.answer(ctx, History)
 }

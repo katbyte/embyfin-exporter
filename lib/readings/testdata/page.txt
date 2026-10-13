@@ -40,7 +40,22 @@ embyfin_library_scan_running{server="emby"} 1
 # HELP embyfin_metrics_build_info Always 1, with the version of the tool that wrote the page.
 # TYPE embyfin_metrics_build_info gauge
 embyfin_metrics_build_info{commit="",goversion="go",version="dev"} 1
-# HELP embyfin_poll_duration_seconds How long the last poll of the server took, by which: sessions or library.
+# HELP embyfin_playback_reporting_installed Whether the server has the Playback Reporting plugin, which is where the readings of what was played come from (1) or not (0).
+# TYPE embyfin_playback_reporting_installed gauge
+embyfin_playback_reporting_installed{server="emby"} 1
+# HELP embyfin_playback_seconds_total Seconds played, by the kind of thing and how it reached the device, as the server's Playback Reporting plugin has them. Plays are kept under the week they began in, named by its Monday; this week and the last are on the page, and neither ever goes down.
+# TYPE embyfin_playback_seconds_total counter
+embyfin_playback_seconds_total{method="direct_play",server="emby",type="episode",week="1999-12-20"} 13500
+embyfin_playback_seconds_total{method="direct_play",server="emby",type="episode",week="1999-12-27"} 60000
+embyfin_playback_seconds_total{method="direct_stream",server="emby",type="movie",week="1999-12-27"} 21600
+embyfin_playback_seconds_total{method="transcode",server="emby",type="episode",week="1999-12-27"} 18000
+# HELP embyfin_plays_total Plays, by the week they began in, the kind of thing and how it reached the device. A play counts again each time how it reaches the device changes.
+# TYPE embyfin_plays_total counter
+embyfin_plays_total{method="direct_play",server="emby",type="episode",week="1999-12-20"} 9
+embyfin_plays_total{method="direct_play",server="emby",type="episode",week="1999-12-27"} 40
+embyfin_plays_total{method="direct_stream",server="emby",type="movie",week="1999-12-27"} 3
+embyfin_plays_total{method="transcode",server="emby",type="episode",week="1999-12-27"} 12
+# HELP embyfin_poll_duration_seconds How long the last poll of the server took, by which: sessions, library or history.
 # TYPE embyfin_poll_duration_seconds gauge
 embyfin_poll_duration_seconds{poll="library",server="emby"} 3
 embyfin_poll_duration_seconds{poll="sessions",server="emby"} 0.25
@@ -101,6 +116,18 @@ embyfin_streams_by_type{server="emby",type="music_video"} 0
 embyfin_streams_by_type{server="emby",type="other"} 0
 embyfin_streams_by_type{server="emby",type="track"} 1
 embyfin_streams_by_type{server="emby",type="video"} 0
+# HELP embyfin_title_playback_seconds_total Seconds played of each show and each film, by the week the plays began in. Only when the settings ask for titles to be named.
+# TYPE embyfin_title_playback_seconds_total counter
+embyfin_title_playback_seconds_total{server="emby",title="Dark",type="episode",week="1999-12-20"} 13500
+embyfin_title_playback_seconds_total{server="emby",title="Dark",type="episode",week="1999-12-27"} 75000
+embyfin_title_playback_seconds_total{server="emby",title="Heat",type="movie",week="1999-12-27"} 21600
+embyfin_title_playback_seconds_total{server="emby",title="Severance",type="episode",week="1999-12-27"} 3000
+# HELP embyfin_title_plays_total Plays of each show and each film, by the week they began in. Only when the settings ask for titles to be named.
+# TYPE embyfin_title_plays_total counter
+embyfin_title_plays_total{server="emby",title="Dark",type="episode",week="1999-12-20"} 9
+embyfin_title_plays_total{server="emby",title="Dark",type="episode",week="1999-12-27"} 50
+embyfin_title_plays_total{server="emby",title="Heat",type="movie",week="1999-12-27"} 3
+embyfin_title_plays_total{server="emby",title="Severance",type="episode",week="1999-12-27"} 2
 # HELP embyfin_transcode_bits_per_second The bitrate of the streams the server is making, added together, in bits a second.
 # TYPE embyfin_transcode_bits_per_second gauge
 embyfin_transcode_bits_per_second{server="emby"} 1.25e+07
@@ -112,6 +139,24 @@ embyfin_transcode_reasons{reason="container_bitrate_exceeds_limit",server="emby"
 # TYPE embyfin_up gauge
 embyfin_up{server="emby"} 1
 embyfin_up{server="jellyfin"} 0
+# HELP embyfin_user_last_seen_timestamp_seconds When each account last did anything, in seconds since 1970. Only when the settings ask for accounts to be named.
+# TYPE embyfin_user_last_seen_timestamp_seconds gauge
+embyfin_user_last_seen_timestamp_seconds{server="emby",user="ada"} 9.466812e+08
+embyfin_user_last_seen_timestamp_seconds{server="emby",user="grace"} 9.464256e+08
+# HELP embyfin_user_playback_seconds_total Seconds played, by the week the plays began in, account and the kind of thing. Only when the settings ask for accounts to be named.
+# TYPE embyfin_user_playback_seconds_total counter
+embyfin_user_playback_seconds_total{server="emby",type="episode",user="ada",week="1999-12-20"} 13500
+embyfin_user_playback_seconds_total{server="emby",type="episode",user="ada",week="1999-12-27"} 48000
+embyfin_user_playback_seconds_total{server="emby",type="episode",user="grace",week="1999-12-27"} 27000
+embyfin_user_playback_seconds_total{server="emby",type="episode",user="unknown",week="1999-12-27"} 3000
+embyfin_user_playback_seconds_total{server="emby",type="movie",user="ada",week="1999-12-27"} 21600
+# HELP embyfin_user_plays_total Plays, by the week they began in, account and the kind of thing. Only when the settings ask for accounts to be named.
+# TYPE embyfin_user_plays_total counter
+embyfin_user_plays_total{server="emby",type="episode",user="ada",week="1999-12-20"} 9
+embyfin_user_plays_total{server="emby",type="episode",user="ada",week="1999-12-27"} 30
+embyfin_user_plays_total{server="emby",type="episode",user="grace",week="1999-12-27"} 20
+embyfin_user_plays_total{server="emby",type="episode",user="unknown",week="1999-12-27"} 2
+embyfin_user_plays_total{server="emby",type="movie",user="ada",week="1999-12-27"} 3
 # HELP embyfin_users How many accounts the server has.
 # TYPE embyfin_users gauge
 embyfin_users{server="emby"} 4

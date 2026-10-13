@@ -4,6 +4,7 @@ import (
 	"cmp"
 	"context"
 	"fmt"
+	"sync/atomic"
 	"time"
 
 	"github.com/katbyte/embyfin-mcp/sdk/embyfin"
@@ -29,21 +30,33 @@ type client interface {
 	Devices(ctx context.Context) ([]embyfin.Device, error)
 }
 
-// Server asks one Emby or Jellyfin the page's questions. It only reads, and what it hands on has no name, address or title in it: only counts and
-// states.
+// Server asks one Emby or Jellyfin the page's questions. It only reads, and what it hands on is counts and states: an account's name or a title is
+// in it only when detail asks for one, and a device's name or an address never.
 type Server struct {
-	client client
+	client  client
+	reports reporter
+	detail  Detail
+
+	// history is whether the server was last seen to have the Playback Reporting plugin (2) or not (1), so the log says so once
+	history atomic.Int32
 }
 
-// Connect is the server of that kind, "emby" or "jellyfin", at address, asked with that key. Nothing is sent until the first question. Set
-// EMBYFIN_METRICS_LOG=TRACE to see every request and its answer, with the key hidden.
-func Connect(kind, address, token string) (*Server, error) {
-	c, err := embyfin.New(embyfin.Backend(kind), address, token, apiclient.WithLog(clog.Log), apiclient.WithRetry(retry))
+// Connect is the server of that kind, "emby" or "jellyfin", at address, asked with that key, and telling of who plays what only as far as detail
+// allows. Nothing is sent until the first question. Set EMBYFIN_METRICS_LOG=TRACE to see every request and its answer, with the key hidden.
+func Connect(kind, address, token string, detail Detail) (*Server, error) {
+	opts := []apiclient.Option{apiclient.WithLog(clog.Log), apiclient.WithRetry(retry)}
+
+	c, err := embyfin.New(embyfin.Backend(kind), address, token, opts...)
 	if err != nil {
 		return nil, fmt.Errorf("%s: %w", kind, err)
 	}
 
-	return &Server{client: c}, nil
+	reports, err := connectPlugin(c.Backend(), address, token, opts...)
+	if err != nil {
+		return nil, fmt.Errorf("%s: %w", kind, err)
+	}
+
+	return &Server{client: c, reports: reports, detail: detail}, nil
 }
 
 // Kind is "emby" or "jellyfin".
@@ -166,7 +179,7 @@ func (s *Server) Libraries(ctx context.Context) ([]poll.Library, error) {
 	return out, nil
 }
 
-// Users is every account: whether it is disabled and when it was last seen, and nothing of whose it is.
+// Users is every account: whether it is disabled and when it was last seen, and whose it is only when the settings ask for accounts to be named.
 func (s *Server) Users(ctx context.Context) ([]poll.User, error) {
 	users, err := s.client.Users(ctx)
 	if err != nil {
@@ -175,7 +188,12 @@ func (s *Server) Users(ctx context.Context) ([]poll.User, error) {
 
 	out := make([]poll.User, 0, len(users))
 	for i := range users {
-		out = append(out, poll.User{Disabled: users[i].Policy.IsDisabled, LastActive: when(users[i].LastActivityDate)})
+		user := poll.User{Disabled: users[i].Policy.IsDisabled, LastActive: when(users[i].LastActivityDate)}
+		if s.detail.Users {
+			user.Name = users[i].Name
+		}
+
+		out = append(out, user)
 	}
 
 	return out, nil

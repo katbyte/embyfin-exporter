@@ -28,13 +28,15 @@ func deployed(t *testing.T) {
 		t.Setenv("EMBYFIN_METRICS_"+kind+"_SERVER", "")
 		t.Setenv("EMBYFIN_METRICS_"+kind+"_TOKEN", "")
 	}
+	t.Setenv("EMBYFIN_METRICS_DETAIL", "")
 	t.Setenv("EMBYFIN_METRICS_"+strings.ToUpper(backend)+"_SERVER", address)
 	t.Setenv("EMBYFIN_METRICS_"+strings.ToUpper(backend)+"_TOKEN", token)
 }
 
-// serving starts the program serving on a port of its own, asking the server that often, and gives back where it is. It is told to stop when the
+// serving starts the program serving on a port of its own, asking the server that often, and gives back where it is. What was played is asked
+// after as often as sessions are, and settings are any more of the program's settings, as its command line takes them. It is told to stop when the
 // test ends, and the test fails if it does not stop cleanly.
-func serving(t *testing.T, sessions, library time.Duration) string {
+func serving(t *testing.T, sessions, library time.Duration, settings ...string) string {
 	t.Helper()
 
 	deployed(t)
@@ -52,7 +54,7 @@ func serving(t *testing.T, sessions, library time.Duration) string {
 	}
 	cmd.SetOut(io.Discard)
 	cmd.SetErr(io.Discard)
-	cmd.SetArgs([]string{"serve", "--listen", at, "--sessions-interval", sessions.String(), "--library-interval", library.String()})
+	cmd.SetArgs(append([]string{"serve", "--listen", at, "--sessions-interval", sessions.String(), "--library-interval", library.String(), "--history-interval", sessions.String()}, settings...))
 
 	ctx, stop := context.WithCancel(context.WithoutCancel(t.Context()))
 	stopped := make(chan error, 1)
@@ -186,8 +188,35 @@ func TestTheProgramServesThePage(t *testing.T) {
 	if strings.Contains(text, token) {
 		t.Error("the key is on the page")
 	}
+	// nobody asked for anyone to be named
+	if strings.Contains(text, `user="`) || strings.Contains(text, `title="`) {
+		t.Errorf("the page names an account or a title when no setting asked for one:\n%s", text)
+	}
 
 	if later, ok := served(t, base, func(later string) bool { return asked(later) > asked(text) }); !ok {
 		t.Errorf("the server was last asked at %v and the page never showed a later answer than %v", asked(later), asked(text))
+	}
+}
+
+// The program names accounts when its settings ask it to: an account that has just signed in is then on the page by name, with when it was last
+// seen. Asked for accounts alone, it names no title.
+func TestTheProgramNamesAccountsWhenAskedTo(t *testing.T) {
+	live(t)
+
+	signIn(t, speaker, speakerApp)
+
+	base := serving(t, time.Second, time.Second, "--detail", "users")
+
+	seen := reading("embyfin_user_last_seen_timestamp_seconds", "user", user)
+	text, ok := served(t, base, func(text string) bool {
+		at, found := value(text, seen)
+
+		return found && time.Since(time.Unix(int64(at), 0)) < time.Hour
+	})
+	if !ok {
+		t.Fatalf("told to name accounts, the page never showed when %s was last seen:\n%s", user, text)
+	}
+	if strings.Contains(text, `title="`) {
+		t.Errorf("told to name accounts alone, the page names a title:\n%s", text)
 	}
 }

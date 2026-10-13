@@ -21,8 +21,8 @@ func makeWith(connect connector) (*cobra.Command, error) {
 		Use:   "embyfin-metrics [command]",
 		Short: "embyfin-metrics reports the state of an Emby and a Jellyfin server as a Prometheus metrics page",
 		Long: `Reports the state of an Emby and a Jellyfin server as a Prometheus metrics page: libraries
-and what is in them, users, sessions and streams, scheduled tasks. One process covers both
-servers, and only ever reads from them.
+and what is in them, users, sessions and streams, scheduled tasks, and what has been played.
+One process covers both servers, and only ever reads from them.
 Complete documentation is available at https://github.com/katbyte/embyfin-metrics`,
 		RunE: func(cmd *cobra.Command, _ []string) error {
 			_, _ = fmt.Fprintln(cmd.OutOrStdout(), "Run \"embyfin-metrics help\" for more information about available embyfin-metrics commands.")
@@ -77,8 +77,11 @@ would be reported.`,
 
 			// the page is printed either way, with what a server that did not answer looks like on it; what went wrong is in the log
 			for _, p := range pollers {
-				if s := p.State(); !s.SessionsRound.OK || !s.LibraryRound.OK {
-					return fmt.Errorf("%s did not answer every question", p.Kind())
+				s := p.State()
+				for _, round := range poll.Rounds {
+					if !s.Round(round).OK {
+						return fmt.Errorf("%s did not answer every question", p.Kind())
+					}
 				}
 			}
 

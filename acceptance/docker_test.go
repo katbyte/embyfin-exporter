@@ -105,13 +105,17 @@ func TestAServerThatStopsAnswering(t *testing.T) {
 }
 
 // The image a deployment runs, started beside the server the way a compose stack starts it: it reaches the server, serves the page with the server
-// up and its films counted, passes its own health check, runs as someone other than root, and writes the key nowhere in its log.
+// up and its films counted, passes its own health check, runs as someone other than root, and writes the key nowhere in its log. Told in its
+// environment to name accounts, as a compose file would tell it, it has an account that signed in on the page by name.
 func TestTheImage(t *testing.T) {
 	live(t)
 
 	if image == "" || container == "" {
 		t.Skip("no image to run: make testacc builds one and names it in EMBYFIN_METRICS_TEST_PROGRAM_IMAGE, beside the server named in EMBYFIN_METRICS_TEST_CONTAINER")
 	}
+
+	// signed in before the image starts, so the account has been seen by the time the image first asks after accounts
+	signIn(t, phone, phoneApp)
 
 	// the server as another container on the same network reaches it, which is not where the tests do
 	inside, err := docker(t, nil, "inspect", "--format", "{{range .NetworkSettings.Networks}}{{.IPAddress}}{{end}}", container)
@@ -126,7 +130,7 @@ func TestTheImage(t *testing.T) {
 	t.Cleanup(func() { _, _ = docker(t, nil, "rm", "--force", name) })
 
 	// the health check is asked every two seconds where the image says thirty, so the test need not wait half a minute for the first
-	if out, err := docker(t, []string{key + "=" + token}, "run", "--detach", "--name", name, "--publish", "127.0.0.1::9096", "--health-interval", "2s", "--env", server+"=http://"+inside+":8096", "--env", key, "--env", "EMBYFIN_METRICS_SESSIONS_INTERVAL=1s", image); err != nil {
+	if out, err := docker(t, []string{key + "=" + token}, "run", "--detach", "--name", name, "--publish", "127.0.0.1::9096", "--health-interval", "2s", "--env", server+"=http://"+inside+":8096", "--env", key, "--env", "EMBYFIN_METRICS_SESSIONS_INTERVAL=1s", "--env", "EMBYFIN_METRICS_DETAIL=users", image); err != nil {
 		t.Fatalf("starting the image %s: %v: %s", image, err, out)
 	}
 
@@ -139,15 +143,20 @@ func TestTheImage(t *testing.T) {
 	text, ok := served(t, base, func(text string) bool {
 		up, _ := value(text, reading("embyfin_up"))
 		counted, _ := value(text, reading("embyfin_library_items", "library", filmLibrary, "type", "movie"))
+		_, named := value(text, reading("embyfin_user_last_seen_timestamp_seconds", "user", user))
+		plugin, _ := value(text, reading("embyfin_playback_reporting_installed"))
 
-		return up == 1 && counted == films
+		return up == 1 && counted == films && named && plugin == 1
 	})
 	if !ok {
 		logs, _ := docker(t, nil, "logs", name)
-		t.Fatalf("the image never served a page with the server up and its films counted:\n%s\nits log:\n%s", text, logs)
+		t.Fatalf("the image never served a page with the server up, its films counted, its plugin found and %s named:\n%s\nits log:\n%s", user, text, logs)
 	}
 	if strings.Contains(text, token) {
 		t.Error("the key is on the page")
+	}
+	if strings.Contains(text, `title="`) {
+		t.Errorf("told to name accounts alone, the image's page names a title:\n%s", text)
 	}
 
 	if status, body := get(t, base+pmetrics.HealthPath); status != http.StatusOK || strings.TrimSpace(body) != "ok" {

@@ -12,7 +12,7 @@ import (
 )
 
 // every is how often the tests poll: the program's own defaults.
-var every = poll.Intervals{Sessions: 15 * time.Second, Library: 5 * time.Minute}
+var every = poll.Intervals{Sessions: 15 * time.Second, Library: 5 * time.Minute, History: 30 * time.Second}
 
 // errDown is a server that is not there.
 var errDown = errors.New("connection refused")
@@ -60,6 +60,50 @@ func TestARoundKeepsItsAnswers(t *testing.T) {
 
 		if s.LibraryRound.Ran || s.Libraries.Known() || s.Users.Known() || server.Asked(polltest.Libraries) != 0 {
 			t.Errorf("the library round ran with the sessions one: %+v", s.LibraryRound)
+		}
+		if s.HistoryRound.Ran || s.History.Known() || server.Asked(polltest.History) != 0 {
+			t.Errorf("the history round ran with the sessions one: %+v", s.HistoryRound)
+		}
+	})
+}
+
+// What was played is asked of a plugin and not of the server itself, so it has a round of its own: a plugin that fails is a failed history round,
+// and the server is still up with its sessions on the page. The plays last read are kept for three of its intervals and no longer.
+func TestWhatWasPlayedHasARoundOfItsOwn(t *testing.T) {
+	t.Parallel()
+
+	synctest.Test(t, func(t *testing.T) {
+		server := &polltest.Server{HistoryAnswer: poll.History{Installed: true, Plays: []poll.Played{{Kind: poll.Movie, Method: poll.DirectPlay, Plays: 1, Seconds: 60}}}}
+		p := newPoller(t, server)
+
+		p.Poll(t.Context(), poll.RoundHistory)
+		first := time.Now()
+		if s := p.State(); !s.HistoryRound.OK || !s.History.Known() || len(s.History.Value.Plays) != 1 || s.SessionsRound.Ran || server.Asked(polltest.Sessions) != 0 {
+			t.Errorf("history round = %+v and history = %+v, want it answered and nothing else asked", s.HistoryRound, s.History)
+		}
+
+		server.Fail(polltest.History, errDown)
+		time.Sleep(every.History)
+		p.Poll(t.Context(), poll.RoundSessions)
+		p.Poll(t.Context(), poll.RoundHistory)
+		s := p.State()
+
+		if !s.Up() || !s.SessionsRound.OK || s.SessionsRound.Failures != 0 {
+			t.Errorf("sessions round = %+v, want the server up while only the plugin fails", s.SessionsRound)
+		}
+		if r := s.HistoryRound; r.OK || r.Failures != 1 || !r.LastSuccess.Equal(first) {
+			t.Errorf("history round = %+v, want one failure and the first round as its last success", r)
+		}
+		if !s.History.Known() || s.History.Value.Plays[0].Seconds != 60 {
+			t.Errorf("history = %+v, want the plays last read", s.History)
+		}
+		if s.Round(poll.RoundHistory) != s.HistoryRound {
+			t.Errorf("Round(history) = %+v, want %+v", s.Round(poll.RoundHistory), s.HistoryRound)
+		}
+
+		time.Sleep(2*every.History + time.Second)
+		if s := p.State(); s.History.Known() {
+			t.Error("the plays last read outlived three of the history round's intervals")
 		}
 	})
 }
@@ -161,7 +205,7 @@ func TestAnAnswerIsDroppedOnceStale(t *testing.T) {
 }
 
 // Run asks at once, so the page has something on it as soon as it is served, and then on each round's own interval until it is told to stop.
-func TestRunPollsOnBothSchedules(t *testing.T) {
+func TestRunPollsOnEverySchedule(t *testing.T) {
 	t.Parallel()
 
 	synctest.Test(t, func(t *testing.T) {
@@ -176,15 +220,15 @@ func TestRunPollsOnBothSchedules(t *testing.T) {
 		}()
 
 		synctest.Wait()
-		if server.Asked(polltest.Sessions) != 1 || server.Asked(polltest.Libraries) != 1 {
-			t.Errorf("on start: sessions asked %d times and libraries %d, want once each", server.Asked(polltest.Sessions), server.Asked(polltest.Libraries))
+		if server.Asked(polltest.Sessions) != 1 || server.Asked(polltest.Libraries) != 1 || server.Asked(polltest.History) != 1 {
+			t.Errorf("on start: sessions asked %d times, libraries %d and history %d, want once each", server.Asked(polltest.Sessions), server.Asked(polltest.Libraries), server.Asked(polltest.History))
 		}
 
-		// five minutes of a round every 15 seconds is 20 more, and one more of the round every five minutes
+		// five minutes of a round every 15 seconds is 20 more, of one every 30 seconds 10 more, and one more of the round every five minutes
 		time.Sleep(every.Library + time.Second)
 		synctest.Wait()
-		if server.Asked(polltest.Sessions) != 21 || server.Asked(polltest.Libraries) != 2 {
-			t.Errorf("after five minutes: sessions asked %d times and libraries %d, want 21 and 2", server.Asked(polltest.Sessions), server.Asked(polltest.Libraries))
+		if server.Asked(polltest.Sessions) != 21 || server.Asked(polltest.Libraries) != 2 || server.Asked(polltest.History) != 11 {
+			t.Errorf("after five minutes: sessions asked %d times, libraries %d and history %d, want 21, 2 and 11", server.Asked(polltest.Sessions), server.Asked(polltest.Libraries), server.Asked(polltest.History))
 		}
 
 		cancel()
@@ -233,7 +277,7 @@ func TestStoppingIsNotAFailure(t *testing.T) {
 func TestNewRefusesAnIntervalOfNothing(t *testing.T) {
 	t.Parallel()
 
-	for _, bad := range []poll.Intervals{{}, {Sessions: time.Second}, {Library: time.Second}, {Sessions: -time.Second, Library: time.Second}} {
+	for _, bad := range []poll.Intervals{{}, {Sessions: time.Second}, {Library: time.Second}, {Sessions: time.Second, Library: time.Second}, {Sessions: -time.Second, Library: time.Second, History: time.Second}, {Sessions: time.Second, Library: time.Second, History: -time.Second}} {
 		if _, err := poll.New(&polltest.Server{}, bad); err == nil {
 			t.Errorf("New accepted %+v", bad)
 		}

@@ -2,22 +2,23 @@
 #
 # Bring up a throwaway Emby or Jellyfin in Docker, lay out a small made-up
 # catalogue for it (films, shows, music, music videos, home videos and photos,
-# books and an audiobook), complete its setup wizard, mint an API key, and
-# print the environment the live tests need.
+# books and an audiobook), give it the Playback Reporting plugin, complete its
+# setup wizard, mint an API key, and print the environment the live tests need.
 #
 #   eval "$(EMBYFIN_METRICS_TEST_BACKEND=jellyfin .scripts/testenv.sh up)"   # start, export EMBYFIN_METRICS_*
 #   EMBYFIN_METRICS_TEST_BACKEND=jellyfin .scripts/testenv.sh down            # stop and remove everything
 #   .scripts/testenv.sh fixtures                                              # write the media tree only
 #
 # This script only does what the tests cannot do through the server's API:
-# run the container, get through the first-run wizard, create the users, mint
-# the API key, and lay the media out on disk. The libraries, the collection
+# run the container, put the plugin in it, get through the first-run wizard,
+# create the users, mint the API key, and lay the media out on disk. The libraries, the collection
 # and the playlist are the test suite's job (acceptance/harness_test.go), and
 # the counts it expects are of the catalogue below: change one and the other
 # must agree.
 #
 # The server is given a proxy nothing listens on, so nothing it would ask of
 # the internet on starting, or for a film's metadata, leaves the container.
+# The plugin is fetched by this script and not by the server for that reason.
 # It is embyfin-mcp's .scripts/testenv.sh cut down to what a program that
 # only reads needs.
 
@@ -28,10 +29,12 @@ case "$BACKEND" in
   emby)
     IMAGE="${EMBYFIN_METRICS_TEST_IMAGE:-emby/embyserver:latest}"
     PORT="${EMBYFIN_METRICS_TEST_PORT:-19097}"
+    PLUGIN="${EMBYFIN_METRICS_TEST_PLUGIN:-https://embydata.com/admin/service/packageFiles/playback_reporting.dll_2.1.0.7.exe}"
     ;;
   jellyfin)
     IMAGE="${EMBYFIN_METRICS_TEST_IMAGE:-jellyfin/jellyfin:latest}"
     PORT="${EMBYFIN_METRICS_TEST_PORT:-19096}"
+    PLUGIN="${EMBYFIN_METRICS_TEST_PLUGIN:-https://repo.jellyfin.org/files/plugin/playback-reporting/playback-reporting_19.0.0.0.zip}"
     ;;
   "")
     if [ "${1:-up}" != "fixtures" ]; then
@@ -239,6 +242,27 @@ EOF
   rm -f "$master"
 }
 
+# plugin lays the Playback Reporting plugin where the server looks for
+# plugins when it starts: the readings of what was played come from it. The
+# address is the one each server's own catalogue gives for the version, and
+# a Jellyfin one is built for one version of Jellyfin: when the server's image
+# moves on, name the newer plugin in EMBYFIN_METRICS_TEST_PLUGIN or above.
+# Emby's is one file; Jellyfin's is a folder of them, zipped.
+plugin() {
+  log "fetching the Playback Reporting plugin"
+  local dir="${DATA}/config/plugins"
+  mkdir -p "$dir"
+  if [ "$BACKEND" = "emby" ]; then
+    curl -fsSL -o "${dir}/playback_reporting.dll" "$PLUGIN"
+  else
+    curl -fsSL -o "${DATA}/plugin.zip" "$PLUGIN"
+    unzip -q -o "${DATA}/plugin.zip" -d "${dir}/Playback Reporting"
+    rm -f "${DATA}/plugin.zip"
+  fi
+  # the server runs as a user of its own and writes beside what it loads
+  chmod -R a+rwX "$dir"
+}
+
 # pull_image fetches the server's image when this machine does not have it:
 # from Google's mirror of Docker Hub, which holds the same image under the
 # same name, and from Docker Hub itself when the mirror does not give it.
@@ -316,9 +340,11 @@ up() {
   command -v ffmpeg >/dev/null || { echo "ffmpeg is required to generate fixtures" >&2; exit 1; }
   command -v jq >/dev/null || { echo "jq is required" >&2; exit 1; }
   command -v docker >/dev/null || { echo "docker is required" >&2; exit 1; }
+  command -v unzip >/dev/null || { echo "unzip is required" >&2; exit 1; }
 
   down >/dev/null 2>&1 || true
   fixtures
+  plugin
   pull_image
 
   log "starting ${IMAGE} as ${NAME} on ${PORT}"

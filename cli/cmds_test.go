@@ -11,6 +11,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/katbyte/embyfin-metrics/lib/mediaserver"
 	"github.com/katbyte/embyfin-metrics/lib/poll"
 	"github.com/katbyte/embyfin-metrics/lib/poll/polltest"
 	"github.com/katbyte/go-kt/pmetrics"
@@ -19,7 +20,7 @@ import (
 
 // servers is a connector that hands out these servers by kind, and one with nothing on it for a kind not among them.
 func servers(known ...*polltest.Server) connector {
-	return func(kind, _, _ string) (poll.Server, error) {
+	return func(kind, _, _ string, _ mediaserver.Detail) (poll.Server, error) {
 		for _, s := range known {
 			if s.Kind() == kind {
 				return s, nil
@@ -72,7 +73,7 @@ func TestMakeBuildsTheCommands(t *testing.T) {
 		}
 	}
 	// a setting is a flag on every command, so it can be given after whichever one is run
-	for _, name := range []string{"emby-server", "jellyfin-token", "listen", "library-interval", "config"} {
+	for _, name := range []string{"emby-server", "jellyfin-token", "listen", "detail", "library-interval", "history-interval", "config"} {
 		if root.PersistentFlags().Lookup(name) == nil {
 			t.Errorf("no --%s flag", name)
 		}
@@ -129,8 +130,8 @@ func TestPrintWritesThePage(t *testing.T) {
 		t.Errorf("the page holds a key:\n%s", out)
 	}
 	// once each, not on a schedule
-	if emby.Asked(polltest.Sessions) != 1 || emby.Asked(polltest.Libraries) != 1 {
-		t.Errorf("print asked for sessions %d times and libraries %d, want once each", emby.Asked(polltest.Sessions), emby.Asked(polltest.Libraries))
+	if emby.Asked(polltest.Sessions) != 1 || emby.Asked(polltest.Libraries) != 1 || emby.Asked(polltest.History) != 1 {
+		t.Errorf("print asked for sessions %d times, libraries %d and what was played %d, want once each", emby.Asked(polltest.Sessions), emby.Asked(polltest.Libraries), emby.Asked(polltest.History))
 	}
 }
 

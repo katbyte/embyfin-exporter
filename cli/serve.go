@@ -18,16 +18,22 @@ func serveCmd(connect connector) *cobra.Command {
 
 A scrape is answered from memory and never waits on a server. Sessions, streams, scheduled
 tasks and the server's own state are read every --sessions-interval; libraries, item counts,
-users and devices every --library-interval. A server that stops answering is reported as
-embyfin_up 0, and does not stop the other being reported.
+users and devices every --library-interval; and what was played every --history-interval,
+from a server that has the Playback Reporting plugin. A server that stops answering is
+reported as embyfin_up 0, and does not stop the other being reported.
+
+No account's name and no title is on the page unless --detail asks: users for the time each
+account has played and when it was last seen, titles for the time each show and film has
+been played, all for everything there is to name.
 
 --labels puts labels of your choosing on every reading, hostname=nas say, for when the page
 is not scraped on the servers' own host and the store has no other way to tell whose it is.
 
 Every setting is also an environment variable: EMBYFIN_METRICS_EMBY_SERVER and
 EMBYFIN_METRICS_EMBY_TOKEN, EMBYFIN_METRICS_JELLYFIN_SERVER and EMBYFIN_METRICS_JELLYFIN_TOKEN,
-EMBYFIN_METRICS_LISTEN, EMBYFIN_METRICS_LABELS, EMBYFIN_METRICS_SESSIONS_INTERVAL and
-EMBYFIN_METRICS_LIBRARY_INTERVAL.`,
+EMBYFIN_METRICS_LISTEN, EMBYFIN_METRICS_LABELS, EMBYFIN_METRICS_DETAIL,
+EMBYFIN_METRICS_SESSIONS_INTERVAL, EMBYFIN_METRICS_LIBRARY_INTERVAL and
+EMBYFIN_METRICS_HISTORY_INTERVAL.`,
 		Args:          cobra.NoArgs,
 		SilenceErrors: true,
 		RunE: func(cmd *cobra.Command, _ []string) error {
