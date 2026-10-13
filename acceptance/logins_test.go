@@ -37,28 +37,32 @@ func TestSignInsAreCounted(t *testing.T) {
 	// a device the server has never seen, so that it has a sign-in to note
 	device := "the-laptop-" + strconv.FormatInt(time.Now().UnixNano(), 36)
 
+	// the account no other test signs in to, so that one more is exactly one more: a server notes a sign-in a moment after it lets it in, and
+	// one a test before this made can land between the two readings (seen on Emby 4.10)
+	who := admin
+
 	counted := summed
 	before := scrapeNaming(t, poll.RoundLibrary)
 
-	if try(t, device, user, "not-the-password") || try(t, device, stranger, "x") {
+	if try(t, device, who, "not-the-password") || try(t, device, stranger, "x") {
 		t.Fatal("the server let in a try with a wrong password or no account")
 	}
-	if !try(t, device, user, password) {
-		t.Fatalf("the server refused %s the right password", user)
+	if !try(t, device, who, password) {
+		t.Fatalf("the server refused %s the right password", who)
 	}
 
 	var text string
 	deadline := time.Now().Add(patience)
 	for text = scrapeNaming(t, poll.RoundLibrary); time.Now().Before(deadline); text = scrapeNaming(t, poll.RoundLibrary) {
-		if counted(text, "embyfin_user_logins_total", "user", user, "result", "ok") > counted(before, "embyfin_user_logins_total", "user", user, "result", "ok") && counted(text, "embyfin_user_logins_total", "user", user, "result", "failed") > counted(before, "embyfin_user_logins_total", "user", user, "result", "failed") {
+		if counted(text, "embyfin_user_logins_total", "user", who, "result", "ok") > counted(before, "embyfin_user_logins_total", "user", who, "result", "ok") && counted(text, "embyfin_user_logins_total", "user", who, "result", "failed") > counted(before, "embyfin_user_logins_total", "user", who, "result", "failed") {
 			break
 		}
 		time.Sleep(500 * time.Millisecond)
 	}
 
 	for name, labels := range map[string][]string{
-		"sign-ins by " + user:           {"user", user, "result", "ok"},
-		"tries on " + user + " refused": {"user", user, "result", "failed"},
+		"sign-ins by " + who:           {"user", who, "result", "ok"},
+		"tries on " + who + " refused": {"user", who, "result", "failed"},
 	} {
 		if now, was := counted(text, "embyfin_user_logins_total", labels...), counted(before, "embyfin_user_logins_total", labels...); now != was+1 {
 			t.Errorf("%s went from %v to %v, want one more:\n%s", name, was, now, strings.Join(every(text, "embyfin_user_logins_total"), "\n"))
@@ -83,8 +87,8 @@ func TestSignInsAreCounted(t *testing.T) {
 	// the week they are under is this one, by its Monday in UTC
 	now := time.Now().UTC()
 	monday := now.AddDate(0, 0, -(int(now.Weekday())+6)%7).Format(time.DateOnly)
-	if got, found := value(text, reading("embyfin_user_logins_total", "user", user, "result", "failed", "week", monday)); !found || got < 1 {
-		t.Errorf("tries on %s refused in the week of %s = %v (on the page: %t), want the one just made", user, monday, got, found)
+	if got, found := value(text, reading("embyfin_user_logins_total", "user", who, "result", "failed", "week", monday)); !found || got < 1 {
+		t.Errorf("tries on %s refused in the week of %s = %v (on the page: %t), want the one just made", who, monday, got, found)
 	}
 
 	// what was typed by whoever tried is on no page, and the page that names nobody has the counts and no account
