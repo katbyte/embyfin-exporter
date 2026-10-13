@@ -157,19 +157,49 @@ const (
 	lastWeek  = "date('now', 'localtime', 'weekday 0', '-13 days')"
 )
 
-// historyQuery is the question put to the plugin: how many plays there were and how long they ran, in this week and the last, by kind and by how
-// each reached the device, and by account and by title only when detail asks for those. Nothing in it comes from outside this program.
-func historyQuery(detail Detail) string {
+// A play that ended within a minute of beginning, as the plugin's database is asked for one: shorter than a minute, and not added to for five
+// minutes, since one still playing is short too until it has run a minute. Emby's plugin keeps how long a play was paused apart from how long it
+// played, and Jellyfin's does not keep it at all.
+const (
+	shortOnEmby     = "(PlayDuration < 60 AND (julianday('now', 'localtime') - julianday(DateCreated)) * 86400 > PlayDuration + IFNULL(PauseDuration, 0) + 300)"
+	shortOnJellyfin = "(PlayDuration < 60 AND (julianday('now', 'localtime') - julianday(DateCreated)) * 86400 > PlayDuration + 300)"
+)
+
+// asking is what one server's plugin is asked for, which settles the question and how its answer is read.
+type asking struct {
+	// emby says the plugin is Emby's, which keeps why a stream was made and Jellyfin's does not (seen on 2.1.0.7 and 19.0.0.0).
+	emby   bool
+	detail Detail
+}
+
+// query is the question put to the plugin: how many plays there were, how long they ran and whether they ended within a minute, in this week and
+// the last, by kind and by how each reached the device; by account, by title and by device only when detail asks for those; and on Emby by why a
+// stream was made. Nothing in it comes from outside this program.
+func (a asking) query() string {
 	by := []string{weekBegun, "ItemType", "PlaybackMethod"}
-	if detail.Users {
+	if a.detail.Users {
 		by = append(by, "UserId")
 	}
-	if detail.Titles {
+	if a.detail.Titles {
 		by = append(by, "ItemName")
 	}
-	columns := strings.Join(by, ", ")
+
+	short := shortOnJellyfin
+	if a.emby {
+		short = shortOnEmby
+		by = append(by, "TranscodeReasons")
+		if a.detail.Devices {
+			by = append(by, "DeviceName", "ClientName")
+		}
+	}
+	columns := strings.Join(append(by, short), ", ")
 
 	return "SELECT " + columns + ", COUNT(*), SUM(PlayDuration) FROM PlaybackActivity WHERE DateCreated >= " + lastWeek + " GROUP BY " + columns
+}
+
+// asking is what this server's plugin is asked for.
+func (s *Server) asking() asking {
+	return asking{emby: s.client.Backend() == embyfin.Emby, detail: s.detail}
 }
 
 // History is what the server's Playback Reporting plugin has of what was played in this week and the last. A server without the plugin has no
@@ -185,9 +215,12 @@ func (s *Server) History(ctx context.Context) (poll.History, error) {
 		return poll.History{}, nil
 	}
 
+	asked := s.asking()
+
 	plays, byUser, byTitle := map[poll.Played]poll.Played{}, map[poll.Played]poll.Played{}, map[poll.Played]poll.Played{}
+	byReason, byClient := map[poll.Played]poll.Played{}, map[poll.Played]poll.Played{}
 	for _, row := range rows {
-		p, err := historyRow(row, s.detail)
+		p, why, err := asked.row(row)
 		if err != nil {
 			return poll.History{}, err
 		}
@@ -200,15 +233,23 @@ func (s *Server) History(ctx context.Context) (poll.History, error) {
 		if s.detail.Titles && p.Title != "" {
 			tally(byTitle, poll.Played{Week: p.Week, Kind: p.Kind, Title: p.Title}, p)
 		}
+
+		// a play with two reasons is under both
+		for _, reason := range why {
+			tally(byReason, poll.Played{Week: p.Week, Reason: reason}, p)
+			if s.detail.Devices {
+				tally(byClient, poll.Played{Week: p.Week, Reason: reason, Device: p.Device, Client: p.Client}, p)
+			}
+		}
 	}
 
-	return poll.History{Installed: true, Plays: listed(plays), ByUser: listed(byUser), ByTitle: listed(byTitle)}, nil
+	return poll.History{Installed: true, Plays: listed(plays), ByUser: listed(byUser), ByTitle: listed(byTitle), ByReason: listed(byReason), ByClient: listed(byClient)}, nil
 }
 
 // askPlugin puts the question to the plugin, and puts it again a moment later when the plugin's record was being written to as it arrived.
 func (s *Server) askPlugin(ctx context.Context) (rows [][]string, installed bool, err error) {
 	for try := 1; ; try++ {
-		rows, installed, err = s.reports.Query(ctx, historyQuery(s.detail), s.detail.Users)
+		rows, installed, err = s.reports.Query(ctx, s.asking().query(), s.detail.Users)
 		if !errors.Is(err, errBusy) || try == busyTries {
 			return rows, installed, err
 		}
@@ -240,38 +281,51 @@ func (s *Server) noteHistory(installed bool) {
 	clog.Log.Infof("%s: the server has no Playback Reporting plugin, so there are no readings of what was played", s.Kind())
 }
 
-// historyRow is one row of the plugin's answer in the page's words. The columns are in the order historyQuery asked for them.
-func historyRow(row []string, detail Detail) (poll.Played, error) {
-	want := 5
-	if detail.Users {
-		want++
-	}
-	if detail.Titles {
-		want++
+// row is one row of the plugin's answer in the page's words, and why the server made a stream for its plays when it says. The columns are in the
+// order query asked for them.
+func (a asking) row(row []string) (p poll.Played, why []string, err error) {
+	want := 6
+	for _, more := range []bool{a.detail.Users, a.detail.Titles, a.emby, a.emby && a.detail.Devices, a.emby && a.detail.Devices} {
+		if more {
+			want++
+		}
 	}
 	if len(row) != want {
-		return poll.Played{}, fmt.Errorf("the Playback Reporting plugin gave a row of %d values where %d were asked for", len(row), want)
+		return poll.Played{}, nil, fmt.Errorf("the Playback Reporting plugin gave a row of %d values where %d were asked for", len(row), want)
 	}
 	if _, err := time.Parse(time.DateOnly, row[0]); err != nil {
-		return poll.Played{}, fmt.Errorf("the Playback Reporting plugin gave %q where the day a week began was asked for", row[0])
+		return poll.Played{}, nil, fmt.Errorf("the Playback Reporting plugin gave %q where the day a week began was asked for", row[0])
 	}
 
-	p := poll.Played{Week: row[0], Kind: playing(row[1]), Method: reported(row[2])}
+	p = poll.Played{Week: row[0], Kind: playing(row[1]), Method: reported(row[2])}
 	next := 3
-	if detail.Users {
+	if a.detail.Users {
 		p.User = account(row[next])
 		next++
 	}
-	if detail.Titles {
+	if a.detail.Titles {
 		p.Title = title(p.Kind, row[next])
 		next++
 	}
+	if a.emby {
+		// the plugin writes the reasons one after another with spaces between
+		why = reasons(strings.Fields(row[next]))
+		next++
+	}
+	if a.emby && a.detail.Devices {
+		p.Device, p.Client = row[next], row[next+1]
+		next += 2
+	}
 
 	var errs [2]error
-	p.Plays, errs[0] = number(row[next])
-	p.Seconds, errs[1] = number(row[next+1])
+	p.Plays, errs[0] = number(row[next+1])
+	p.Seconds, errs[1] = number(row[next+2])
+	// the plugin's database says yes as 1
+	if row[next] == "1" {
+		p.Short = p.Plays
+	}
 
-	return p, errors.Join(errs[:]...)
+	return p, why, errors.Join(errs[:]...)
 }
 
 // number is a count as the plugin writes one, and nothing for an empty one.
@@ -296,6 +350,7 @@ func tally(into map[poll.Played]poll.Played, by, row poll.Played) {
 	}
 	sum.Plays += row.Plays
 	sum.Seconds += row.Seconds
+	sum.Short += row.Short
 
 	into[by] = sum
 }
@@ -308,7 +363,7 @@ func listed(sums map[poll.Played]poll.Played) []poll.Played {
 	}
 
 	slices.SortFunc(out, func(a, b poll.Played) int {
-		return cmp.Or(cmp.Compare(a.Week, b.Week), cmp.Compare(a.User, b.User), cmp.Compare(a.Title, b.Title), cmp.Compare(a.Kind, b.Kind), cmp.Compare(a.Method, b.Method))
+		return cmp.Or(cmp.Compare(a.Week, b.Week), cmp.Compare(a.User, b.User), cmp.Compare(a.Title, b.Title), cmp.Compare(a.Device, b.Device), cmp.Compare(a.Client, b.Client), cmp.Compare(a.Reason, b.Reason), cmp.Compare(a.Kind, b.Kind), cmp.Compare(a.Method, b.Method))
 	})
 
 	return out

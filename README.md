@@ -59,6 +59,8 @@ Every reading starts `embyfin_` and has a `server` label, `emby` or `jellyfin`.
 | `embyfin_user_last_seen_timestamp_seconds` | `user` | when each account last did anything; only when [accounts are named](#nobodys-name-is-on-it-unless-you-ask) |
 | `embyfin_devices` | | how many devices the server knows of, which is every one it has ever seen |
 | `embyfin_devices_active` | `window` | devices seen within the last `1d`, `7d` or `30d` |
+| `embyfin_logins_total` | `week`, `result`, `network` | times an account was signed in to (`ok`) and tries that were refused (`failed`), by where they came from, see [who signed in](#who-signed-in) |
+| `embyfin_user_logins_total` | `week`, `user`, `result` | the same by account; only when accounts are named |
 | `embyfin_playback_reporting_installed` | | 1 when the server has the Playback Reporting plugin, which the readings below come from, and 0 when it has not, see [what was played](#what-was-played) |
 | `embyfin_playback_seconds_total` | `week`, `type`, `method` | seconds played, by the kind of thing and how it reached the device |
 | `embyfin_plays_total` | `week`, `type`, `method` | how many plays that was |
@@ -66,6 +68,11 @@ Every reading starts `embyfin_` and has a `server` label, `emby` or `jellyfin`.
 | `embyfin_user_plays_total` | `week`, `user`, `type` | how many plays that was |
 | `embyfin_title_playback_seconds_total` | `week`, `title`, `type` | seconds each show and each film was played; only when titles are named |
 | `embyfin_title_plays_total` | `week`, `title`, `type` | how many plays that was |
+| `embyfin_short_plays_total` | `week`, `type`, `method` | plays that ended within a minute of beginning, which is what one that failed looks like |
+| `embyfin_transcode_reason_seconds_total` | `week`, `reason` | seconds played of streams the server made, by each reason it gave; Emby only |
+| `embyfin_transcode_reason_plays_total` | `week`, `reason` | how many plays that was |
+| `embyfin_client_transcode_reason_seconds_total` | `week`, `device`, `client`, `reason` | the same by the device and its app; Emby only, and only when devices are named |
+| `embyfin_client_transcode_reason_plays_total` | `week`, `device`, `client`, `reason` | how many plays that was |
 | `embyfin_metrics_build_info` | `version`, `commit`, `goversion` | always 1; the version of embyfin-metrics that wrote the page (no `server` label) |
 
 The page holds nothing but these: none of the Go runtime's or the process's own readings.
@@ -143,7 +150,25 @@ topk(10, sum by (title) (increase(embyfin_title_playback_seconds_total[7d])))   
 
 **A title is a show or a film.** An episode is under its show, and there is no reading for each song or trailer. **An account is under its name**, and plays by accounts since deleted are together under `unknown`.
 
+**A short play is one that ended within a minute**, counted five minutes after it stopped, since a play that has just begun is short too. It is what a play that failed looks like, and also what skipping through songs looks like, so read it by `type` and `method`. Emby's plugin starts a new line each time a play changes how it reaches the device, so a file that will not play as it is and is then made a stream of shows as a short `direct_play`; Jellyfin's does not record a play that lasts under 20 seconds at all.
+
+**Why streams were made is kept by Emby's plugin alone.** On Emby the page has the plays and the seconds under each reason the server gave, and for which device and app when devices are named, so the television or the app that needs a setting changed shows up over a week and not only while it plays. `direct_play_error` is the nearest either server comes to recording a play that went wrong: the device tried the file as it is and could not play it. Jellyfin's plugin keeps no reasons, so there the reasons are only on the page [while a stream is being made](#why-a-stream-is-made).
+
 The plugin is asked with a `POST`, which is the only way it takes a question, and it would run whatever it was sent. This program sends it one question, written in the program and asking for sums; it is still only a read.
+
+### Who signed in
+
+`embyfin_logins_total` counts the times an account was signed in to and the tries that were refused, from each server's activity log, by where they came from: `home`, `remote` or `unknown`, worked out from the address the server noted and never the address itself. On a server the internet can reach, the one to watch is:
+
+```promql
+sum by (server) (increase(embyfin_logins_total{result="failed",network="remote"}[1h]))
+```
+
+As with what was played, a sign-in is kept under the week it was made in, here by its Monday in UTC, with this week and the last on the page: `sum` the `week` away.
+
+With accounts named, `embyfin_user_logins_total` has the same by account. The account is read out of the server's own sentence for the sign-in, in the English both servers write by default; a server set to another language has them under `unknown`. A try on a name the server has no account of is under `unknown` too, whatever was typed: nothing someone outside types becomes a label. Emby notes such tries and Jellyfin does not.
+
+Neither server keeps a note of a play that failed in its activity log, so there is no reading of playback errors from it; see `direct_play_error` above.
 
 ### Nobody's name is on it unless you ask
 
@@ -151,9 +176,9 @@ Left alone there is no user name, device name, client address or title of what i
 
 | `EMBYFIN_METRICS_DETAIL` | Adds |
 |---|---|
-| `users` | whose each session is, the time each account has played, and when it was last seen |
+| `users` | whose each session is, the time each account has played, when it was last seen, and its sign-ins |
 | `titles` | what each session is playing, and the time each show and each film has been played |
-| `devices` | the device and the app each session plays on, and which of them each reason for a stream belongs to |
+| `devices` | the device and the app each session plays on, and which of them each reason for a stream belongs to, now and over the week |
 | `all` | all three, and whatever a later version can name |
 
 Words are joined with commas: `users,titles`. What a word left out would name is left behind in the server's answer, or never asked of the server at all, so it cannot reach a label by accident. The address a device connects from is never on the page whatever is asked.
@@ -196,7 +221,7 @@ All options can be passed as command-line flags, environment variables, or via a
 | `EMBYFIN_METRICS_LABELS` | `--labels` | labels to put on every reading, as `name=value,name=value`, e.g. `hostname=nas`; none by default. A label named as one a reading already has, `server` say, stops the program with its name |
 | `EMBYFIN_METRICS_DETAIL` | `--detail` | who and what the page may name, as a list of `users`, `titles`, `devices` or `all`; nobody and nothing by default, see [nobody's name is on it unless you ask](#nobodys-name-is-on-it-unless-you-ask). A word it does not know stops the program |
 | `EMBYFIN_METRICS_SESSIONS_INTERVAL` | `--sessions-interval` | how often sessions, streams, scheduled tasks and the server's own state are read, default `15s` |
-| `EMBYFIN_METRICS_LIBRARY_INTERVAL` | `--library-interval` | how often libraries, item counts, users and devices are read, default `5m` |
+| `EMBYFIN_METRICS_LIBRARY_INTERVAL` | `--library-interval` | how often libraries, item counts, users, devices and sign-ins are read, default `5m` |
 | `EMBYFIN_METRICS_HISTORY_INTERVAL` | `--history-interval` | how often what was played is read, from a server with the Playback Reporting plugin, default `30s` |
 | `EMBYFIN_METRICS_LOG` | | log level (`WARN` default): `INFO` adds what is being reported on and when a server comes back, `TRACE` every request to a server and its answer, with keys blanked. An answer names users and what they are playing, so `TRACE` is for finding a fault and not for leaving on |
 | `EMBYFIN_METRICS_CONFIG` | `--config` | read settings from this file and no other, in place of `./.embyfin-metrics` or `~/.embyfin-metrics` |
@@ -300,7 +325,8 @@ The live tests (`acceptance/`) are where a real server gets to answer otherwise.
 - it checks the line each playing session has of its own: whose it is, the film, the device and its app for a program told to name them, none of them for one that was not, and gone once stopped
 - it asks for a scan and catches it under way
 - it plays a film and watches the time played go up on the page while it plays, under the account and the title only for a program told to name them
-- it lays plays down in the plugin's record in this week, the last and three weeks back, and checks each is under its own week or off the page
+- it lays plays down in the plugin's record in this week, the last and three weeks back, and checks each is under its own week or off the page, the short ones counted and, on Emby, each under the reason and the device it was made a stream for
+- it signs in rightly, wrongly and as nobody the server knows, and checks each is counted and that the name tried is on no page
 - it runs `serve` and scrapes it over HTTP, then freezes the server's container to see it reported as down, its readings left off, and back again when thawed
 - it starts the image `make docker` builds beside the server, and checks it serves the page, passes its own health check, does not run as root, and names accounts when its environment asks
 

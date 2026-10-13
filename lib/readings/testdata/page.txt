@@ -1,3 +1,11 @@
+# HELP embyfin_client_transcode_reason_plays_total Plays the server made a stream for, by the week they began in, the device, its app and each reason. Only when the settings ask for devices to be named.
+# TYPE embyfin_client_transcode_reason_plays_total counter
+embyfin_client_transcode_reason_plays_total{client="Den Player",device="the television in the den",reason="container_bitrate_exceeds_limit",server="emby",week="1999-12-27"} 10
+embyfin_client_transcode_reason_plays_total{client="Pocket Player",device="the phone in the hall",reason="direct_play_error",server="emby",week="1999-12-27"} 2
+# HELP embyfin_client_transcode_reason_seconds_total Seconds played of streams the server made, by the week the plays began in, the device, its app and each reason. Only when the settings ask for devices to be named.
+# TYPE embyfin_client_transcode_reason_seconds_total counter
+embyfin_client_transcode_reason_seconds_total{client="Den Player",device="the television in the den",reason="container_bitrate_exceeds_limit",server="emby",week="1999-12-27"} 15000
+embyfin_client_transcode_reason_seconds_total{client="Pocket Player",device="the phone in the hall",reason="direct_play_error",server="emby",week="1999-12-27"} 3000
 # HELP embyfin_client_transcode_reasons Sessions the server is making a stream for, by the device, its app and each reason the server gives. Only when the settings ask for devices to be named.
 # TYPE embyfin_client_transcode_reasons gauge
 embyfin_client_transcode_reasons{client="Den Player",device="the television in the den",reason="container_bitrate_exceeds_limit",server="emby"} 1
@@ -42,6 +50,12 @@ embyfin_library_scan_progress_ratio{server="emby"} 0.25
 # HELP embyfin_library_scan_running Whether the scan of every library is running (1) or not (0).
 # TYPE embyfin_library_scan_running gauge
 embyfin_library_scan_running{server="emby"} 1
+# HELP embyfin_logins_total Times an account was signed in to (ok) and tries that were refused (failed), by the week they were made in, named by its Monday in UTC, and where they came from: home, remote or unknown. This week and the last are on the page.
+# TYPE embyfin_logins_total counter
+embyfin_logins_total{network="home",result="failed",server="emby",week="1999-12-20"} 1
+embyfin_logins_total{network="home",result="ok",server="emby",week="1999-12-27"} 4
+embyfin_logins_total{network="remote",result="failed",server="emby",week="1999-12-27"} 43
+embyfin_logins_total{network="remote",result="ok",server="emby",week="1999-12-27"} 3
 # HELP embyfin_metrics_build_info Always 1, with the version of the tool that wrote the page.
 # TYPE embyfin_metrics_build_info gauge
 embyfin_metrics_build_info{commit="",goversion="go",version="dev"} 1
@@ -126,6 +140,12 @@ embyfin_session_runtime_seconds{server="emby",session="0c"} 240
 embyfin_sessions{server="emby",state="idle"} 2
 embyfin_sessions{server="emby",state="paused"} 1
 embyfin_sessions{server="emby",state="playing"} 2
+# HELP embyfin_short_plays_total Plays that ended within a minute of beginning, which is what one that failed looks like, by the week they began in, the kind of thing and how it reached the device. A play is counted five minutes after it stopped.
+# TYPE embyfin_short_plays_total counter
+embyfin_short_plays_total{method="direct_play",server="emby",type="episode",week="1999-12-20"} 0
+embyfin_short_plays_total{method="direct_play",server="emby",type="episode",week="1999-12-27"} 3
+embyfin_short_plays_total{method="direct_stream",server="emby",type="movie",week="1999-12-27"} 0
+embyfin_short_plays_total{method="transcode",server="emby",type="episode",week="1999-12-27"} 0
 # HELP embyfin_streams Sessions playing or paused, by how what they play reaches the device.
 # TYPE embyfin_streams gauge
 embyfin_streams{method="direct_play",server="emby"} 1
@@ -166,6 +186,14 @@ embyfin_title_plays_total{server="emby",title="Severance",type="episode",week="1
 # HELP embyfin_transcode_bits_per_second The bitrate of the streams the server is making, added together, in bits a second.
 # TYPE embyfin_transcode_bits_per_second gauge
 embyfin_transcode_bits_per_second{server="emby"} 1.25e+07
+# HELP embyfin_transcode_reason_plays_total Plays the server made a stream for, by the week they began in and each reason it gave.
+# TYPE embyfin_transcode_reason_plays_total counter
+embyfin_transcode_reason_plays_total{reason="container_bitrate_exceeds_limit",server="emby",week="1999-12-27"} 10
+embyfin_transcode_reason_plays_total{reason="direct_play_error",server="emby",week="1999-12-27"} 2
+# HELP embyfin_transcode_reason_seconds_total Seconds played of streams the server made, by the week the plays began in and each reason the server gave for not sending the file as it is. A play with two reasons is under both. From Emby's plugin, which alone keeps the reasons.
+# TYPE embyfin_transcode_reason_seconds_total counter
+embyfin_transcode_reason_seconds_total{reason="container_bitrate_exceeds_limit",server="emby",week="1999-12-27"} 15000
+embyfin_transcode_reason_seconds_total{reason="direct_play_error",server="emby",week="1999-12-27"} 3000
 # HELP embyfin_transcode_reasons Sessions the server is making a stream for, by each reason it gives for not sending the file as it is. A session with two reasons is under both.
 # TYPE embyfin_transcode_reasons gauge
 embyfin_transcode_reasons{reason="audio_codec_not_supported",server="emby"} 1
@@ -178,6 +206,13 @@ embyfin_up{server="jellyfin"} 0
 # TYPE embyfin_user_last_seen_timestamp_seconds gauge
 embyfin_user_last_seen_timestamp_seconds{server="emby",user="ada"} 9.466812e+08
 embyfin_user_last_seen_timestamp_seconds{server="emby",user="grace"} 9.464256e+08
+# HELP embyfin_user_logins_total The same sign-ins by account, with tries on a name the server has no account of under unknown. Only when the settings ask for accounts to be named.
+# TYPE embyfin_user_logins_total counter
+embyfin_user_logins_total{result="failed",server="emby",user="ada",week="1999-12-27"} 3
+embyfin_user_logins_total{result="failed",server="emby",user="grace",week="1999-12-20"} 1
+embyfin_user_logins_total{result="failed",server="emby",user="unknown",week="1999-12-27"} 40
+embyfin_user_logins_total{result="ok",server="emby",user="ada",week="1999-12-27"} 5
+embyfin_user_logins_total{result="ok",server="emby",user="grace",week="1999-12-27"} 2
 # HELP embyfin_user_playback_seconds_total Seconds played, by the week the plays began in, account and the kind of thing. Only when the settings ask for accounts to be named.
 # TYPE embyfin_user_playback_seconds_total counter
 embyfin_user_playback_seconds_total{server="emby",type="episode",user="ada",week="1999-12-20"} 13500

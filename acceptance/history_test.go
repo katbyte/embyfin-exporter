@@ -67,11 +67,18 @@ func plugin(t *testing.T, sql string) [][]string {
 }
 
 // lay puts one play in the plugin's record by hand: whose it was, by the account's id, what kind of thing and what the plugin would call it, how
-// it reached the device, how long it ran, and how many days ago it began.
-func lay(t *testing.T, account, kind, name, method string, seconds, daysAgo int) {
+// it reached the device, how long it ran, and how long ago it began, as "7 days" or "1 hours". More is any other columns of the record to fill,
+// as name, value pairs: the device, or on Emby why the server made a stream.
+func lay(t *testing.T, account, kind, name, method string, seconds int, ago string, more ...string) {
 	t.Helper()
 
-	plugin(t, "INSERT INTO PlaybackActivity (DateCreated, UserId, ItemId, ItemType, ItemName, PlaybackMethod, ClientName, DeviceName, PlayDuration) VALUES (datetime('now', 'localtime', '-"+strconv.Itoa(daysAgo)+" days'), '"+account+"', '1', '"+kind+"', '"+name+"', '"+method+"', '"+byHand+"', 'no device', "+strconv.Itoa(seconds)+")")
+	var columns, values strings.Builder
+	for i := 0; i+1 < len(more); i += 2 {
+		columns.WriteString(", " + more[i])
+		values.WriteString(", '" + more[i+1] + "'")
+	}
+
+	plugin(t, "INSERT INTO PlaybackActivity (DateCreated, UserId, ItemId, ItemType, ItemName, PlaybackMethod, ClientName, PlayDuration"+columns.String()+") VALUES (datetime('now', 'localtime', '-"+ago+"'), '"+account+"', '1', '"+kind+"', '"+name+"', '"+method+"', '"+byHand+"', "+strconv.Itoa(seconds)+values.String()+")")
 }
 
 // summed adds up every reading of a name whose labels include the ones given, as name, value pairs: the same account's or title's plays in each
@@ -189,11 +196,11 @@ func TestPlaysAreKeptUnderTheWeekTheyBeganIn(t *testing.T) {
 		film = "A Film Nobody Made"
 	)
 
-	lay(t, someone.userID, "Episode", show+" - s01e01 - One", "DirectPlay", 1000, 7)
-	lay(t, someone.userID, "Episode", show+" - s01e02 - Two", "Transcode (v:h264 a:aac)", 200, 7)
-	lay(t, gone, "Movie", film, "Transcode (v:direct a:direct)", 500, 7)
-	lay(t, someone.userID, "Movie", film, "DirectPlay", 9999, 21)
-	lay(t, gone, "Episode", show+" - s01e03 - Three", "DirectStream", 700, 0)
+	lay(t, someone.userID, "Episode", show+" - s01e01 - One", "DirectPlay", 1000, "7 days")
+	lay(t, someone.userID, "Episode", show+" - s01e02 - Two", "Transcode (v:h264 a:aac)", 200, "7 days")
+	lay(t, gone, "Movie", film, "Transcode (v:direct a:direct)", 500, "7 days")
+	lay(t, someone.userID, "Movie", film, "DirectPlay", 9999, "21 days")
+	lay(t, gone, "Episode", show+" - s01e03 - Three", "DirectStream", 700, "0 days")
 
 	text := scrapeNaming(t, poll.RoundHistory)
 	want := map[string]float64{
@@ -248,5 +255,82 @@ func TestPlaysAreKeptUnderTheWeekTheyBeganIn(t *testing.T) {
 		if strings.Contains(plain, private) {
 			t.Errorf("the page of a program not told to name anyone has %q on it:\n%s", private, plain)
 		}
+	}
+}
+
+// A play that ended within a minute of beginning is what one that failed looks like, and is counted once it has not been added to for five
+// minutes: one that began a moment ago is short too, and may be going to run for an hour. Laid down by hand in a real server's plugin, as
+// trailers, which nothing else here plays.
+//
+// Emby's plugin also keeps why the server made a stream of each play and for which device, so on Emby the page has each reason, and each
+// device's and app's share of it for a program told to name devices. Jellyfin's keeps neither, and its page has no such readings.
+func TestPlaysThatEndedWithinAMinuteAndWhyStreamsWereMade(t *testing.T) {
+	live(t)
+
+	sweep := func() { plugin(t, "DELETE FROM PlaybackActivity WHERE ClientName = '"+byHand+"'") }
+	sweep()
+	t.Cleanup(sweep)
+
+	weeks := plugin(t, "SELECT date('now', 'localtime', 'weekday 0', '-6 days'), date('now', 'localtime', 'weekday 0', '-13 days'), date('now', 'localtime', '-1 hours')")
+	thisWeek, lastWeek := weeks[0][0], weeks[0][1]
+	// an hour ago is last week for the first hour of a Monday
+	if weeks[0][2] < thisWeek {
+		t.Skip("the week is under an hour old on the server's clock: an hour ago was last week")
+	}
+
+	someone := signIn(t, speaker, speakerApp)
+	const (
+		trailer    = "A Trailer Nobody Made"
+		television = "a television nobody owns"
+	)
+
+	var why []string
+	if backend == emby {
+		why = []string{"DeviceName", television, "TranscodeReasons", "ReasonNobodyGives DirectPlayError ReasonNobodyGives"}
+	}
+
+	lay(t, someone.userID, "Trailer", trailer, "DirectStream", 20, "1 hours", why...)
+	lay(t, someone.userID, "Trailer", trailer, "DirectStream", 900, "1 hours", why...)
+	lay(t, someone.userID, "Trailer", trailer, "DirectStream", 5, "1 seconds", why...)
+	lay(t, someone.userID, "Trailer", trailer, "DirectStream", 30, "7 days", why...)
+	// a file sent as it is has no reason
+	lay(t, someone.userID, "Trailer", trailer, "DirectPlay", 59, "7 days")
+
+	plain := scrape(t, poll.RoundHistory)
+	expect(t, plain, map[string]float64{
+		reading("embyfin_plays_total", "type", "other", "method", "direct_stream", "week", thisWeek):       3,
+		reading("embyfin_short_plays_total", "type", "other", "method", "direct_stream", "week", thisWeek): 1,
+		reading("embyfin_short_plays_total", "type", "other", "method", "direct_stream", "week", lastWeek): 1,
+		reading("embyfin_short_plays_total", "type", "other", "method", "direct_play", "week", lastWeek):   1,
+	})
+
+	told := scrapeNaming(t, poll.RoundHistory)
+	if backend != emby {
+		for _, text := range []string{plain, told} {
+			if n := len(every(text, "embyfin_transcode_reason_plays_total")) + len(every(text, "embyfin_client_transcode_reason_plays_total")); n != 0 {
+				t.Errorf("the page has %d readings of why streams were made, on a server whose plugin does not keep that", n)
+			}
+		}
+
+		return
+	}
+
+	// the reason said twice of one play is counted for it once, and the play is under each of its two reasons
+	expect(t, plain, map[string]float64{
+		reading("embyfin_transcode_reason_plays_total", "reason", "reason_nobody_gives", "week", thisWeek):   3,
+		reading("embyfin_transcode_reason_seconds_total", "reason", "reason_nobody_gives", "week", thisWeek): 925,
+		reading("embyfin_transcode_reason_plays_total", "reason", "reason_nobody_gives", "week", lastWeek):   1,
+	})
+	if got, _ := value(plain, reading("embyfin_transcode_reason_plays_total", "reason", "direct_play_error", "week", thisWeek)); got < 3 {
+		t.Errorf("plays under direct_play_error this week = %v, want at least the 3 laid down", got)
+	}
+	expect(t, told, map[string]float64{
+		reading("embyfin_client_transcode_reason_plays_total", "device", television, "client", byHand, "reason", "reason_nobody_gives", "week", thisWeek):   3,
+		reading("embyfin_client_transcode_reason_seconds_total", "device", television, "client", byHand, "reason", "reason_nobody_gives", "week", thisWeek): 925,
+		reading("embyfin_client_transcode_reason_plays_total", "device", television, "client", byHand, "reason", "direct_play_error", "week", thisWeek):     3,
+		reading("embyfin_client_transcode_reason_plays_total", "device", television, "client", byHand, "reason", "reason_nobody_gives", "week", lastWeek):   1,
+	})
+	if strings.Contains(plain, television) || len(every(plain, "embyfin_client_transcode_reason_plays_total")) != 0 {
+		t.Errorf("the page of a program not told to name devices says which device a reason belongs to:\n%s", strings.Join(every(plain, "embyfin_client_transcode_reason_plays_total"), "\n"))
 	}
 }

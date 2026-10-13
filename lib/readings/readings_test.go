@@ -76,11 +76,19 @@ func emby() *fixed {
 		}),
 		Users:   answered([]poll.User{{Name: "ada", LastActive: ago(time.Hour)}, {Name: "grace", LastActive: ago(3 * day)}, {LastActive: ago(20 * day)}, {Disabled: true}}),
 		Devices: answered([]poll.Device{{LastActive: ago(time.Hour)}, {LastActive: ago(2 * day)}, {LastActive: ago(10 * day)}, {LastActive: ago(40 * day)}, {LastActive: ago(400 * day)}, {}, {}}),
+		Logins: answered([]poll.Login{
+			{Week: thisWeek, Network: poll.Home, User: "ada", Count: 4},
+			{Week: thisWeek, Network: poll.Remote, User: "ada", Count: 1},
+			{Week: thisWeek, Network: poll.Remote, User: "grace", Count: 2},
+			{Week: thisWeek, Failed: true, Network: poll.Remote, User: "ada", Count: 3},
+			{Week: thisWeek, Failed: true, Network: poll.Remote, User: "unknown", Count: 40},
+			{Week: lastWeek, Failed: true, Network: poll.Home, User: "grace", Count: 1},
+		}),
 		History: answered(poll.History{
 			Installed: true,
 			Plays: []poll.Played{
 				{Week: lastWeek, Kind: poll.Episode, Method: poll.DirectPlay, Plays: 9, Seconds: 13500},
-				{Week: thisWeek, Kind: poll.Episode, Method: poll.DirectPlay, Plays: 40, Seconds: 60000},
+				{Week: thisWeek, Kind: poll.Episode, Method: poll.DirectPlay, Plays: 40, Seconds: 60000, Short: 3},
 				{Week: thisWeek, Kind: poll.Episode, Method: poll.Transcode, Plays: 12, Seconds: 18000},
 				{Week: thisWeek, Kind: poll.Movie, Method: poll.DirectStream, Plays: 3, Seconds: 21600},
 			},
@@ -96,6 +104,14 @@ func emby() *fixed {
 				{Week: thisWeek, Title: "Dark", Kind: poll.Episode, Plays: 50, Seconds: 75000},
 				{Week: thisWeek, Title: "Severance", Kind: poll.Episode, Plays: 2, Seconds: 3000},
 				{Week: thisWeek, Title: "Heat", Kind: poll.Movie, Plays: 3, Seconds: 21600},
+			},
+			ByReason: []poll.Played{
+				{Week: thisWeek, Reason: "container_bitrate_exceeds_limit", Plays: 10, Seconds: 15000},
+				{Week: thisWeek, Reason: "direct_play_error", Plays: 2, Seconds: 3000},
+			},
+			ByClient: []poll.Played{
+				{Week: thisWeek, Reason: "container_bitrate_exceeds_limit", Device: "the television in the den", Client: "Den Player", Plays: 10, Seconds: 15000},
+				{Week: thisWeek, Reason: "direct_play_error", Device: "the phone in the hall", Client: "Pocket Player", Plays: 2, Seconds: 3000},
 			},
 		}),
 
@@ -443,6 +459,14 @@ func TestWhatWasPlayed(t *testing.T) {
 		`embyfin_title_playback_seconds_total{server="emby",title="Dark",type="episode",week="1999-12-27"} 75000`,
 		`embyfin_title_playback_seconds_total{server="emby",title="Heat",type="movie",week="1999-12-27"} 21600`,
 		`embyfin_title_plays_total{server="emby",title="Severance",type="episode",week="1999-12-27"} 2`,
+		// the plays that ended within a minute, at 0 where there were none
+		`embyfin_short_plays_total{method="direct_play",server="emby",type="episode",week="1999-12-27"} 3`,
+		`embyfin_short_plays_total{method="transcode",server="emby",type="episode",week="1999-12-27"} 0`,
+		// why the server made streams, and for which device and app
+		`embyfin_transcode_reason_seconds_total{reason="container_bitrate_exceeds_limit",server="emby",week="1999-12-27"} 15000`,
+		`embyfin_transcode_reason_plays_total{reason="direct_play_error",server="emby",week="1999-12-27"} 2`,
+		`embyfin_client_transcode_reason_seconds_total{client="Den Player",device="the television in the den",reason="container_bitrate_exceeds_limit",server="emby",week="1999-12-27"} 15000`,
+		`embyfin_client_transcode_reason_plays_total{client="Pocket Player",device="the phone in the hall",reason="direct_play_error",server="emby",week="1999-12-27"} 2`,
 		`embyfin_user_last_seen_timestamp_seconds{server="emby",user="ada"}`,
 		`embyfin_user_last_seen_timestamp_seconds{server="emby",user="grace"}`,
 	} {
@@ -470,16 +494,21 @@ func TestNobodyIsNamedUnlessAskedFor(t *testing.T) {
 		sessions[i].User, sessions[i].Title, sessions[i].Device, sessions[i].Client = "", "", "", ""
 	}
 	state.Sessions = answered(sessions)
+	logins := slices.Clone(state.Logins.Value)
+	for i := range logins {
+		logins[i].User = ""
+	}
+	state.Logins = answered(logins)
 	state.Users = answered([]poll.User{{LastActive: time.Now()}, {Disabled: true}})
 	history := state.History.Value
-	history.ByUser, history.ByTitle = nil, nil
+	history.ByUser, history.ByTitle, history.ByClient = nil, nil, nil
 	state.History = answered(history)
 
 	got := write(t, state)
 	if found := named.FindAllString(got, -1); len(found) != 0 {
 		t.Errorf("the page names %v when nobody was to be named:\n%s", found, got)
 	}
-	for _, absent := range []string{"embyfin_user_playback_seconds_total", "embyfin_user_plays_total", "embyfin_user_last_seen", "embyfin_title_", "embyfin_client_transcode_reasons"} {
+	for _, absent := range []string{"embyfin_user_playback_seconds_total", "embyfin_user_plays_total", "embyfin_user_last_seen", "embyfin_user_logins_total", "embyfin_title_", "embyfin_client_transcode_reason"} {
 		if has(got, absent) {
 			t.Errorf("the page has a reading of %s when nobody was to be named", absent)
 		}
@@ -490,10 +519,48 @@ func TestNobodyIsNamedUnlessAskedFor(t *testing.T) {
 		`embyfin_session_info{client="",device="",method="transcode",network="remote",reasons="container_bitrate_exceeds_limit",server="emby",session="0a",state="playing",title="",type="episode",user=""} 1`,
 		`embyfin_session_bits_per_second{server="emby",session="0a"} 8e+06`,
 		`embyfin_streams_by_network{network="remote",server="emby"} 1`,
+		`embyfin_transcode_reason_plays_total{reason="direct_play_error",server="emby",week="1999-12-27"} 2`,
+		`embyfin_logins_total{network="remote",result="failed",server="emby",week="1999-12-27"} 43`,
 	} {
 		if !has(got, want) {
 			t.Errorf("the page lacks %s, which names nobody:\n%s", want, got)
 		}
+	}
+}
+
+// How the signing in went: every sign-in and every try that was refused, by the week it was made in and where it came from, and by account for a
+// server asked to name accounts. The tries from outside that were refused are the ones to watch on a server the internet can reach, and those on
+// names the server has no account of are together under unknown, however many names were tried.
+func TestSignIns(t *testing.T) {
+	t.Parallel()
+
+	got := write(t, emby())
+	for _, want := range []string{
+		`embyfin_logins_total{network="home",result="ok",server="emby",week="1999-12-27"} 4`,
+		`embyfin_logins_total{network="remote",result="ok",server="emby",week="1999-12-27"} 3`,
+		`embyfin_logins_total{network="remote",result="failed",server="emby",week="1999-12-27"} 43`,
+		`embyfin_logins_total{network="home",result="failed",server="emby",week="1999-12-20"} 1`,
+		`embyfin_user_logins_total{result="ok",server="emby",user="ada",week="1999-12-27"} 5`,
+		`embyfin_user_logins_total{result="ok",server="emby",user="grace",week="1999-12-27"} 2`,
+		`embyfin_user_logins_total{result="failed",server="emby",user="ada",week="1999-12-27"} 3`,
+		`embyfin_user_logins_total{result="failed",server="emby",user="unknown",week="1999-12-27"} 40`,
+		`embyfin_user_logins_total{result="failed",server="emby",user="grace",week="1999-12-20"} 1`,
+	} {
+		if !has(got, want) {
+			t.Errorf("the page lacks %s:\n%s", want, got)
+		}
+	}
+	if !strings.Contains(got, "# TYPE embyfin_logins_total counter") {
+		t.Errorf("the sign-ins are not written as a counter:\n%s", got)
+	}
+
+	// where a sign-in came from in a word not known here is unknown, and a server never asked has no sign-ins on its page, which is not none
+	odd := write(t, &fixed{Kind: "emby", Logins: answered([]poll.Login{{Week: thisWeek, Network: "the moon", Count: 2}, {Week: thisWeek, Count: 1}})})
+	if !has(odd, `embyfin_logins_total{network="unknown",result="ok",server="emby",week="1999-12-27"} 3`) || has(odd, "embyfin_user_logins_total") {
+		t.Errorf("sign-ins from nowhere known read:\n%s", odd)
+	}
+	if never := write(t, &fixed{Kind: "emby", Sessions: answered([]poll.Session{})}); has(never, "embyfin_logins_total") {
+		t.Errorf("a server never asked for its sign-ins has some on its page:\n%s", never)
 	}
 }
 
@@ -579,7 +646,7 @@ func TestAServerWithoutThePluginSaysSo(t *testing.T) {
 	if !has(got, `embyfin_playback_reporting_installed{server="jellyfin"} 0`) {
 		t.Errorf("the page does not say the server lacks the plugin:\n%s", got)
 	}
-	for _, absent := range []string{"embyfin_playback_seconds_total", "embyfin_plays_total", "embyfin_user_", "embyfin_title_"} {
+	for _, absent := range []string{"embyfin_playback_seconds_total", "embyfin_plays_total", "embyfin_short_plays_total", "embyfin_user_", "embyfin_title_", "embyfin_transcode_reason_", "embyfin_client_transcode_reason_"} {
 		if has(got, absent) {
 			t.Errorf("the page has a reading of %s from a server with no record of what was played", absent)
 		}

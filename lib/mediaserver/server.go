@@ -37,6 +37,7 @@ type Server struct {
 	client  client
 	reports reporter
 	files   fileRates
+	log     activities
 	detail  Detail
 
 	// history is whether the server was last seen to have the Playback Reporting plugin (2) or not (1), so the log says so once
@@ -58,7 +59,7 @@ func Connect(kind, address, token string, detail Detail) (*Server, error) {
 		return nil, fmt.Errorf("%s: %w", kind, err)
 	}
 
-	return &Server{client: c, reports: d, files: d, detail: detail}, nil
+	return &Server{client: c, reports: d, files: d, log: d, detail: detail}, nil
 }
 
 // Kind is "emby" or "jellyfin".

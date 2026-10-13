@@ -18,14 +18,15 @@ func serveCmd(connect connector) *cobra.Command {
 
 A scrape is answered from memory and never waits on a server. Sessions, streams, scheduled
 tasks and the server's own state are read every --sessions-interval; libraries, item counts,
-users and devices every --library-interval; and what was played every --history-interval,
-from a server that has the Playback Reporting plugin. A server that stops answering is
+users, devices and sign-ins every --library-interval; and what was played every
+--history-interval, from a server that has the Playback Reporting plugin. A server that stops answering is
 reported as embyfin_up 0, and does not stop the other being reported.
 
 No account's or device's name and no title is on the page unless --detail asks: users for
-whose each session is, the time each account has played and when it was last seen, titles
-for what each session is playing and the time each show and film has been played, devices
-for the device and the app each session plays on, all for everything there is to name.
+whose each session is, the time each account has played, its sign-ins and when it was last
+seen, titles for what each session is playing and the time each show and film has been
+played, devices for the device and the app each session plays on, all for everything
+there is to name.
 
 --labels puts labels of your choosing on every reading, hostname=nas say, for when the page
 is not scraped on the servers' own host and the store has no other way to tell whose it is.

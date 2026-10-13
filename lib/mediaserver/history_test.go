@@ -51,48 +51,70 @@ const (
 	weekBefore = "2026-10-05"
 )
 
-// The question names an account or a title only when the settings ask for one, so what was not asked for never leaves the server. It asks for the
-// plays of this week and the last, each under the Monday of the week it began in.
+// onJellyfin and onEmby are a server of each kind whose plugin is reports, asked to name what detail says. The two plugins are asked differently:
+// Emby's also for why a stream was made, and for which device when devices are to be named.
+func onJellyfin(reports reporter, detail Detail) *Server {
+	return &Server{client: &fake{backend: embyfin.Jellyfin}, reports: reports, detail: detail}
+}
+
+func onEmby(reports reporter, detail Detail) *Server {
+	return &Server{client: &fake{backend: embyfin.Emby}, reports: reports, detail: detail}
+}
+
+// The question names an account, a title or a device only when the settings ask for one, so what was not asked for never leaves the server. It
+// asks for the plays of this week and the last, each under the Monday of the week it began in, and of each whether it ended within a minute. Only
+// Emby's plugin is asked why a stream was made and for which device: Jellyfin's keeps neither.
 func TestHistoryQuery(t *testing.T) {
 	t.Parallel()
 
 	for name, c := range map[string]struct {
-		detail  Detail
+		asking  asking
 		columns string
 	}{
-		"nobody named": {Detail{}, "ItemType, PlaybackMethod"},
-		"accounts":     {Detail{Users: true}, "ItemType, PlaybackMethod, UserId"},
-		"titles":       {Detail{Titles: true}, "ItemType, PlaybackMethod, ItemName"},
-		"both":         {everything, "ItemType, PlaybackMethod, UserId, ItemName"},
+		"jellyfin, nobody named": {asking{}, "ItemType, PlaybackMethod, " + shortOnJellyfin},
+		"jellyfin, accounts":     {asking{detail: Detail{Users: true}}, "ItemType, PlaybackMethod, UserId, " + shortOnJellyfin},
+		"jellyfin, titles":       {asking{detail: Detail{Titles: true}}, "ItemType, PlaybackMethod, ItemName, " + shortOnJellyfin},
+		"jellyfin, devices":      {asking{detail: Detail{Devices: true}}, "ItemType, PlaybackMethod, " + shortOnJellyfin},
+		"jellyfin, everything":   {asking{detail: everything}, "ItemType, PlaybackMethod, UserId, ItemName, " + shortOnJellyfin},
+		"emby, nobody named":     {asking{emby: true}, "ItemType, PlaybackMethod, TranscodeReasons, " + shortOnEmby},
+		"emby, accounts":         {asking{emby: true, detail: Detail{Users: true}}, "ItemType, PlaybackMethod, UserId, TranscodeReasons, " + shortOnEmby},
+		"emby, devices":          {asking{emby: true, detail: Detail{Devices: true}}, "ItemType, PlaybackMethod, TranscodeReasons, DeviceName, ClientName, " + shortOnEmby},
+		"emby, everything":       {asking{emby: true, detail: everything}, "ItemType, PlaybackMethod, UserId, ItemName, TranscodeReasons, DeviceName, ClientName, " + shortOnEmby},
 	} {
-		want := "SELECT date(DateCreated, 'weekday 0', '-6 days'), " + c.columns + ", COUNT(*), SUM(PlayDuration) FROM PlaybackActivity WHERE DateCreated >= date('now', 'localtime', 'weekday 0', '-13 days') GROUP BY date(DateCreated, 'weekday 0', '-6 days'), " + c.columns
-		if got := historyQuery(c.detail); got != want {
+		columns := "date(DateCreated, 'weekday 0', '-6 days'), " + c.columns
+		want := "SELECT " + columns + ", COUNT(*), SUM(PlayDuration) FROM PlaybackActivity WHERE DateCreated >= date('now', 'localtime', 'weekday 0', '-13 days') GROUP BY " + columns
+		if got := c.asking.query(); got != want {
 			t.Errorf("%s: the question is\n%s\nwant\n%s", name, got, want)
 		}
 	}
+
+	// a play is short when it ran under a minute and has not been added to for five; only Emby's plugin keeps how long one was paused
+	if want := "(PlayDuration < 60 AND (julianday('now', 'localtime') - julianday(DateCreated)) * 86400 > PlayDuration + IFNULL(PauseDuration, 0) + 300)"; shortOnEmby != want || shortOnJellyfin != strings.Replace(want, " + IFNULL(PauseDuration, 0)", "", 1) {
+		t.Errorf("a short play is asked for as\n%s\nand\n%s", shortOnEmby, shortOnJellyfin)
+	}
 }
 
-// What was played, from rows as a real Emby's plugin gives them: every value as text, a method with what was done to each stream after it, an
-// episode named with its show first, and the id of an account that has since been deleted left where its name would be. The same show played in
-// two weeks is two sums, one under each.
+// What was played, from rows as a real plugin gives them: every value as text, a method with what was done to each stream after it, an episode
+// named with its show first, the id of an account that has since been deleted left where its name would be, and a 1 for the plays that ended
+// within a minute. The same show played in two weeks is two sums, one under each. Jellyfin's plugin says nothing of why a stream was made.
 func TestHistory(t *testing.T) {
 	t.Parallel()
 
 	reports := &fakeReports{rows: [][]string{
-		{thisWeek, "Episode", "DirectPlay", "ada", "Dark - s01e01 - Secrets", "2", "3000"},
-		{thisWeek, "Episode", "DirectPlay", "ada", "Dark - s01e02 - Lies", "1", "2700"},
-		{thisWeek, "Episode", "Transcode (v:h264 a:direct)", "grace", "Dark - s01e01 - Secrets", "1", "1500"},
-		{thisWeek, "Episode", "Transcode (v:direct a:direct)", "grace", "Severance - s02e10 - Cold Harbor", "1", "4000"},
-		{thisWeek, "Movie", "DirectStream", "ada", "Heat", "1", "9000"},
-		{thisWeek, "Movie", "Transcode", "0123456789abcdef0123456789abcdef", "Heat", "1", "600"},
-		{thisWeek, "Audio", "DirectPlay", "grace", "Not Known - A Song (Not Known)", "5", "900"},
-		{thisWeek, "Trailer", "DirectStream", "grace", "Heat - Trailer", "1", "120"},
-		{thisWeek, "Episode", "DirectPlay", "", "A Show With No Numbers", "1", ""},
-		{weekBefore, "Episode", "DirectPlay", "ada", "Dark - s01e01 - Secrets", "1", "50"},
+		{thisWeek, "Episode", "DirectPlay", "ada", "Dark - s01e01 - Secrets", "0", "2", "3000"},
+		{thisWeek, "Episode", "DirectPlay", "ada", "Dark - s01e01 - Secrets", "1", "2", "30"},
+		{thisWeek, "Episode", "DirectPlay", "ada", "Dark - s01e02 - Lies", "0", "1", "2700"},
+		{thisWeek, "Episode", "Transcode (v:h264 a:direct)", "grace", "Dark - s01e01 - Secrets", "0", "1", "1500"},
+		{thisWeek, "Episode", "Transcode (v:direct a:direct)", "grace", "Severance - s02e10 - Cold Harbor", "0", "1", "4000"},
+		{thisWeek, "Movie", "DirectStream", "ada", "Heat", "0", "1", "9000"},
+		{thisWeek, "Movie", "Transcode", "0123456789abcdef0123456789abcdef", "Heat", "0", "1", "600"},
+		{thisWeek, "Audio", "DirectPlay", "grace", "Not Known - A Song (Not Known)", "0", "5", "900"},
+		{thisWeek, "Trailer", "DirectStream", "grace", "Heat - Trailer", "0", "1", "120"},
+		{thisWeek, "Episode", "DirectPlay", "", "A Show With No Numbers", "0", "1", ""},
+		{weekBefore, "Episode", "DirectPlay", "ada", "Dark - s01e01 - Secrets", "0", "1", "50"},
 	}}
-	s := &Server{client: &fake{}, reports: reports, detail: everything}
 
-	got, err := s.History(t.Context())
+	got, err := onJellyfin(reports, everything).History(t.Context())
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -101,7 +123,7 @@ func TestHistory(t *testing.T) {
 		Installed: true,
 		Plays: []poll.Played{
 			{Week: weekBefore, Kind: poll.Episode, Method: poll.DirectPlay, Plays: 1, Seconds: 50},
-			{Week: thisWeek, Kind: poll.Episode, Method: poll.DirectPlay, Plays: 4, Seconds: 5700},
+			{Week: thisWeek, Kind: poll.Episode, Method: poll.DirectPlay, Plays: 6, Seconds: 5730, Short: 2},
 			{Week: thisWeek, Kind: poll.Episode, Method: poll.DirectStream, Plays: 1, Seconds: 4000},
 			{Week: thisWeek, Kind: poll.Episode, Method: poll.Transcode, Plays: 1, Seconds: 1500},
 			{Week: thisWeek, Kind: poll.Movie, Method: poll.DirectStream, Plays: 1, Seconds: 9000},
@@ -111,7 +133,7 @@ func TestHistory(t *testing.T) {
 		},
 		ByUser: []poll.Played{
 			{Week: weekBefore, User: "ada", Kind: poll.Episode, Plays: 1, Seconds: 50},
-			{Week: thisWeek, User: "ada", Kind: poll.Episode, Plays: 3, Seconds: 5700},
+			{Week: thisWeek, User: "ada", Kind: poll.Episode, Plays: 5, Seconds: 5730, Short: 2},
 			{Week: thisWeek, User: "ada", Kind: poll.Movie, Plays: 1, Seconds: 9000},
 			{Week: thisWeek, User: "grace", Kind: poll.Episode, Plays: 2, Seconds: 5500},
 			{Week: thisWeek, User: "grace", Kind: poll.OtherKind, Plays: 1, Seconds: 120},
@@ -122,10 +144,12 @@ func TestHistory(t *testing.T) {
 		ByTitle: []poll.Played{
 			{Week: weekBefore, Title: "Dark", Kind: poll.Episode, Plays: 1, Seconds: 50},
 			{Week: thisWeek, Title: "A Show With No Numbers", Kind: poll.Episode, Plays: 1},
-			{Week: thisWeek, Title: "Dark", Kind: poll.Episode, Plays: 4, Seconds: 7200},
+			{Week: thisWeek, Title: "Dark", Kind: poll.Episode, Plays: 6, Seconds: 7230, Short: 2},
 			{Week: thisWeek, Title: "Heat", Kind: poll.Movie, Plays: 2, Seconds: 9600},
 			{Week: thisWeek, Title: "Severance", Kind: poll.Episode, Plays: 1, Seconds: 4000},
 		},
+		ByReason: []poll.Played{},
+		ByClient: []poll.Played{},
 	}
 	if !reflect.DeepEqual(got, want) {
 		t.Errorf("history =\n%+v\nwant\n%+v", got, want)
@@ -135,14 +159,71 @@ func TestHistory(t *testing.T) {
 	}
 }
 
+// Emby's plugin also says why the server made a stream of a play, as the server's own words one after another, and for which device and app. A
+// play with two reasons is under both, one said twice is under it once, and a file sent as it is has no reason and is under none. The device and
+// its app are handed on only when devices are to be named.
+func TestHistoryOnEmbySaysWhyStreamsWereMade(t *testing.T) {
+	t.Parallel()
+
+	const television, phone = "the television in the den", "the phone in the hall"
+	reports := &fakeReports{rows: [][]string{
+		{thisWeek, "Movie", "Transcode (v:h264 a:aac)", "ContainerBitrateExceedsLimit", television, "Den Player", "0", "2", "7000"},
+		{thisWeek, "Episode", "Transcode (v:direct a:ac3)", "DirectPlayError ContainerNotSupported DirectPlayError", phone, "Pocket Player", "0", "1", "1500"},
+		{thisWeek, "Episode", "Transcode (v:direct a:ac3)", "ContainerNotSupported DirectPlayError", phone, "Pocket Player", "1", "1", "12"},
+		{thisWeek, "Movie", "DirectPlay", "", television, "Den Player", "0", "1", "3000"},
+		{weekBefore, "Movie", "Transcode", "ContainerBitrateExceedsLimit", television, "Den Player", "0", "1", "100"},
+	}}
+
+	got, err := onEmby(reports, Detail{Devices: true}).History(t.Context())
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	want := poll.History{
+		Installed: true,
+		Plays: []poll.Played{
+			{Week: weekBefore, Kind: poll.Movie, Method: poll.Transcode, Plays: 1, Seconds: 100},
+			{Week: thisWeek, Kind: poll.Episode, Method: poll.Transcode, Plays: 2, Seconds: 1512, Short: 1},
+			{Week: thisWeek, Kind: poll.Movie, Method: poll.DirectPlay, Plays: 1, Seconds: 3000},
+			{Week: thisWeek, Kind: poll.Movie, Method: poll.Transcode, Plays: 2, Seconds: 7000},
+		},
+		ByUser:  []poll.Played{},
+		ByTitle: []poll.Played{},
+		ByReason: []poll.Played{
+			{Week: weekBefore, Reason: "container_bitrate_exceeds_limit", Plays: 1, Seconds: 100},
+			{Week: thisWeek, Reason: "container_bitrate_exceeds_limit", Plays: 2, Seconds: 7000},
+			{Week: thisWeek, Reason: "container_not_supported", Plays: 2, Seconds: 1512, Short: 1},
+			{Week: thisWeek, Reason: "direct_play_error", Plays: 2, Seconds: 1512, Short: 1},
+		},
+		ByClient: []poll.Played{
+			{Week: weekBefore, Reason: "container_bitrate_exceeds_limit", Device: television, Client: "Den Player", Plays: 1, Seconds: 100},
+			{Week: thisWeek, Reason: "container_not_supported", Device: phone, Client: "Pocket Player", Plays: 2, Seconds: 1512, Short: 1},
+			{Week: thisWeek, Reason: "direct_play_error", Device: phone, Client: "Pocket Player", Plays: 2, Seconds: 1512, Short: 1},
+			{Week: thisWeek, Reason: "container_bitrate_exceeds_limit", Device: television, Client: "Den Player", Plays: 2, Seconds: 7000},
+		},
+	}
+	if !reflect.DeepEqual(got, want) {
+		t.Errorf("history =\n%+v\nwant\n%+v", got, want)
+	}
+
+	// not asked to name devices, the plugin is not asked for them, and the reasons are there without them
+	plain := &fakeReports{rows: [][]string{{thisWeek, "Movie", "Transcode", "ContainerBitrateExceedsLimit", "0", "2", "7000"}}}
+	got, err = onEmby(plain, Detail{}).History(t.Context())
+	if err != nil || len(got.ByReason) != 1 || got.ByReason[0].Plays != 2 || len(got.ByClient) != 0 {
+		t.Errorf("not asked to name devices: history = %+v and %v, want the reason and no device", got, err)
+	}
+	if strings.Contains(plain.sql, "DeviceName") || strings.Contains(plain.sql, "ClientName") || !strings.Contains(plain.sql, "TranscodeReasons") {
+		t.Errorf("not asked to name devices, the plugin was asked\n%s", plain.sql)
+	}
+}
+
 // A server not asked to name anyone asks the plugin for neither accounts nor titles, and what it hands on has neither.
 func TestHistoryNamesNobodyUnlessAsked(t *testing.T) {
 	t.Parallel()
 
-	reports := &fakeReports{rows: [][]string{{thisWeek, "Episode", "DirectPlay", "3", "5700"}, {thisWeek, "Episode", "Transcode", "1", "1500"}, {thisWeek, "Movie", "DirectPlay", "2", "9000"}}}
-	s := &Server{client: &fake{}, reports: reports}
+	reports := &fakeReports{rows: [][]string{{thisWeek, "Episode", "DirectPlay", "0", "3", "5700"}, {thisWeek, "Episode", "Transcode", "0", "1", "1500"}, {thisWeek, "Movie", "DirectPlay", "0", "2", "9000"}}}
 
-	got, err := s.History(t.Context())
+	got, err := onJellyfin(reports, Detail{}).History(t.Context())
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -151,7 +232,7 @@ func TestHistoryNamesNobodyUnlessAsked(t *testing.T) {
 		{Week: thisWeek, Kind: poll.Episode, Method: poll.DirectPlay, Plays: 3, Seconds: 5700},
 		{Week: thisWeek, Kind: poll.Episode, Method: poll.Transcode, Plays: 1, Seconds: 1500},
 		{Week: thisWeek, Kind: poll.Movie, Method: poll.DirectPlay, Plays: 2, Seconds: 9000},
-	}, ByUser: []poll.Played{}, ByTitle: []poll.Played{}}
+	}, ByUser: []poll.Played{}, ByTitle: []poll.Played{}, ByReason: []poll.Played{}, ByClient: []poll.Played{}}
 	if !reflect.DeepEqual(got, want) {
 		t.Errorf("history =\n%+v\nwant\n%+v", got, want)
 	}
@@ -160,20 +241,23 @@ func TestHistoryNamesNobodyUnlessAsked(t *testing.T) {
 	}
 }
 
-// Only one of the two settings on names only what it asks for.
+// Only one of the settings on names only what it asks for.
 func TestHistoryNamesOnlyWhatIsAskedFor(t *testing.T) {
 	t.Parallel()
 
-	accounts := &Server{client: &fake{}, reports: &fakeReports{rows: [][]string{{thisWeek, "Movie", "DirectPlay", "ada", "1", "60"}}}, detail: Detail{Users: true}}
-	got, err := accounts.History(t.Context())
-	if err != nil || len(got.ByUser) != 1 || got.ByUser[0].User != "ada" || len(got.ByTitle) != 0 {
-		t.Errorf("accounts alone: history = %+v and %v, want ada's plays and no titles", got, err)
+	got, err := onJellyfin(&fakeReports{rows: [][]string{{thisWeek, "Movie", "DirectPlay", "ada", "0", "1", "60"}}}, Detail{Users: true}).History(t.Context())
+	if err != nil || len(got.ByUser) != 1 || got.ByUser[0].User != "ada" || len(got.ByTitle) != 0 || len(got.ByClient) != 0 {
+		t.Errorf("accounts alone: history = %+v and %v, want ada's plays and no titles or devices", got, err)
 	}
 
-	titles := &Server{client: &fake{}, reports: &fakeReports{rows: [][]string{{thisWeek, "Movie", "DirectPlay", "Heat", "1", "60"}}}, detail: Detail{Titles: true}}
-	got, err = titles.History(t.Context())
-	if err != nil || len(got.ByTitle) != 1 || got.ByTitle[0].Title != "Heat" || len(got.ByUser) != 0 {
-		t.Errorf("titles alone: history = %+v and %v, want Heat's plays and no accounts", got, err)
+	got, err = onJellyfin(&fakeReports{rows: [][]string{{thisWeek, "Movie", "DirectPlay", "Heat", "0", "1", "60"}}}, Detail{Titles: true}).History(t.Context())
+	if err != nil || len(got.ByTitle) != 1 || got.ByTitle[0].Title != "Heat" || len(got.ByUser) != 0 || len(got.ByClient) != 0 {
+		t.Errorf("titles alone: history = %+v and %v, want Heat's plays and no accounts or devices", got, err)
+	}
+
+	got, err = onEmby(&fakeReports{rows: [][]string{{thisWeek, "Movie", "Transcode", "ContainerNotSupported", "a television", "an app", "0", "1", "60"}}}, Detail{Devices: true}).History(t.Context())
+	if err != nil || len(got.ByClient) != 1 || got.ByClient[0].Device != "a television" || got.ByClient[0].Client != "an app" || len(got.ByUser) != 0 || len(got.ByTitle) != 0 {
+		t.Errorf("devices alone: history = %+v and %v, want the television's plays and no accounts or titles", got, err)
 	}
 }
 
@@ -181,9 +265,7 @@ func TestHistoryNamesOnlyWhatIsAskedFor(t *testing.T) {
 func TestHistoryOfAServerWithoutThePlugin(t *testing.T) {
 	t.Parallel()
 
-	s := &Server{client: &fake{}, reports: &fakeReports{missing: true}, detail: everything}
-
-	got, err := s.History(t.Context())
+	got, err := onEmby(&fakeReports{missing: true}, everything).History(t.Context())
 	if err != nil || !reflect.DeepEqual(got, poll.History{}) {
 		t.Errorf("history = %+v and %v, want none and no error", got, err)
 	}
@@ -196,16 +278,14 @@ func TestHistoryThatCannotBeRead(t *testing.T) {
 
 	for name, reports := range map[string]*fakeReports{
 		"the plugin fails":      {err: errDown},
-		"a row too short":       {rows: [][]string{{thisWeek, "Movie", "DirectPlay", "1", "60"}, {thisWeek, "Movie", "DirectPlay", "1"}}},
-		"a row too long":        {rows: [][]string{{thisWeek, "Movie", "DirectPlay", "ada", "Heat", "1", "60"}}},
-		"a count not a number":  {rows: [][]string{{thisWeek, "Movie", "DirectPlay", "one", "60"}}},
-		"a length not a number": {rows: [][]string{{thisWeek, "Movie", "DirectPlay", "1", "a minute"}}},
-		"a week not a day":      {rows: [][]string{{"", "Movie", "DirectPlay", "1", "60"}}},
-		"a week not written so": {rows: [][]string{{"12/10/2026", "Movie", "DirectPlay", "1", "60"}}},
+		"a row too short":       {rows: [][]string{{thisWeek, "Movie", "DirectPlay", "0", "1", "60"}, {thisWeek, "Movie", "DirectPlay", "1"}}},
+		"a row too long":        {rows: [][]string{{thisWeek, "Movie", "DirectPlay", "ada", "Heat", "0", "1", "60"}}},
+		"a count not a number":  {rows: [][]string{{thisWeek, "Movie", "DirectPlay", "0", "one", "60"}}},
+		"a length not a number": {rows: [][]string{{thisWeek, "Movie", "DirectPlay", "0", "1", "a minute"}}},
+		"a week not a day":      {rows: [][]string{{"", "Movie", "DirectPlay", "0", "1", "60"}}},
+		"a week not written so": {rows: [][]string{{"12/10/2026", "Movie", "DirectPlay", "0", "1", "60"}}},
 	} {
-		s := &Server{client: &fake{}, reports: reports}
-
-		got, err := s.History(t.Context())
+		got, err := onJellyfin(reports, Detail{}).History(t.Context())
 		if err == nil || !reflect.DeepEqual(got, poll.History{}) {
 			t.Errorf("%s: history = %+v and %v, want an error and nothing", name, got, err)
 		}
@@ -218,8 +298,8 @@ func TestAPluginWhoseRecordIsBeingWrittenToIsAskedAgain(t *testing.T) {
 	t.Parallel()
 
 	synctest.Test(t, func(t *testing.T) {
-		reports := &fakeReports{locked: 2, rows: [][]string{{thisWeek, "Movie", "DirectPlay", "1", "60"}}}
-		s := &Server{client: &fake{}, reports: reports}
+		reports := &fakeReports{locked: 2, rows: [][]string{{thisWeek, "Movie", "DirectPlay", "0", "1", "60"}}}
+		s := onJellyfin(reports, Detail{})
 
 		start := time.Now()
 		got, err := s.History(t.Context())
@@ -228,7 +308,7 @@ func TestAPluginWhoseRecordIsBeingWrittenToIsAskedAgain(t *testing.T) {
 		}
 
 		stuck := &fakeReports{locked: 100}
-		s = &Server{client: &fake{}, reports: stuck}
+		s = onJellyfin(stuck, Detail{})
 		if got, err := s.History(t.Context()); !errors.Is(err, errBusy) || stuck.asked != busyTries || !reflect.DeepEqual(got, poll.History{}) {
 			t.Errorf("locked for good: history = %+v and %v after %d tries, want the plugin's own failure after %d", got, err, stuck.asked, busyTries)
 		}
@@ -236,7 +316,7 @@ func TestAPluginWhoseRecordIsBeingWrittenToIsAskedAgain(t *testing.T) {
 		stopping, stop := context.WithCancel(t.Context())
 		stop()
 		stuck = &fakeReports{locked: 100}
-		s = &Server{client: &fake{}, reports: stuck}
+		s = onJellyfin(stuck, Detail{})
 		if _, err := s.History(stopping); !errors.Is(err, context.Canceled) || stuck.asked != 1 {
 			t.Errorf("told to stop: error = %v after %d tries, want the stop and no second try", err, stuck.asked)
 		}
@@ -261,7 +341,7 @@ func TestTheWaysAPluginSaysItIsBusy(t *testing.T) {
 		if err != nil {
 			t.Fatal(err)
 		}
-		if _, _, err := p.Query(t.Context(), historyQuery(Detail{}), false); !errors.Is(err, errBusy) || strings.Contains(err.Error(), testKey) {
+		if _, _, err := p.Query(t.Context(), asking{}.query(), false); !errors.Is(err, errBusy) || strings.Contains(err.Error(), testKey) {
 			t.Errorf("%s: error = %v, want the one that says the record was being written to, without the key in it", name, err)
 		}
 		if len(seen()) != 1 {
@@ -304,14 +384,20 @@ func canned(t *testing.T, status int, body string) (server *httptest.Server, see
 }
 
 // The plugin of either server is asked the same way: one POST to its address with the question and whether to name accounts, and the server's key
-// in a header. The answer is as each really writes one: Emby leaves an empty value out as null, Jellyfin writes it as empty text.
+// in a header. The answer is as each really writes one: Emby leaves an empty value out as null, Jellyfin writes it as empty text, and Emby's has
+// the one more column for why a stream was made.
 func TestThePluginIsAskedOverHTTP(t *testing.T) {
 	t.Parallel()
 
-	server, seen := canned(t, http.StatusOK, `{"colums":["date(DateCreated, 'weekday 0', '-6 days')","ItemType","PlaybackMethod","UserName","ItemName","COUNT(*)","SUM(PlayDuration)"],"results":[["2026-10-12","Episode","DirectPlay","ada","Dark - s01e01 - Secrets","2","3000"],["2026-10-12","Movie","Transcode (v:h264 a:aac)","grace","Heat",1,null],["2026-10-12","Movie","DirectPlay","grace","Heat","1",""]],"message":""}`)
+	detail := Detail{Users: true, Titles: true}
 
-	for i, kind := range []string{"emby", "jellyfin"} {
-		s, err := Connect(kind, server.URL, testKey, everything)
+	for kind, body := range map[string]string{
+		"emby":     `{"colums":["week","ItemType","PlaybackMethod","UserName","ItemName","TranscodeReasons","short","COUNT(*)","SUM(PlayDuration)"],"results":[["2026-10-12","Episode","DirectPlay","ada","Dark - s01e01 - Secrets",null,"0","2","3000"],["2026-10-12","Movie","Transcode (v:h264 a:aac)","grace","Heat","ContainerNotSupported","1",1,null],["2026-10-12","Movie","DirectPlay","grace","Heat",null,"0","1",""]],"message":""}`,
+		"jellyfin": `{"colums":["week","ItemType","PlaybackMethod","UserName","ItemName","short","COUNT(*)","SUM(PlayDuration)"],"results":[["2026-10-12","Episode","DirectPlay","ada","Dark - s01e01 - Secrets","0","2","3000"],["2026-10-12","Movie","Transcode (v:h264 a:aac)","grace","Heat","1",1,null],["2026-10-12","Movie","DirectPlay","grace","Heat","0","1",""]],"message":""}`,
+	} {
+		server, seen := canned(t, http.StatusOK, body)
+
+		s, err := Connect(kind, server.URL, testKey, detail)
 		if err != nil {
 			t.Fatalf("%s: connect: %v", kind, err)
 		}
@@ -323,11 +409,14 @@ func TestThePluginIsAskedOverHTTP(t *testing.T) {
 		if !got.Installed || len(got.Plays) != 3 || len(got.ByUser) != 2 || len(got.ByTitle) != 2 {
 			t.Errorf("%s: history = %+v", kind, got)
 		}
-		if want := (poll.Played{Week: thisWeek, User: "grace", Kind: poll.Movie, Plays: 2}); got.ByUser[1] != want {
+		if want := (poll.Played{Week: thisWeek, User: "grace", Kind: poll.Movie, Plays: 2, Short: 1}); got.ByUser[1] != want {
 			t.Errorf("%s: grace's films = %+v, want %+v", kind, got.ByUser[1], want)
 		}
+		if reasons := len(got.ByReason); (kind == "emby") != (reasons == 1) {
+			t.Errorf("%s: the reasons for a stream = %+v", kind, got.ByReason)
+		}
 
-		request := seen()[i]
+		request := seen()[0]
 		var question struct {
 			Query string `json:"CustomQueryString"`
 			Names bool   `json:"ReplaceUserId"`
@@ -338,8 +427,8 @@ func TestThePluginIsAskedOverHTTP(t *testing.T) {
 		if request.method != http.MethodPost || request.path != "/user_usage_stats/submit_custom_query" || !request.keyed {
 			t.Errorf("%s: sent %s %s, keyed in a header: %t", kind, request.method, request.path, request.keyed)
 		}
-		if question.Query != historyQuery(everything) || !question.Names {
-			t.Errorf("%s: asked %+v", kind, question)
+		if want := (asking{emby: kind == "emby", detail: detail}).query(); question.Query != want || !question.Names {
+			t.Errorf("%s: asked %+v, want %s", kind, question, want)
 		}
 	}
 }

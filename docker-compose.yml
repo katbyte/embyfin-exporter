@@ -33,7 +33,7 @@ services:
       # - "EMBYFIN_METRICS_LABELS=hostname=nas"   # labels for every reading, when whatever scrapes the page does not add its own
       # - "EMBYFIN_METRICS_DETAIL=all"            # name accounts, titles and devices (or a list of those words); nobody is named unless this asks
       # - "EMBYFIN_METRICS_SESSIONS_INTERVAL=15s" # how often sessions, streams, scheduled tasks and the server's own state are read
-      # - "EMBYFIN_METRICS_LIBRARY_INTERVAL=5m"   # how often libraries, item counts, users and devices are read
+      # - "EMBYFIN_METRICS_LIBRARY_INTERVAL=5m"   # how often libraries, item counts, users, devices and sign-ins are read
       # - "EMBYFIN_METRICS_HISTORY_INTERVAL=30s"  # how often what was played is read, from a server with the Playback Reporting plugin
     logging:
       options:

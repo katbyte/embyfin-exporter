@@ -24,6 +24,8 @@ type Server interface {
 	Devices(ctx context.Context) ([]Device, error)
 	// History is what has been played in this week and the last, for a server that keeps a record of it.
 	History(ctx context.Context) (History, error)
+	// Logins is how many times accounts were signed in to, and how many tries were refused, in this week and the last.
+	Logins(ctx context.Context) ([]Login, error)
 }
 
 // Info is what a server says of itself.
@@ -194,6 +196,10 @@ type History struct {
 	// ByUser is the same plays by account and kind, and ByTitle by show or film. Both are empty unless the settings ask for them.
 	ByUser  []Played
 	ByTitle []Played
+	// ByReason is the plays the server made a stream for, by each reason it gave, and ByClient the same by the device and its app as well, which
+	// is empty unless the settings ask for devices. A play with two reasons is under both. Only Emby's plugin keeps the reasons.
+	ByReason []Played
+	ByClient []Played
 }
 
 // Played is how much was played of one kind in one week: how many plays there were and how long they ran between them. Which of the other fields
@@ -206,8 +212,28 @@ type Played struct {
 	// User is an account's name, and Title a show's or a film's.
 	User  string
 	Title string
+	// Reason is why the server made a stream, and Device and Client the device and the app it made it for.
+	Reason string
+	Device string
+	Client string
 
 	// Plays counts a play again each time how it reaches the device changes part way, as the plugin does.
 	Plays   int
 	Seconds int
+	// Short is how many of the plays ended within a minute of beginning, which is what one that failed looks like.
+	Short int
+}
+
+// Login is how many times an account was signed in to, or how many tries were refused, in one week from one kind of place.
+type Login struct {
+	// Week is the Monday of the week the sign-ins were made in, in UTC, as 2006-01-02.
+	Week string
+	// Failed says they were refused.
+	Failed bool
+	// Network is where they came from: home or remote.
+	Network Network
+	// User is the account, "unknown" for a try on a name the server has no account of, and empty unless the settings ask for accounts to be named.
+	User string
+
+	Count int
 }

@@ -81,6 +81,8 @@ var (
 	userLastSeen  = reading("user_last_seen_timestamp_seconds", "When each account last did anything, in seconds since 1970. Only when the settings ask for accounts to be named.", "user")
 	devices       = reading("devices", "How many devices the server knows of, which is every one it has ever seen.")
 	devicesActive = reading("devices_active", "Devices seen within the window: the last day, 7 days or 30 days.", "window")
+	logins        = reading("logins_total", "Times an account was signed in to (ok) and tries that were refused (failed), by the week they were made in, named by its Monday in UTC, and where they came from: home, remote or unknown. This week and the last are on the page.", "week", "result", "network")
+	userLogins    = reading("user_logins_total", "The same sign-ins by account, with tries on a name the server has no account of under unknown. Only when the settings ask for accounts to be named.", "week", "user", "result")
 
 	historyInstalled = reading("playback_reporting_installed", "Whether the server has the Playback Reporting plugin, which is where the readings of what was played come from (1) or not (0).")
 	playbackSeconds  = reading("playback_seconds_total", "Seconds played, by the kind of thing and how it reached the device, as the server's Playback Reporting plugin has them. Plays are kept under the week they began in, named by its Monday; this week and the last are on the page, and neither ever goes down.", "week", "type", "method")
@@ -89,6 +91,11 @@ var (
 	userPlays        = reading("user_plays_total", "Plays, by the week they began in, account and the kind of thing. Only when the settings ask for accounts to be named.", "week", "user", "type")
 	titleSeconds     = reading("title_playback_seconds_total", "Seconds played of each show and each film, by the week the plays began in. Only when the settings ask for titles to be named.", "week", "title", "type")
 	titlePlays       = reading("title_plays_total", "Plays of each show and each film, by the week they began in. Only when the settings ask for titles to be named.", "week", "title", "type")
+	shortPlays       = reading("short_plays_total", "Plays that ended within a minute of beginning, which is what one that failed looks like, by the week they began in, the kind of thing and how it reached the device. A play is counted five minutes after it stopped.", "week", "type", "method")
+	reasonSeconds    = reading("transcode_reason_seconds_total", "Seconds played of streams the server made, by the week the plays began in and each reason the server gave for not sending the file as it is. A play with two reasons is under both. From Emby's plugin, which alone keeps the reasons.", "week", "reason")
+	reasonPlays      = reading("transcode_reason_plays_total", "Plays the server made a stream for, by the week they began in and each reason it gave.", "week", "reason")
+	clientSeconds    = reading("client_transcode_reason_seconds_total", "Seconds played of streams the server made, by the week the plays began in, the device, its app and each reason. Only when the settings ask for devices to be named.", "week", "device", "client", "reason")
+	clientPlays      = reading("client_transcode_reason_plays_total", "Plays the server made a stream for, by the week they began in, the device, its app and each reason. Only when the settings ask for devices to be named.", "week", "device", "client", "reason")
 )
 
 // Source is where one server's state comes from: a poller, or a test's own.
@@ -128,6 +135,7 @@ func (r *Readings) Collect(ch chan<- prometheus.Metric) {
 		w.libraries(&s)
 		w.users(&s, now)
 		w.devices(&s, now)
+		w.logins(&s)
 		w.history(&s)
 	}
 }
@@ -493,6 +501,8 @@ func (w writer) history(s *poll.State) {
 	for _, p := range h.Plays {
 		w.total(playbackSeconds, p.Seconds, p.Week, string(p.Kind), string(p.Method))
 		w.total(plays, p.Plays, p.Week, string(p.Kind), string(p.Method))
+		// written at 0 beside the plays, so the first short one is a rise a query can see
+		w.total(shortPlays, p.Short, p.Week, string(p.Kind), string(p.Method))
 	}
 	for _, p := range h.ByUser {
 		w.total(userSeconds, p.Seconds, p.Week, p.User, string(p.Kind))
@@ -501,5 +511,53 @@ func (w writer) history(s *poll.State) {
 	for _, p := range h.ByTitle {
 		w.total(titleSeconds, p.Seconds, p.Week, p.Title, string(p.Kind))
 		w.total(titlePlays, p.Plays, p.Week, p.Title, string(p.Kind))
+	}
+	for _, p := range h.ByReason {
+		w.total(reasonSeconds, p.Seconds, p.Week, p.Reason)
+		w.total(reasonPlays, p.Plays, p.Week, p.Reason)
+	}
+	for _, p := range h.ByClient {
+		w.total(clientSeconds, p.Seconds, p.Week, p.Device, p.Client, p.Reason)
+		w.total(clientPlays, p.Plays, p.Week, p.Device, p.Client, p.Reason)
+	}
+}
+
+// The two ways a sign-in can go, as the page names them.
+const (
+	loginOK     = "ok"
+	loginFailed = "failed"
+)
+
+// logins is how the signing in went in this week and the last: every sign-in and refused try by where it came from, and by account for a server
+// asked to name accounts. As with what was played, each is under the week it was made in, so no reading ever goes down.
+func (w writer) logins(s *poll.State) {
+	if !s.Logins.Known() {
+		return
+	}
+
+	type place struct{ week, result, network string }
+	type account struct{ week, user, result string }
+
+	byPlace, byAccount := map[place]int{}, map[account]int{}
+	for _, login := range s.Logins.Value {
+		result := loginOK
+		if login.Failed {
+			result = loginFailed
+		}
+		if !slices.Contains(poll.Networks, login.Network) {
+			login.Network = poll.UnknownNetwork
+		}
+
+		byPlace[place{login.Week, result, string(login.Network)}] += login.Count
+		if login.User != "" {
+			byAccount[account{login.Week, login.User, result}] += login.Count
+		}
+	}
+
+	for by, n := range byPlace {
+		w.total(logins, n, by.week, by.result, by.network)
+	}
+	for by, n := range byAccount {
+		w.total(userLogins, n, by.week, by.user, by.result)
 	}
 }

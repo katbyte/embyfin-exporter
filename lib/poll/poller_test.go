@@ -114,11 +114,16 @@ func TestAFailedQuestionKeepsTheLastGoodAnswer(t *testing.T) {
 	t.Parallel()
 
 	synctest.Test(t, func(t *testing.T) {
-		server := &polltest.Server{UsersAnswer: []poll.User{{}, {}}, DevicesAnswer: make([]poll.Device, 3)}
+		server := &polltest.Server{UsersAnswer: []poll.User{{}, {}}, DevicesAnswer: make([]poll.Device, 3), LoginsAnswer: []poll.Login{{Week: "1999-12-27", Count: 2}}}
 		p := newPoller(t, server)
 
 		p.Poll(t.Context(), poll.RoundLibrary)
 		first := time.Now()
+
+		// the sign-ins are asked after with the libraries, which is often enough for them
+		if s := p.State(); !s.Logins.Known() || len(s.Logins.Value) != 1 || server.Asked(polltest.Logins) != 1 || server.Asked(polltest.Sessions) != 0 {
+			t.Errorf("sign-ins = %+v, asked for %d times, want the one answer from the library round", s.Logins, server.Asked(polltest.Logins))
+		}
 
 		time.Sleep(time.Minute)
 		server.Fail(polltest.Users, errDown)
