@@ -85,6 +85,21 @@ embyfin_plays_total{method="direct_play",server="emby",type="episode",week="1999
 embyfin_plays_total{method="direct_play",server="emby",type="episode",week="1999-12-27"} 40
 embyfin_plays_total{method="direct_stream",server="emby",type="movie",week="1999-12-27"} 3
 embyfin_plays_total{method="transcode",server="emby",type="episode",week="1999-12-27"} 12
+# HELP embyfin_plugin_info Always 1, one for each plugin installed, with its version.
+# TYPE embyfin_plugin_info gauge
+embyfin_plugin_info{plugin="Backup & Restore",server="emby",version="1.8.6.0"} 1
+embyfin_plugin_info{plugin="Playback Reporting",server="emby",version="2.1.0.7"} 1
+embyfin_plugin_info{plugin="Webhooks",server="emby",version="1.0.38.0"} 1
+# HELP embyfin_plugin_update_available Always 1, one for each plugin a newer version is on offer for, with the version installed and the newest on offer.
+# TYPE embyfin_plugin_update_available gauge
+embyfin_plugin_update_available{latest="1.0.39.0",plugin="Webhooks",server="emby",version="1.0.38.0"} 1
+embyfin_plugin_update_available{latest="1.8.7.0",plugin="Backup & Restore",server="emby",version="1.8.6.0"} 1
+# HELP embyfin_plugins How many plugins the server has installed.
+# TYPE embyfin_plugins gauge
+embyfin_plugins{server="emby"} 3
+# HELP embyfin_plugins_update_available Plugins the server's own catalogue has a newer version of than the one installed, that the server could run. Not on the page while the server cannot reach its catalogue.
+# TYPE embyfin_plugins_update_available gauge
+embyfin_plugins_update_available{server="emby"} 2
 # HELP embyfin_poll_duration_seconds How long the last poll of the server took, by which: sessions, library or history.
 # TYPE embyfin_poll_duration_seconds gauge
 embyfin_poll_duration_seconds{poll="library",server="emby"} 3

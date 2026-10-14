@@ -9,6 +9,9 @@
 #   EMBYFIN_METRICS_TEST_BACKEND=jellyfin .scripts/testenv.sh down            # stop and remove everything
 #   .scripts/testenv.sh fixtures                                              # write the media tree only
 #
+# EMBYFIN_METRICS_TEST_ONLINE=1 with up gives the server a way out to the
+# internet, for the one test that needs it to reach its plugin catalogue.
+#
 # This script only does what the tests cannot do through the server's API:
 # run the container, put the plugin in it, get through the first-run wizard,
 # create the users, mint the API key, and lay the media out on disk. The libraries, the collection
@@ -352,7 +355,11 @@ up() {
   [ "$BACKEND" = "jellyfin" ] && mounts+=(-v "${DATA}/cache:/cache")
   # NO_PROXY carries the container's own name: Emby pings itself over HTTP
   # on startup, and that has no business going to a proxy that is not there
-  docker run -d --name "$NAME" -p "127.0.0.1:${PORT}:8096" --hostname "$NAME" -e "HTTP_PROXY=http://127.0.0.1:9" -e "HTTPS_PROXY=http://127.0.0.1:9" -e "http_proxy=http://127.0.0.1:9" -e "https_proxy=http://127.0.0.1:9" -e "NO_PROXY=localhost,127.0.0.1,${NAME}" "${mounts[@]}" "$IMAGE" >/dev/null
+  local proxy=(-e "HTTP_PROXY=http://127.0.0.1:9" -e "HTTPS_PROXY=http://127.0.0.1:9" -e "http_proxy=http://127.0.0.1:9" -e "https_proxy=http://127.0.0.1:9" -e "NO_PROXY=localhost,127.0.0.1,${NAME}")
+  # EMBYFIN_METRICS_TEST_ONLINE leaves the proxy out, for the one test that
+  # needs the server to reach its plugin catalogue. It is never set by make
+  [ -n "${EMBYFIN_METRICS_TEST_ONLINE:-}" ] && proxy=()
+  docker run -d --name "$NAME" -p "127.0.0.1:${PORT}:8096" --hostname "$NAME" ${proxy[@]+"${proxy[@]}"} "${mounts[@]}" "$IMAGE" >/dev/null
 
   # /System/Info/Public answers before the wizard endpoints do, so wait on
   # the first endpoint the setup actually uses
@@ -402,6 +409,8 @@ up() {
   echo "export EMBYFIN_METRICS_TEST_PASSWORD='${PASSWORD}'"
   # for the tests that stop the server answering, or run the program's own image beside it
   echo "export EMBYFIN_METRICS_TEST_CONTAINER='${NAME}'"
+  # for the test that needs the server to have reached its plugin catalogue
+  echo "export EMBYFIN_METRICS_TEST_ONLINE='${EMBYFIN_METRICS_TEST_ONLINE:-}'"
 }
 
 down() {

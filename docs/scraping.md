@@ -54,6 +54,7 @@ sum by (server, reason) (embyfin_transcode_reasons)                # why streams
 embyfin_transcode_bits_per_second / 1e6                            # what the server's own streams come to, in megabits a second
 sum by (server) (increase(embyfin_playback_seconds_total[1d]))     # seconds played in the last day
 embyfin_streams_bits_per_second{network="remote"} / 1e6            # megabits a second going out of the house
+embyfin_plugins_update_available > 0                               # a server has plugins with a newer version on offer
 ```
 
 Anything with a `week` label is kept a week at a time, so `sum` the `week` away as the query for seconds played does. [Add the weeks together](readings.md#add-the-weeks-together) says why.

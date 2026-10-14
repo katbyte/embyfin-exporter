@@ -47,7 +47,7 @@ func answered[T any](value T) poll.Answer[T] {
 // emby is a server that has answered everything: five sessions of which three are playing or paused and two are streams the server is making,
 // one of them for a device outside the house, a scan a quarter of the way through, a task that failed and one that was cancelled, three libraries,
 // four accounts last seen an hour, three days and twenty days ago and never, the last of them disabled, seven devices of which four were seen
-// within the year, and two weeks' plays. It was asked to name all it can, so the sessions say whose they are, what they play and on what, two of
+// within the year, three plugins of which two have a newer version on offer, and two weeks' plays. It was asked to name all it can, so the sessions say whose they are, what they play and on what, two of
 // the accounts have names, and the plays are also by account and by title.
 func emby() *fixed {
 	now := time.Now()
@@ -84,6 +84,11 @@ func emby() *fixed {
 			{Week: thisWeek, Failed: true, Network: poll.Remote, User: "unknown", Count: 40},
 			{Week: lastWeek, Failed: true, Network: poll.Home, User: "grace", Count: 1},
 		}),
+		Plugins: answered(poll.Plugins{Checked: true, Installed: []poll.Plugin{
+			{Name: "Backup & Restore", Version: "1.8.6.0", Latest: "1.8.7.0"},
+			{Name: "Playback Reporting", Version: "2.1.0.7"},
+			{Name: "Webhooks", Version: "1.0.38.0", Latest: "1.0.39.0"},
+		}}),
 		History: answered(poll.History{
 			Installed: true,
 			Plays: []poll.Played{
@@ -589,6 +594,46 @@ func TestSignIns(t *testing.T) {
 	}
 	if never := write(t, &fixed{Kind: "emby", Sessions: answered([]poll.Session{})}); has(never, "embyfin_logins_total") {
 		t.Errorf("a server never asked for its sign-ins has some on its page:\n%s", never)
+	}
+}
+
+// The plugins a server has: how many, each with the version installed, and each a newer version is on offer for with that version beside it. A
+// server whose catalogue did not answer still lists its plugins and does not say how many are behind, which is not the same as none; one with none
+// behind says 0. A plugin a server lists twice has one line, since two the same would lose the whole page.
+func TestPlugins(t *testing.T) {
+	t.Parallel()
+
+	got := write(t, emby())
+	for _, want := range []string{
+		`embyfin_plugins{server="emby"} 3`,
+		`embyfin_plugins_update_available{server="emby"} 2`,
+		`embyfin_plugin_info{plugin="Backup & Restore",server="emby",version="1.8.6.0"} 1`,
+		`embyfin_plugin_info{plugin="Playback Reporting",server="emby",version="2.1.0.7"} 1`,
+		`embyfin_plugin_update_available{latest="1.8.7.0",plugin="Backup & Restore",server="emby",version="1.8.6.0"} 1`,
+		`embyfin_plugin_update_available{latest="1.0.39.0",plugin="Webhooks",server="emby",version="1.0.38.0"} 1`,
+	} {
+		if !has(got, want) {
+			t.Errorf("the page lacks %s:\n%s", want, got)
+		}
+	}
+	if has(got, `embyfin_plugin_update_available{latest="",`) || has(got, `embyfin_plugin_update_available{latest="2.1.0.7"`) {
+		t.Errorf("a plugin with nothing newer on offer has a line saying one is:\n%s", got)
+	}
+
+	twice := []poll.Plugin{{Name: "Reports", Version: "19.0.0.0"}, {Name: "Reports", Version: "19.0.0.0"}, {Name: "Reports", Version: "18.0.0.0"}}
+
+	unasked := write(t, &fixed{Kind: "jellyfin", Plugins: answered(poll.Plugins{Installed: twice})})
+	if !has(unasked, `embyfin_plugins{server="jellyfin"} 2`) || !has(unasked, `embyfin_plugin_info{plugin="Reports",server="jellyfin",version="18.0.0.0"} 1`) || has(unasked, "embyfin_plugins_update_available") || has(unasked, "embyfin_plugin_update_available") {
+		t.Errorf("a server whose catalogue did not answer, listing one plugin twice, reads:\n%s", unasked)
+	}
+
+	current := write(t, &fixed{Kind: "jellyfin", Plugins: answered(poll.Plugins{Checked: true, Installed: twice})})
+	if !has(current, `embyfin_plugins_update_available{server="jellyfin"} 0`) || has(current, "embyfin_plugin_update_available") {
+		t.Errorf("a server with every plugin current reads:\n%s", current)
+	}
+
+	if never := write(t, &fixed{Kind: "emby", Sessions: answered([]poll.Session{})}); has(never, "embyfin_plugin") {
+		t.Errorf("a server never asked for its plugins has some on its page:\n%s", never)
 	}
 }
 

@@ -76,6 +76,11 @@ var (
 	logins        = reading("logins_total", "Times an account was signed in to (ok) and tries that were refused (failed), by the week they were made in, named by its Monday in UTC, and where they came from: home, remote or unknown. This week and the last are on the page.", "week", "result", "network")
 	userLogins    = reading("user_logins_total", "The same sign-ins by account, with tries on a name the server has no account of under unknown. Only when the settings ask for accounts to be named.", "week", "user", "result")
 
+	plugins        = reading("plugins", "How many plugins the server has installed.")
+	pluginInfo     = reading("plugin_info", "Always 1, one for each plugin installed, with its version.", "plugin", "version")
+	pluginsBehind  = reading("plugins_update_available", "Plugins the server's own catalogue has a newer version of than the one installed, that the server could run. Not on the page while the server cannot reach its catalogue.")
+	pluginIsBehind = reading("plugin_update_available", "Always 1, one for each plugin a newer version is on offer for, with the version installed and the newest on offer.", "plugin", "version", "latest")
+
 	historyInstalled = reading("playback_reporting_installed", "Whether the server has the Playback Reporting plugin, which is where the readings of what was played come from (1) or not (0).")
 	playbackSeconds  = reading("playback_seconds_total", "Seconds played, by the kind of thing and how it reached the device, as the server's Playback Reporting plugin has them. Plays are kept under the week they began in, named by its Monday; this week and the last are on the page, and neither ever goes down.", "week", "type", "method")
 	plays            = reading("plays_total", "Plays, by the week they began in, the kind of thing and how it reached the device. A play counts again each time how it reaches the device changes.", "week", "type", "method")
@@ -128,6 +133,7 @@ func (r *Readings) Collect(ch chan<- prometheus.Metric) {
 		w.users(&s, now)
 		w.devices(&s, now)
 		w.logins(&s)
+		w.plugins(&s)
 		w.history(&s)
 	}
 }
@@ -565,5 +571,35 @@ func (w writer) logins(s *poll.State) {
 	}
 	for by, n := range byAccount {
 		w.total(userLogins, n, by.week, by.user, by.result)
+	}
+}
+
+// plugins is what the server has installed, and which of it a newer version is on offer for. Which are behind is only said when the server's
+// catalogue answered: without it none being behind is not known. A plugin listed twice has one line, since two the same would lose the whole page.
+func (w writer) plugins(s *poll.State) {
+	if !s.Plugins.Known() {
+		return
+	}
+
+	type line struct{ name, version string }
+
+	lines, behind := map[line]bool{}, 0
+	for _, plugin := range s.Plugins.Value.Installed {
+		at := line{plugin.Name, plugin.Version}
+		if lines[at] {
+			continue
+		}
+		lines[at] = true
+
+		w.gauge(pluginInfo, 1, plugin.Name, plugin.Version)
+		if plugin.Latest != "" {
+			behind++
+			w.gauge(pluginIsBehind, 1, plugin.Name, plugin.Version, plugin.Latest)
+		}
+	}
+
+	w.count(plugins, len(lines))
+	if s.Plugins.Value.Checked {
+		w.count(pluginsBehind, behind)
 	}
 }

@@ -18,7 +18,7 @@ func serveCmd(connect connector) *cobra.Command {
 
 A scrape is answered from memory and never waits on a server. Sessions, streams, scheduled
 tasks and the server's own state are read every --sessions-interval; libraries, item counts,
-users, devices and sign-ins every --library-interval; and what was played every
+users, devices, sign-ins and plugins every --library-interval; and what was played every
 --history-interval, from a server that has the Playback Reporting plugin. A server that stops answering is
 reported as embyfin_up 0, and does not stop the other being reported.
 

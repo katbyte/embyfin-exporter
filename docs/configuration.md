@@ -12,7 +12,7 @@ Every setting can be a command-line flag, an environment variable or a line in a
 | `EMBYFIN_METRICS_LABELS` | `--labels` | [Labels of your own](#labels-of-your-own) on every reading. None by default. |
 | `EMBYFIN_METRICS_DETAIL` | `--detail` | [Who and what the page may name](#names). Nobody and nothing by default. |
 | `EMBYFIN_METRICS_SESSIONS_INTERVAL` | `--sessions-interval` | How often sessions, streams, scheduled tasks and the server's own state are read. Default `15s`. |
-| `EMBYFIN_METRICS_LIBRARY_INTERVAL` | `--library-interval` | How often libraries, item counts, users, devices and sign-ins are read. Default `5m`. |
+| `EMBYFIN_METRICS_LIBRARY_INTERVAL` | `--library-interval` | How often libraries, item counts, users, devices, sign-ins and plugins are read. Default `5m`. |
 | `EMBYFIN_METRICS_HISTORY_INTERVAL` | `--history-interval` | How often what was played is read, from a server with the Playback Reporting plugin. Default `30s`. |
 | `EMBYFIN_METRICS_LOG` | | The [log level](#log-level). Default `WARN`. |
 | `EMBYFIN_METRICS_CONFIG` | `--config` | Read settings from [this file](#configuration-file) and no other. |

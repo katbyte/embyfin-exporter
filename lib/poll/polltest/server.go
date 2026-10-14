@@ -19,6 +19,7 @@ const (
 	Devices   = "devices"
 	History   = "history"
 	Logins    = "logins"
+	Plugins   = "plugins"
 )
 
 // Server answers each question with the value set for it. The zero value is an Emby with nothing on it; set the fields before it is polled.
@@ -34,6 +35,7 @@ type Server struct {
 	DevicesAnswer   []poll.Device
 	HistoryAnswer   poll.History
 	LoginsAnswer    []poll.Login
+	PluginsAnswer   poll.Plugins
 
 	// Slow is how long every question takes to answer, or until the context ends if that is sooner.
 	Slow time.Duration
@@ -124,4 +126,8 @@ func (s *Server) History(ctx context.Context) (poll.History, error) {
 
 func (s *Server) Logins(ctx context.Context) ([]poll.Login, error) {
 	return s.LoginsAnswer, s.answer(ctx, Logins)
+}
+
+func (s *Server) Plugins(ctx context.Context) (poll.Plugins, error) {
+	return s.PluginsAnswer, s.answer(ctx, Plugins)
 }

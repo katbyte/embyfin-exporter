@@ -29,6 +29,7 @@ type client interface {
 	Count(ctx context.Context, opts embyfin.SearchOptions) (int, error)
 	Users(ctx context.Context) ([]embyfin.User, error)
 	Devices(ctx context.Context) ([]embyfin.Device, error)
+	Plugins(ctx context.Context) ([]embyfin.Plugin, error)
 }
 
 // Server asks one Emby or Jellyfin the page's questions. It only reads, and what it hands on is counts and states: an account's name or a title is
@@ -39,11 +40,18 @@ type Server struct {
 	files   fileRates
 	log     activities
 	// arrivals is nil for a server that cannot count what is new in a library, which Jellyfin cannot
-	arrivals newcomers
-	detail   Detail
+	arrivals  newcomers
+	catalogue catalogue
+	detail    Detail
 
 	// history is whether the server was last seen to have the Playback Reporting plugin (2) or not (1), so the log says so once
 	history atomic.Int32
+
+	// offered is what the server's catalogue of plugins last had on offer and when it was asked, and catalogued whether it answered (2) or not (1),
+	// so the log says so once. Only the library round reads or writes the first two
+	offered    map[string]string
+	offeredAt  time.Time
+	catalogued atomic.Int32
 }
 
 // Connect is the server of that kind, "emby" or "jellyfin", at address, asked with that key, and telling of who plays what only as far as detail
@@ -61,7 +69,7 @@ func Connect(kind, address, token string, detail Detail) (*Server, error) {
 		return nil, fmt.Errorf("%s: %w", kind, err)
 	}
 
-	s := &Server{client: c, reports: d, files: d, log: d, detail: detail}
+	s := &Server{client: c, reports: d, files: d, log: d, catalogue: d, detail: detail}
 	if c.Backend() == embyfin.Emby {
 		s.arrivals = d
 	}

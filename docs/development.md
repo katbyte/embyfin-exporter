@@ -45,6 +45,7 @@ The suite then checks the page against the server each time it changes something
 - it checks the line each playing session has of its own: whose it is, the film, the device and its app for a program told to name them, and none of them for one that was not
 - it checks the line is gone once the session stops
 - it asks for a scan and catches it under way
+- it checks the page lists the plugins the server lists, each at its version, and does not say which are behind while the server cannot reach its catalogue
 - it plays a film and watches the time played go up on the page while it plays, under the account and the title only for a program told to name them
 - it lays plays down in the plugin's record in this week, the last and three weeks back, and checks each is under its own week or off the page
 - it checks the short ones are counted and, on Emby, that each is under the reason and the device it was made a stream for
@@ -70,3 +71,12 @@ These stay with the unit tests:
 - a transcode on a GPU, which the containers do not have
 - a scheduled task that fails, which none does on a server left to itself
 - live television
+- which plugins are behind, since the test server has no way out to its catalogue
+
+The last can be run by hand against a server that has one. A throwaway Emby comes with plugins older than its catalogue, so some are behind:
+
+```bash
+eval "$(EMBYFIN_METRICS_TEST_BACKEND=emby EMBYFIN_METRICS_TEST_ONLINE=1 .scripts/testenv.sh up)"
+go test -tags acceptance -count=1 ./acceptance/ -run TestThePluginsAreOnThePage -v
+EMBYFIN_METRICS_TEST_BACKEND=emby .scripts/testenv.sh down
+```

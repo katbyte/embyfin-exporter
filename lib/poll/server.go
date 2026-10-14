@@ -26,6 +26,8 @@ type Server interface {
 	History(ctx context.Context) (History, error)
 	// Logins is how many times accounts were signed in to, and how many tries were refused, in this week and the last.
 	Logins(ctx context.Context) ([]Login, error)
+	// Plugins is what is installed into the server, each with the newer version on offer when the server knows of one.
+	Plugins(ctx context.Context) (Plugins, error)
 }
 
 // Info is what a server says of itself.
@@ -248,4 +250,21 @@ type Login struct {
 	User string
 
 	Count int
+}
+
+// Plugin is something installed into a server that is not part of it.
+type Plugin struct {
+	// Name is the plugin's own name, not a person's.
+	Name    string
+	Version string
+	// Latest is the newest version on offer that the server could run, when that is newer than the one installed, and empty when it is not.
+	Latest string
+}
+
+// Plugins is what a server has installed, and whether it could say what is on offer.
+type Plugins struct {
+	Installed []Plugin
+	// Checked is whether the server's catalogue answered. Without it a plugin with no newer version is not known to be up to date, only not asked
+	// about.
+	Checked bool
 }

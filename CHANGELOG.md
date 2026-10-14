@@ -1,5 +1,9 @@
 # Changelog
 
+## Unreleased
+
+- **Plugins**: how many each server has, the version of each, and which have a newer version on offer.
+
 ## 0.2.0 (2026-10-12)
 
 What was played, who is streaming now and who signed in, with names only for whoever asks for them.

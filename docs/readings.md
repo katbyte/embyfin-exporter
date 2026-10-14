@@ -7,6 +7,7 @@ Every reading starts `embyfin_` and has a `server` label, `emby` or `jellyfin`. 
 - [Why a stream is made](#why-a-stream-is-made)
 - [Who is streaming now](#who-is-streaming-now)
 - [Scheduled tasks and scans](#scheduled-tasks-and-scans)
+- [Plugins](#plugins)
 - [Libraries](#libraries)
 - [Accounts and devices](#accounts-and-devices)
 - [Sign-ins](#sign-ins)
@@ -128,6 +129,36 @@ embyfin_session_position_seconds / on (server, session) embyfin_session_runtime_
 `task` is the name the server's own dashboard lists the task by. A task goes by its name because Emby gives several tasks one key and some none. Two scheduled tasks of one name are one `task` on the page, failed if either did.
 
 Emby stops a scan under way when a library is added, which shows as a last scan that was cut short.
+
+## Plugins
+
+| Reading | Labels | What it says |
+|---|---|---|
+| `embyfin_plugins` | | How many plugins the server has installed. |
+| `embyfin_plugin_info` | `plugin`, `version` | Always 1, one for each plugin installed, with its version. |
+| `embyfin_plugins_update_available` | | Plugins with a newer version on offer than the one installed. |
+| `embyfin_plugin_update_available` | `plugin`, `version`, `latest` | Always 1, one for each such plugin, with the version installed and the newest on offer. |
+
+A plugin is behind when the server's own catalogue has a newer version of it that the server could run. That is the choice each server makes for itself:
+
+- Emby leaves out a version less settled than the server is set to take, a beta say, and one that needs a newer server.
+- Jellyfin leaves out a version built for a newer server.
+
+```promql
+embyfin_plugins_update_available > 0   # a server has plugins behind
+embyfin_plugin_update_available        # which: the version installed and the newest on offer
+```
+
+Both servers fetch a plugin's update themselves, when they start and on a timer: every 3 hours on Emby and every day on Jellyfin, as they come. What then waits is a restart, which `embyfin_server_restart_pending` says. The two differ in what they list meanwhile:
+
+- Emby goes on listing the version that is running, so the plugin stays behind until the restart.
+- Jellyfin lists the new version beside the old, so nothing is behind once it is fetched.
+
+So a plugin behind for more than a day means the server is not fetching updates, or is waiting on a restart.
+
+The count is not on the page while a server cannot reach its catalogue. The plugins are still listed. How many are behind is then not known, which is not the same as none.
+
+The catalogue is read once an hour, since it changes rarely and Emby's is over a megabyte. A plugin's name is always on the page: it names no person.
 
 ## Libraries
 
@@ -271,7 +302,7 @@ The plugin is asked with a `POST`, which is the only way it takes a question, an
 
 ## Names, only when you ask
 
-Left alone, there is no user name, device name, client address or title of what is playing anywhere on the page. There are only counts and each session's state. The nearest it comes is the kind of thing playing, a film or an episode, and the names of the server's own scheduled tasks.
+Left alone, there is no user name, device name, client address or title of what is playing anywhere on the page. There are only counts and each session's state. The nearest it comes is the kind of thing playing, a film or an episode, and the names of the server's own scheduled tasks and plugins.
 
 A metrics store that keeps names and titles is a viewing history, so it is yours to ask for:
 

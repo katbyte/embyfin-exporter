@@ -75,7 +75,7 @@ func configureFlags(root *cobra.Command) error {
 	pflags.String("labels", "", "labels to put on every reading, as name=value,name=value: hostname=nas say, when the page is not scraped on the servers' own host")
 	pflags.String("detail", "", "who and what the page may name, as a list of users, titles, devices or all: nobody and nothing unless asked, so no account's or device's name and no title is on the page by default")
 	pflags.Duration("sessions-interval", defaultSessionsInterval, "how often sessions, streams, scheduled tasks and the server's own state are read")
-	pflags.Duration("library-interval", defaultLibraryInterval, "how often libraries, item counts, users, devices and sign-ins are read")
+	pflags.Duration("library-interval", defaultLibraryInterval, "how often libraries, item counts, users, devices, sign-ins and plugins are read")
 	pflags.Duration("history-interval", defaultHistoryInterval, "how often what was played is read, from a server with the Playback Reporting plugin")
 	pflags.String("config", "", "read settings from this file and no other, in place of ./.embyfin-metrics or ~/.embyfin-metrics (or export EMBYFIN_METRICS_CONFIG)")
 

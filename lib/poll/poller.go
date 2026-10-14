@@ -19,7 +19,7 @@ const (
 	// RoundSessions is what changes by the minute: sessions, scheduled tasks and the server's own state.
 	RoundSessions Round = "sessions"
 	// RoundLibrary is what changes when a scan runs or someone is added, or does not need watching by the second: libraries and what they hold,
-	// users, devices and sign-ins.
+	// users, devices, sign-ins and plugins.
 	RoundLibrary Round = "library"
 	// RoundHistory is what has been played, which a plugin answers and not the server itself: on a round of its own, a plugin that fails does not
 	// make the server look down.
@@ -85,6 +85,7 @@ type State struct {
 	Users     Answer[[]User]
 	Devices   Answer[[]Device]
 	Logins    Answer[[]Login]
+	Plugins   Answer[Plugins]
 	History   Answer[History]
 
 	SessionsRound RoundState
@@ -220,6 +221,7 @@ func (p *Poller) ask(ctx context.Context, round Round) error {
 			keep(ctx, p, "users", p.server.Users, func(s *State) *Answer[[]User] { return &s.Users }),
 			keep(ctx, p, "devices", p.server.Devices, func(s *State) *Answer[[]Device] { return &s.Devices }),
 			keep(ctx, p, "sign-ins", p.server.Logins, func(s *State) *Answer[[]Login] { return &s.Logins }),
+			keep(ctx, p, "plugins", p.server.Plugins, func(s *State) *Answer[Plugins] { return &s.Plugins }),
 		)
 	case RoundHistory:
 		return keep(ctx, p, "what was played", p.server.History, func(s *State) *Answer[History] { return &s.History })
@@ -265,6 +267,7 @@ func (p *Poller) State() State {
 	fresh(&s.Users, now, library)
 	fresh(&s.Devices, now, library)
 	fresh(&s.Logins, now, library)
+	fresh(&s.Plugins, now, library)
 	fresh(&s.History, now, history)
 
 	return s

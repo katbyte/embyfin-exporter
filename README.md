@@ -47,7 +47,7 @@ Then point Prometheus or Grafana Alloy at port 9096. [docs/scraping.md](docs/scr
 
 ## What is on the page
 
-Every reading starts `embyfin_` and has a `server` label, `emby` or `jellyfin`. [docs/readings.md](docs/readings.md) lists all 54 with their labels.
+Every reading starts `embyfin_` and has a `server` label, `emby` or `jellyfin`. [docs/readings.md](docs/readings.md) lists all 58 with their labels.
 
 | Group | What it says |
 |---|---|
@@ -56,6 +56,7 @@ Every reading starts `embyfin_` and has a `server` label, `emby` or `jellyfin`. 
 | [Why a stream is made](docs/readings.md#why-a-stream-is-made) | The server's reasons for converting a file, and what the streams it makes come to. |
 | [Who is streaming now](docs/readings.md#who-is-streaming-now) | A line for each stream: how fast, how far through, and from home or outside. |
 | [Scheduled tasks and scans](docs/readings.md#scheduled-tasks-and-scans) | Tasks running or failed, and how the library scan is getting on. |
+| [Plugins](docs/readings.md#plugins) | How many each server has, their versions, and which have a newer version on offer. |
 | [Libraries](docs/readings.md#libraries) | Items in each library by kind, and on Emby how many are new. |
 | [Accounts and devices](docs/readings.md#accounts-and-devices) | How many there are, and how many were seen in the last day, week and month. |
 | [Sign-ins](docs/readings.md#sign-ins) | Sign-ins and refused tries, from home or from outside. |
@@ -95,7 +96,7 @@ Leave a server out by setting neither its address nor its key. A key is never lo
 
 ## How this is built
 
-- The live tests start a real Emby and a real Jellyfin in Docker and check the page against them. They run on every change, and cover 53 of the 54 readings.
+- The live tests start a real Emby and a real Jellyfin in Docker and check the page against them. They run on every change, and cover 55 of the 58 readings.
 - The unit tests keep a saved copy of the whole page, so a renamed reading or label fails them.
 - CI also runs golangci-lint, govulncheck, CodeQL and a Trivy scan of the built and the released programs.
 - It lints the rest too: shell scripts, workflows (actionlint, zizmor, yamllint), spelling, markdown, and that the vendored dependencies match `go.mod`.

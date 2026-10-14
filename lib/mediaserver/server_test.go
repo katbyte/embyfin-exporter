@@ -34,6 +34,7 @@ type fake struct {
 	counts   map[string]int
 	users    []embyfin.User
 	devices  []embyfin.Device
+	plugins  []embyfin.Plugin
 	// err fails every question, and countErr only the counts
 	err      error
 	countErr error
@@ -73,6 +74,8 @@ func (f *fake) Count(_ context.Context, opts embyfin.SearchOptions) (int, error)
 }
 
 func (f *fake) Users(context.Context) ([]embyfin.User, error) { return f.users, f.err }
+
+func (f *fake) Plugins(context.Context) ([]embyfin.Plugin, error) { return f.plugins, f.err }
 
 func (f *fake) Devices(context.Context) ([]embyfin.Device, error) { return f.devices, f.err }
 
