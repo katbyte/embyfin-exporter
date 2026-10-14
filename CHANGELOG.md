@@ -1,8 +1,10 @@
 # Changelog
 
-## Unreleased
+## 0.3.0 (2026-10-14)
 
-- **Plugins**: how many each server has, the version of each, and which have a newer version on offer.
+Which plugins each server has, and which have a newer version waiting.
+
+- **Plugins**: how many each server has, the version of each, and which have a newer version on offer. While a server cannot reach its catalogue, the page does not say how many are behind.
 
 ## 0.2.0 (2026-10-12)
 
