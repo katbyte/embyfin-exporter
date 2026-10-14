@@ -122,7 +122,7 @@ goimports: $(GOLANGCI_LINT) ## Fix imports with golangci-lint (goimports)
 
 ##@ Linting & Dependencies
 # markdown checked by markdownlint: every .md the repo owns
-MARKDOWN_INPUTS='*.md' '.github/**/*.md'
+MARKDOWN_INPUTS='*.md' 'docs/**/*.md' '.github/**/*.md'
 
 lint: $(GOLANGCI_LINT_MODULES) ## Check source code with the golangci linters (incl. azproviderlint)
 	@echo "==> Checking source code against linters..."
