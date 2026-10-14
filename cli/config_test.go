@@ -84,7 +84,7 @@ func write(t *testing.T, dir, name, body string) string {
 	return path
 }
 
-// With nothing set the page is served where the README says, and the servers are asked as often as it says: these are what a dashboard's
+// With nothing set the page is served where the docs say, and the servers are asked as often as they say: these are what a dashboard's
 // scrape interval and an example compose file are written against.
 //
 //nolint:paralleltest // viper is global state; these mutate it
