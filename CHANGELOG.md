@@ -1,5 +1,14 @@
 # Changelog
 
+## 0.5.0 (2026-10-15)
+
+One setting for how often each server is asked, and the asking shared with kt's other exporters. The old interval settings no longer work.
+
+- **One setting for how often each server is asked**: `EMBYFIN_EXPORTER_INTERVALS` (`--intervals`), written `sessions=15s,library=5m,history=30s`, replaces `EMBYFIN_EXPORTER_SESSIONS_INTERVAL`, `EMBYFIN_EXPORTER_LIBRARY_INTERVAL` and `EMBYFIN_EXPORTER_HISTORY_INTERVAL`, which no longer work. Anything still setting them has to move to the new one.
+- **The build reading is renamed** `embyfin_exporter_build_info`, from `embyfin_metrics_build_info`.
+- **How often each round is asked** is on the page, as `embyfin_poll_interval_seconds`.
+- **A server's questions are asked at once**, so a round takes as long as its slowest question rather than all of them added up.
+
 ## 0.4.0 (2026-10-15)
 
 embyfin-metrics is now embyfin-exporter, the name most Prometheus exporters go by.
