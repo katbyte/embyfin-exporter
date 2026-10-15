@@ -11,6 +11,7 @@ import (
 	"github.com/katbyte/embyfin-exporter/lib/mediaserver"
 	"github.com/katbyte/embyfin-exporter/lib/poll"
 	"github.com/katbyte/embyfin-exporter/lib/poll/polltest"
+	"github.com/katbyte/go-kt/prometheus/poller"
 	"github.com/spf13/cobra"
 	"github.com/spf13/pflag"
 	"github.com/spf13/viper"
@@ -92,8 +93,9 @@ func TestDefaults(t *testing.T) {
 	alone(t)
 
 	f := must(t)
-	if f.Listen != ":9096" || f.SessionsInterval != 15*time.Second || f.LibraryInterval != 5*time.Minute || f.HistoryInterval != 30*time.Second {
-		t.Errorf("defaults = %s, sessions every %s, libraries every %s, what was played every %s; want :9096, 15s, 5m and 30s", f.Listen, f.SessionsInterval, f.LibraryInterval, f.HistoryInterval)
+	every, err := poller.ParseIntervals(f.Intervals, poll.Every)
+	if f.Listen != ":9096" || err != nil || every["sessions"] != 15*time.Second || every["library"] != 5*time.Minute || every["history"] != 30*time.Second {
+		t.Errorf("defaults = %s, intervals %v (%v); want :9096, sessions every 15s, library 5m and history 30s", f.Listen, every, err)
 	}
 	if f.EmbyServer != "" || f.EmbyToken != "" || f.JellyfinServer != "" || f.JellyfinToken != "" || f.Labels != "" {
 		t.Errorf("a server or a label is set with nothing given: %+v", f)
@@ -115,13 +117,11 @@ func TestEveryFlagHasAnEnvironmentVariable(t *testing.T) {
 	t.Setenv("EMBYFIN_EXPORTER_LISTEN", "127.0.0.1:9000")
 	t.Setenv("EMBYFIN_EXPORTER_LABELS", "hostname=nas")
 	t.Setenv("EMBYFIN_EXPORTER_DETAIL", "users,titles")
-	t.Setenv("EMBYFIN_EXPORTER_SESSIONS_INTERVAL", "45s")
-	t.Setenv("EMBYFIN_EXPORTER_LIBRARY_INTERVAL", "10m")
-	t.Setenv("EMBYFIN_EXPORTER_HISTORY_INTERVAL", "2m")
+	t.Setenv("EMBYFIN_EXPORTER_INTERVALS", "sessions=45s,library=10m,history=2m")
 
 	want := FlagData{
 		EmbyServer: testEmby, EmbyToken: "emby-key", JellyfinServer: testJellyfin, JellyfinToken: "jellyfin-key",
-		Listen: "127.0.0.1:9000", Labels: "hostname=nas", Detail: "users,titles", SessionsInterval: 45 * time.Second, LibraryInterval: 10 * time.Minute, HistoryInterval: 2 * time.Minute,
+		Listen: "127.0.0.1:9000", Labels: "hostname=nas", Detail: "users,titles", Intervals: "sessions=45s,library=10m,history=2m",
 	}
 	if got := *must(t); got != want {
 		t.Errorf("from the environment = %+v, want %+v", got, want)
@@ -141,24 +141,24 @@ func TestEveryFlagHasAnEnvironmentVariable(t *testing.T) {
 // A flag beats the environment, which beats a settings file: a container overrides what an image holds, and a command line overrides both.
 func TestFlagThenEnvironmentThenFile(t *testing.T) {
 	home, _ := alone(t)
-	write(t, home, ".embyfin-exporter", "EMBY_SERVER=http://from-file\nEMBY_TOKEN=from-file\nSESSIONS_INTERVAL=45s\nLISTEN=:9000\n")
+	write(t, home, ".embyfin-exporter", "EMBY_SERVER=http://from-file\nEMBY_TOKEN=from-file\nINTERVALS=sessions=45s\nLISTEN=:9000\n")
 
 	f := must(t)
-	if f.EmbyServer != "http://from-file" || f.EmbyToken != "from-file" || f.SessionsInterval != 45*time.Second || f.Listen != ":9000" {
+	if f.EmbyServer != "http://from-file" || f.EmbyToken != "from-file" || f.Intervals != "sessions=45s" || f.Listen != ":9000" {
 		t.Errorf("from the file = %+v, want every setting it holds, the ones of two words included", f)
 	}
 
 	viper.Reset()
 	t.Setenv("EMBYFIN_EXPORTER_EMBY_SERVER", "http://from-env")
-	t.Setenv("EMBYFIN_EXPORTER_SESSIONS_INTERVAL", "20s")
+	t.Setenv("EMBYFIN_EXPORTER_INTERVALS", "sessions=20s")
 	f = must(t)
-	if f.EmbyServer != "http://from-env" || f.SessionsInterval != 20*time.Second || f.EmbyToken != "from-file" {
+	if f.EmbyServer != "http://from-env" || f.Intervals != "sessions=20s" || f.EmbyToken != "from-file" {
 		t.Errorf("with the environment = %+v, want it over the file, and the file for the rest", f)
 	}
 
 	viper.Reset()
-	f = must(t, "--emby-server", "http://from-flag", "--sessions-interval", "5s")
-	if f.EmbyServer != "http://from-flag" || f.SessionsInterval != 5*time.Second {
+	f = must(t, "--emby-server", "http://from-flag", "--intervals", "sessions=5s")
+	if f.EmbyServer != "http://from-flag" || f.Intervals != "sessions=5s" {
 		t.Errorf("with flags = %+v, want them over the environment", f)
 	}
 }
@@ -256,14 +256,15 @@ func TestTargets(t *testing.T) {
 	}
 }
 
-// Each server gets a poller of its own, made with its own address and key, and a client that cannot be made is said with the server it was for.
-func TestPollers(t *testing.T) {
+// Each server is asked with a client of its own, made with its own address and key, and a client that cannot be made is said with the server it was
+// for.
+func TestPoller(t *testing.T) {
 	t.Parallel()
 
-	f := FlagData{EmbyServer: testEmby, EmbyToken: "emby-key", JellyfinServer: testJellyfin, JellyfinToken: "jellyfin-key", Detail: "users", SessionsInterval: time.Second, LibraryInterval: time.Minute, HistoryInterval: time.Second}
+	f := FlagData{EmbyServer: testEmby, EmbyToken: "emby-key", JellyfinServer: testJellyfin, JellyfinToken: "jellyfin-key", Detail: "users", Intervals: "sessions=1s,library=1m,history=1s"}
 
 	var made []string
-	pollers, err := f.pollers(func(kind, server, token string, detail mediaserver.Detail) (poll.Server, error) {
+	p, err := f.poller(func(kind, server, token string, detail mediaserver.Detail) (poll.Server, error) {
 		made = append(made, kind+" "+server+" "+token)
 		if detail != (mediaserver.Detail{Users: true}) {
 			t.Errorf("%s: made to name %+v, want accounts alone as the settings ask", kind, detail)
@@ -274,14 +275,14 @@ func TestPollers(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if len(pollers) != 2 || pollers[0].Kind() != kindEmby || pollers[1].Kind() != kindJellyfin {
-		t.Errorf("pollers = %d, want one for Emby and one for Jellyfin", len(pollers))
+	if every := p.Round(kindEmby, "sessions"); every.Ran || len(made) != 2 {
+		t.Errorf("the poller asked before it was started (%+v), or made %d clients, want 2", every, len(made))
 	}
 	if want := "emby " + testEmby + " emby-key,jellyfin " + testJellyfin + " jellyfin-key"; strings.Join(made, ",") != want {
 		t.Errorf("clients made for %q, want %q", strings.Join(made, ","), want)
 	}
 
-	_, err = f.pollers(func(string, string, string, mediaserver.Detail) (poll.Server, error) {
+	_, err = f.poller(func(string, string, string, mediaserver.Detail) (poll.Server, error) {
 		return nil, errors.New("no such host")
 	})
 	if err == nil || !strings.Contains(err.Error(), "emby: no such host") {
@@ -292,15 +293,15 @@ func TestPollers(t *testing.T) {
 		return &polltest.Server{Named: kind}, nil
 	}
 
-	f.SessionsInterval = 0
-	if _, err := f.pollers(anything); err == nil {
-		t.Error("an interval of nothing was accepted")
+	f.Intervals = "sessions=0s"
+	if _, err := f.poller(anything); err == nil || !strings.Contains(err.Error(), "EMBYFIN_EXPORTER_INTERVALS") {
+		t.Errorf("an interval of nothing = %v, want it refused, naming the setting", err)
 	}
 
 	// a word --detail does not know stops the program before any client is made, and the error says which word and which setting
-	f.SessionsInterval, f.Detail = time.Second, "users,everyone"
+	f.Intervals, f.Detail = "", "users,everyone"
 	made = nil
-	if _, err := f.pollers(func(kind, _, _ string, _ mediaserver.Detail) (poll.Server, error) {
+	if _, err := f.poller(func(kind, _, _ string, _ mediaserver.Detail) (poll.Server, error) {
 		made = append(made, kind)
 		return &polltest.Server{Named: kind}, nil
 	}); err == nil || !strings.Contains(err.Error(), `"everyone"`) || !strings.Contains(err.Error(), "EMBYFIN_EXPORTER_DETAIL") || len(made) != 0 {

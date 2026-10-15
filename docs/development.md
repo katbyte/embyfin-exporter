@@ -18,7 +18,7 @@ Dependencies are vendored. The dev tools are pinned in `.tools/go.mod` and the m
 
 The servers are spoken to with [embyfin-mcp](https://github.com/katbyte/embyfin-mcp)'s client, which hides most of what differs between the two.
 
-The page itself, its `/metrics` and `/healthz` routes and the labels are [go-kt](https://github.com/katbyte/go-kt)'s `pmetrics`, shared with the other tools that serve one.
+The page itself, its `/metrics` and `/healthz` routes and the labels are [go-kt](https://github.com/katbyte/go-kt)'s `prometheus/metrics`, and the asking on a schedule, with the `embyfin_poll_*` readings, is its `prometheus/poller`, both shared with the other exporters.
 
 ## Unit tests
 

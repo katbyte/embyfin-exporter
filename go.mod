@@ -4,9 +4,9 @@ go 1.27.0
 
 require (
 	github.com/gookit/color v1.6.1
-	github.com/katbyte/embyfin-mcp v0.8.0
-	github.com/katbyte/go-kt v0.7.0
-	github.com/katbyte/pandorest v0.8.3
+	github.com/katbyte/embyfin-mcp v0.9.0
+	github.com/katbyte/go-kt v0.9.0
+	github.com/katbyte/pandorest v0.11.0
 	github.com/prometheus/client_golang v1.25.0
 	github.com/spf13/cobra v1.10.2
 	github.com/spf13/pflag v1.0.10

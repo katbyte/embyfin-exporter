@@ -56,7 +56,7 @@
 // ItemID, UserID, SessionID, TaskID, PlaylistItemID, MediaSourceID are kinds of id the package tells apart, each a bare named type over
 // the int or string the document declares, so that one kind where another goes
 // does not compile. Where an id sits among the options it is held by value and
-// sent when not zero. int(id) and SeriesID(n) convert one value, client.IDs and
+// sent when not zero. string(id) and ItemID(s) convert one value, client.IDs and
 // client.StringIDs a list.
 //
 // # Workarounds

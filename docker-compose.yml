@@ -32,9 +32,7 @@ services:
       - "EMBYFIN_EXPORTER_LOG=INFO"
       # - "EMBYFIN_EXPORTER_LABELS=hostname=nas"   # labels for every reading, when whatever scrapes the page does not add its own
       # - "EMBYFIN_EXPORTER_DETAIL=all"            # name accounts, titles and devices (or a list of those words); nobody is named unless this asks
-      # - "EMBYFIN_EXPORTER_SESSIONS_INTERVAL=15s" # how often sessions, streams, scheduled tasks and the server's own state are read
-      # - "EMBYFIN_EXPORTER_LIBRARY_INTERVAL=5m"   # how often libraries, item counts, users, devices, sign-ins and plugins are read
-      # - "EMBYFIN_EXPORTER_HISTORY_INTERVAL=30s"  # how often what was played is read, from a server with the Playback Reporting plugin
+      # - "EMBYFIN_EXPORTER_INTERVALS=sessions=15s,library=5m,history=30s" # how often each round is read: sessions and streams, libraries and accounts, what was played
     logging:
       options:
         max-size: 100m

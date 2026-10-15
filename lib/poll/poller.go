@@ -2,14 +2,12 @@ package poll
 
 import (
 	"context"
-	"errors"
 	"fmt"
-	"strings"
-	"sync"
+	"maps"
+	"slices"
 	"time"
 
-	"github.com/katbyte/go-kt/clog"
-	"github.com/katbyte/go-kt/outside"
+	"github.com/katbyte/go-kt/prometheus/poller"
 )
 
 // Round is one of the three schedules a server is asked on.
@@ -29,51 +27,15 @@ const (
 // Rounds is every round, in the order the page lists them.
 var Rounds = []Round{RoundSessions, RoundLibrary, RoundHistory}
 
-// staleAfter is how many intervals an answer is served for once its round stops succeeding: long enough to ride out a failed round or two, short
-// enough that a server down for an hour is not still shown with the sessions it had.
-const staleAfter = 3
+// Every is how often each round is asked unless the settings say otherwise, by the round's name: sessions twice as often as a scrape every 30
+// seconds asks, libraries every few minutes since they only change when a scan runs or someone is added, and what was played once a scrape.
+var Every = map[string]time.Duration{string(RoundSessions): 15 * time.Second, string(RoundLibrary): 5 * time.Minute, string(RoundHistory): 30 * time.Second}
 
-// Intervals is how often each round runs. A round is also given that long to finish, so one never overlaps the next.
-type Intervals struct {
-	Sessions time.Duration
-	Library  time.Duration
-	History  time.Duration
-}
-
-// of is the interval of one round.
-func (i Intervals) of(round Round) time.Duration {
-	switch round {
-	case RoundLibrary:
-		return i.Library
-	case RoundHistory:
-		return i.History
-	default:
-		return i.Sessions
-	}
-}
-
-// Answer is the last good answer to one question.
-type Answer[T any] struct {
-	Value T
-	// At is when it was given, and the zero time for a question never answered.
-	At time.Time
-}
-
-// Known says whether there is an answer to serve.
-func (a Answer[T]) Known() bool { return !a.At.IsZero() }
+// Answer is the last good answer to one question, and the zero time for one never answered.
+type Answer[T any] = poller.Answer[T]
 
 // RoundState is how one round last went.
-type RoundState struct {
-	// Ran says a round has finished since the start; until one has, the rest says nothing.
-	Ran bool
-	// OK says every question of the last round was answered.
-	OK   bool
-	Took time.Duration
-	// LastSuccess is the zero time until a round succeeds.
-	LastSuccess time.Time
-	// Failures counts the rounds that failed since the start.
-	Failures int
-}
+type RoundState = poller.Round
 
 // State is what is known of one server: the last good answer to each question, and how the rounds that asked went.
 type State struct {
@@ -113,169 +75,105 @@ func (s *State) roundOf(round Round) *RoundState {
 	}
 }
 
-// Poller asks one server its questions on three schedules and remembers the last good answer to each.
+// Poller asks each server its questions on three schedules and remembers the last good answer to each.
 type Poller struct {
-	server Server
-	every  Intervals
+	*poller.Poller[string]
 
-	mu    sync.RWMutex
-	state State
+	info      *poller.Kept[Info]
+	sessions  *poller.Kept[[]Session]
+	tasks     *poller.Kept[[]Task]
+	libraries *poller.Kept[[]Library]
+	users     *poller.Kept[[]User]
+	devices   *poller.Kept[[]Device]
+	logins    *poller.Kept[[]Login]
+	plugins   *poller.Kept[Plugins]
+	history   *poller.Kept[History]
 }
 
-// New is a poller for one server. It asks nothing until Run or Poll.
-func New(server Server, every Intervals) (*Poller, error) {
-	if every.Sessions <= 0 || every.Library <= 0 || every.History <= 0 {
-		return nil, fmt.Errorf("the intervals must be longer than nothing: sessions %s, library %s, history %s", every.Sessions, every.Library, every.History)
+// New is a poller for these servers, each under its kind, asking each round as often as every says. It asks nothing until Run or Poll.
+func New(every map[string]time.Duration, servers ...Server) (*Poller, error) {
+	byKind := map[string]Server{}
+	for _, server := range servers {
+		if _, twice := byKind[server.Kind()]; twice {
+			return nil, fmt.Errorf("two servers are both %s", server.Kind())
+		}
+		byKind[server.Kind()] = server
 	}
 
-	return &Poller{server: server, every: every, state: State{Kind: server.Kind()}}, nil
-}
-
-// Kind is which server this poller asks.
-func (p *Poller) Kind() string { return p.server.Kind() }
-
-// Run polls until the context ends: every round at once on start, then each on its own interval.
-func (p *Poller) Run(ctx context.Context) {
-	var wg sync.WaitGroup
 	for _, round := range Rounds {
-		wg.Go(func() { p.loop(ctx, round) })
-	}
-	wg.Wait()
-}
-
-// loop runs one round now and then every interval, until the context ends.
-func (p *Poller) loop(ctx context.Context, round Round) {
-	ticker := time.NewTicker(p.every.of(round))
-	defer ticker.Stop()
-
-	for {
-		p.Poll(ctx, round)
-
-		select {
-		case <-ctx.Done():
-			return
-		case <-ticker.C:
+		if every[string(round)] <= 0 {
+			return nil, fmt.Errorf("the %s round must be asked more often than never, not every %s", round, every[string(round)])
 		}
 	}
-}
 
-// Poll runs one round now and records how it went. A question that fails leaves its last good answer where it was, and does not stop the others
-// being asked.
-func (p *Poller) Poll(ctx context.Context, round Round) {
-	within, cancel := context.WithTimeout(ctx, p.every.of(round))
-	defer cancel()
-
-	start := time.Now()
-	err := p.ask(within, round)
-	// a round cut short because the program is stopping says nothing about the server
-	if err != nil && ctx.Err() != nil {
-		return
-	}
-
-	p.report(round, p.record(round, time.Since(start), err), err)
-}
-
-// record keeps how a round went, and gives back how the one before it did.
-func (p *Poller) record(round Round, took time.Duration, err error) RoundState {
-	p.mu.Lock()
-	defer p.mu.Unlock()
-
-	r := p.state.roundOf(round)
-	before := *r
-	r.Ran, r.OK, r.Took = true, err == nil, took
+	p, err := poller.New(poller.Options[string]{Namespace: "embyfin", Label: "server", Kind: "server", Targets: poller.Fixed(slices.Sorted(maps.Keys(byKind))...)})
 	if err != nil {
-		r.Failures++
-	} else {
-		r.LastSuccess = time.Now()
+		return nil, err
 	}
 
-	return before
+	sessions, library, history := p.Schedule(string(RoundSessions), every[string(RoundSessions)]), p.Schedule(string(RoundLibrary), every[string(RoundLibrary)]), p.Schedule(string(RoundHistory), every[string(RoundHistory)])
+
+	return &Poller{
+		Poller:    p,
+		info:      ask(sessions, "server info", byKind, Server.Info),
+		sessions:  ask(sessions, "sessions", byKind, Server.Sessions),
+		tasks:     ask(sessions, "scheduled tasks", byKind, Server.Tasks),
+		libraries: ask(library, "libraries", byKind, Server.Libraries),
+		users:     ask(library, "users", byKind, Server.Users),
+		devices:   ask(library, "devices", byKind, Server.Devices),
+		logins:    ask(library, "sign-ins", byKind, Server.Logins),
+		plugins:   ask(library, "plugins", byKind, Server.Plugins),
+		// what was played is asked of a plugin and not the server itself: on a round of its own, a plugin that fails does not make the server look down
+		history: ask(history, "what was played", byKind, Server.History),
+	}, nil
 }
 
-// report logs a round only when it changes, since a server that is down fails every round the same way.
-func (p *Poller) report(round Round, before RoundState, err error) {
-	switch {
-	case err != nil && (before.OK || !before.Ran):
-		clog.Log.Warnf("%s: the %s round failed, and will be tried again every %s: %s", p.Kind(), round, p.every.of(round), said(err))
-	case err != nil:
-		clog.Log.Debugf("%s: the %s round failed again: %s", p.Kind(), round, said(err))
-	case before.Ran && !before.OK:
-		clog.Log.Infof("%s: the %s round is answering again", p.Kind(), round)
-	case !before.Ran:
-		clog.Log.Infof("%s: the first %s round answered", p.Kind(), round)
-	}
+// ask puts one question to each server, every round of the schedule.
+func ask[V any](s *poller.Schedule[string], what string, servers map[string]Server, question func(Server, context.Context) (V, error)) *poller.Kept[V] {
+	return poller.Ask(s, what, func(ctx context.Context, kind string) (V, error) { return question(servers[kind], ctx) })
 }
 
-// said is what went wrong as one line of a log: a round's failures come one to a line, and a server's own words for one may quote an address with
-// its key on it.
-func said(err error) string {
-	return strings.ReplaceAll(outside.BlankAddresses(err.Error()), "\n", "; ")
+// Poll runs one round now for every server, and says what failed.
+func (p *Poller) Poll(ctx context.Context, round Round) error {
+	return p.Poller.Poll(ctx, string(round))
 }
 
-// ask puts every question of one round, and gives back what failed.
-func (p *Poller) ask(ctx context.Context, round Round) error {
-	switch round {
-	case RoundLibrary:
-		return errors.Join(
-			keep(ctx, p, "libraries", p.server.Libraries, func(s *State) *Answer[[]Library] { return &s.Libraries }),
-			keep(ctx, p, "users", p.server.Users, func(s *State) *Answer[[]User] { return &s.Users }),
-			keep(ctx, p, "devices", p.server.Devices, func(s *State) *Answer[[]Device] { return &s.Devices }),
-			keep(ctx, p, "sign-ins", p.server.Logins, func(s *State) *Answer[[]Login] { return &s.Logins }),
-			keep(ctx, p, "plugins", p.server.Plugins, func(s *State) *Answer[Plugins] { return &s.Plugins }),
-		)
-	case RoundHistory:
-		return keep(ctx, p, "what was played", p.server.History, func(s *State) *Answer[History] { return &s.History })
-	default:
-		return errors.Join(
-			keep(ctx, p, "server info", p.server.Info, func(s *State) *Answer[Info] { return &s.Info }),
-			keep(ctx, p, "sessions", p.server.Sessions, func(s *State) *Answer[[]Session] { return &s.Sessions }),
-			keep(ctx, p, "scheduled tasks", p.server.Tasks, func(s *State) *Answer[[]Task] { return &s.Tasks }),
-		)
-	}
-}
-
-// keep puts one question and keeps its answer in the place into names. An answer is stored whole and never changed afterwards, so State can hand it
-// out without copying.
-func keep[T any](ctx context.Context, p *Poller, what string, question func(context.Context) (T, error), into func(*State) *Answer[T]) error {
-	value, err := question(ctx)
-	if err != nil {
-		return fmt.Errorf("%s: %w", what, err)
-	}
-
-	p.mu.Lock()
-	defer p.mu.Unlock()
-
-	*into(&p.state) = Answer[T]{Value: value, At: time.Now()}
-
-	return nil
-}
-
-// State is what is known of the server now, without asking it anything. An answer older than three of its round's intervals is left out: the server
+// State is what is known of one server now, without asking it anything. An answer older than three of its round's intervals is left out: the server
 // has stopped answering, and what it last said is no longer worth showing as current.
-func (p *Poller) State() State {
-	p.mu.RLock()
-	defer p.mu.RUnlock()
+func (p *Poller) State(kind string) State {
+	return State{
+		Kind:      kind,
+		Info:      p.info.For(kind),
+		Sessions:  p.sessions.For(kind),
+		Tasks:     p.tasks.For(kind),
+		Libraries: p.libraries.For(kind),
+		Users:     p.users.For(kind),
+		Devices:   p.devices.For(kind),
+		Logins:    p.logins.For(kind),
+		Plugins:   p.plugins.For(kind),
+		History:   p.history.For(kind),
 
-	s := p.state
-	now := time.Now()
-	sessions, library, history := staleAfter*p.every.Sessions, staleAfter*p.every.Library, staleAfter*p.every.History
-
-	fresh(&s.Info, now, sessions)
-	fresh(&s.Sessions, now, sessions)
-	fresh(&s.Tasks, now, sessions)
-	fresh(&s.Libraries, now, library)
-	fresh(&s.Users, now, library)
-	fresh(&s.Devices, now, library)
-	fresh(&s.Logins, now, library)
-	fresh(&s.Plugins, now, library)
-	fresh(&s.History, now, history)
-
-	return s
+		SessionsRound: p.Round(kind, string(RoundSessions)),
+		LibraryRound:  p.Round(kind, string(RoundLibrary)),
+		HistoryRound:  p.Round(kind, string(RoundHistory)),
+	}
 }
 
-// fresh forgets an answer older than limit.
-func fresh[T any](a *Answer[T], now time.Time, limit time.Duration) {
-	if a.Known() && now.Sub(a.At) > limit {
-		*a = Answer[T]{}
-	}
+// Set makes what is known of one server the state given, as though it had been asked: for a test's made-up state.
+func (p *Poller) Set(s *State) {
+	p.SetTarget(poller.Target[string]{Key: s.Kind, Value: s.Kind, Listed: true, At: time.Now()})
+
+	p.info.Set(s.Kind, s.Info)
+	p.sessions.Set(s.Kind, s.Sessions)
+	p.tasks.Set(s.Kind, s.Tasks)
+	p.libraries.Set(s.Kind, s.Libraries)
+	p.users.Set(s.Kind, s.Users)
+	p.devices.Set(s.Kind, s.Devices)
+	p.logins.Set(s.Kind, s.Logins)
+	p.plugins.Set(s.Kind, s.Plugins)
+	p.history.Set(s.Kind, s.History)
+
+	p.SetRound(s.Kind, string(RoundSessions), s.SessionsRound)
+	p.SetRound(s.Kind, string(RoundLibrary), s.LibraryRound)
+	p.SetRound(s.Kind, string(RoundHistory), s.HistoryRound)
 }

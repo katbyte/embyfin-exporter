@@ -11,8 +11,12 @@ import (
 	"github.com/katbyte/embyfin-exporter/lib/poll/polltest"
 )
 
-// every is how often the tests poll: the program's own defaults.
-var every = poll.Intervals{Sessions: 15 * time.Second, Library: 5 * time.Minute, History: 30 * time.Second}
+// How often the tests poll: the program's own defaults.
+var (
+	everySessions = poll.Every["sessions"]
+	everyLibrary  = poll.Every["library"]
+	everyHistory  = poll.Every["history"]
+)
 
 // errDown is a server that is not there.
 var errDown = errors.New("connection refused")
@@ -20,7 +24,7 @@ var errDown = errors.New("connection refused")
 func newPoller(t *testing.T, server poll.Server) *poll.Poller {
 	t.Helper()
 
-	p, err := poll.New(server, every)
+	p, err := poll.New(poll.Every, server)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -41,12 +45,12 @@ func TestARoundKeepsItsAnswers(t *testing.T) {
 		p := newPoller(t, server)
 
 		start := time.Now()
-		p.Poll(t.Context(), poll.RoundSessions)
-		s := p.State()
+		_ = p.Poll(t.Context(), poll.RoundSessions)
+		s := p.State("emby")
 
-		// three questions, two seconds each
-		if r := s.SessionsRound; !r.Ran || !r.OK || r.Took != 6*time.Second || !r.LastSuccess.Equal(start.Add(6*time.Second)) || r.Failures != 0 {
-			t.Errorf("sessions round = %+v, want one that ran, answered and took 6s", r)
+		// three questions, two seconds each, asked at once
+		if r := s.SessionsRound; !r.Ran || !r.OK || r.Took != 2*time.Second || !r.LastSuccess.Equal(start.Add(2*time.Second)) || r.Failures != 0 {
+			t.Errorf("sessions round = %+v, want one that ran, answered and took 2s", r)
 		}
 		if !s.Up() {
 			t.Error("the server answered and is not up")
@@ -76,17 +80,17 @@ func TestWhatWasPlayedHasARoundOfItsOwn(t *testing.T) {
 		server := &polltest.Server{HistoryAnswer: poll.History{Installed: true, Plays: []poll.Played{{Kind: poll.Movie, Method: poll.DirectPlay, Plays: 1, Seconds: 60}}}}
 		p := newPoller(t, server)
 
-		p.Poll(t.Context(), poll.RoundHistory)
+		_ = p.Poll(t.Context(), poll.RoundHistory)
 		first := time.Now()
-		if s := p.State(); !s.HistoryRound.OK || !s.History.Known() || len(s.History.Value.Plays) != 1 || s.SessionsRound.Ran || server.Asked(polltest.Sessions) != 0 {
+		if s := p.State("emby"); !s.HistoryRound.OK || !s.History.Known() || len(s.History.Value.Plays) != 1 || s.SessionsRound.Ran || server.Asked(polltest.Sessions) != 0 {
 			t.Errorf("history round = %+v and history = %+v, want it answered and nothing else asked", s.HistoryRound, s.History)
 		}
 
 		server.Fail(polltest.History, errDown)
-		time.Sleep(every.History)
-		p.Poll(t.Context(), poll.RoundSessions)
-		p.Poll(t.Context(), poll.RoundHistory)
-		s := p.State()
+		time.Sleep(everyHistory)
+		_ = p.Poll(t.Context(), poll.RoundSessions)
+		_ = p.Poll(t.Context(), poll.RoundHistory)
+		s := p.State("emby")
 
 		if !s.Up() || !s.SessionsRound.OK || s.SessionsRound.Failures != 0 {
 			t.Errorf("sessions round = %+v, want the server up while only the plugin fails", s.SessionsRound)
@@ -101,8 +105,8 @@ func TestWhatWasPlayedHasARoundOfItsOwn(t *testing.T) {
 			t.Errorf("Round(history) = %+v, want %+v", s.Round(poll.RoundHistory), s.HistoryRound)
 		}
 
-		time.Sleep(2*every.History + time.Second)
-		if s := p.State(); s.History.Known() {
+		time.Sleep(2*everyHistory + time.Second)
+		if s := p.State("emby"); s.History.Known() {
 			t.Error("the plays last read outlived three of the history round's intervals")
 		}
 	})
@@ -117,24 +121,24 @@ func TestAFailedQuestionKeepsTheLastGoodAnswer(t *testing.T) {
 		server := &polltest.Server{UsersAnswer: []poll.User{{}, {}}, DevicesAnswer: make([]poll.Device, 3), LoginsAnswer: []poll.Login{{Week: "1999-12-27", Count: 2}}, PluginsAnswer: poll.Plugins{Installed: []poll.Plugin{{Name: "Reports", Version: "1.0"}}}}
 		p := newPoller(t, server)
 
-		p.Poll(t.Context(), poll.RoundLibrary)
+		_ = p.Poll(t.Context(), poll.RoundLibrary)
 		first := time.Now()
 
 		// the sign-ins are asked after with the libraries, which is often enough for them
-		if s := p.State(); !s.Logins.Known() || len(s.Logins.Value) != 1 || server.Asked(polltest.Logins) != 1 || server.Asked(polltest.Sessions) != 0 {
+		if s := p.State("emby"); !s.Logins.Known() || len(s.Logins.Value) != 1 || server.Asked(polltest.Logins) != 1 || server.Asked(polltest.Sessions) != 0 {
 			t.Errorf("sign-ins = %+v, asked for %d times, want the one answer from the library round", s.Logins, server.Asked(polltest.Logins))
 		}
 
 		// and so are the plugins
-		if s := p.State(); !s.Plugins.Known() || len(s.Plugins.Value.Installed) != 1 || server.Asked(polltest.Plugins) != 1 {
+		if s := p.State("emby"); !s.Plugins.Known() || len(s.Plugins.Value.Installed) != 1 || server.Asked(polltest.Plugins) != 1 {
 			t.Errorf("plugins = %+v, asked for %d times, want the one answer from the library round", s.Plugins, server.Asked(polltest.Plugins))
 		}
 
 		time.Sleep(time.Minute)
 		server.Fail(polltest.Users, errDown)
 		server.DevicesAnswer = make([]poll.Device, 4)
-		p.Poll(t.Context(), poll.RoundLibrary)
-		s := p.State()
+		_ = p.Poll(t.Context(), poll.RoundLibrary)
+		s := p.State("emby")
 
 		if r := s.LibraryRound; r.OK || r.Failures != 1 || !r.LastSuccess.Equal(first) {
 			t.Errorf("library round = %+v, want one failure and the first round as its last success", r)
@@ -147,8 +151,8 @@ func TestAFailedQuestionKeepsTheLastGoodAnswer(t *testing.T) {
 		}
 
 		server.Fail(polltest.Users, nil)
-		p.Poll(t.Context(), poll.RoundLibrary)
-		if r := p.State().LibraryRound; !r.OK || r.Failures != 1 {
+		_ = p.Poll(t.Context(), poll.RoundLibrary)
+		if r := p.State("emby").LibraryRound; !r.OK || r.Failures != 1 {
 			t.Errorf("library round = %+v, want it answering again with the one failure still counted", r)
 		}
 	})
@@ -162,20 +166,20 @@ func TestUpFollowsTheSessionsRound(t *testing.T) {
 		server := &polltest.Server{}
 		p := newPoller(t, server)
 
-		if s := p.State(); s.Up() || s.SessionsRound.Ran {
+		if s := p.State("emby"); s.Up() || s.SessionsRound.Ran {
 			t.Error("a server never asked is up")
 		}
 
 		server.Fail(polltest.Libraries, errDown)
-		p.Poll(t.Context(), poll.RoundSessions)
-		p.Poll(t.Context(), poll.RoundLibrary)
-		if s := p.State(); !s.Up() {
+		_ = p.Poll(t.Context(), poll.RoundSessions)
+		_ = p.Poll(t.Context(), poll.RoundLibrary)
+		if s := p.State("emby"); !s.Up() {
 			t.Error("a failed library round took the server down")
 		}
 
 		server.Fail("", errDown)
-		p.Poll(t.Context(), poll.RoundSessions)
-		if s := p.State(); s.Up() || s.SessionsRound.Failures != 1 {
+		_ = p.Poll(t.Context(), poll.RoundSessions)
+		if s := p.State("emby"); s.Up() || s.SessionsRound.Failures != 1 {
 			t.Errorf("sessions round = %+v, want the server down after one failure", s.SessionsRound)
 		}
 	})
@@ -189,26 +193,26 @@ func TestAnAnswerIsDroppedOnceStale(t *testing.T) {
 	synctest.Test(t, func(t *testing.T) {
 		server := &polltest.Server{SessionsAnswer: []poll.Session{{State: poll.Playing}}, DevicesAnswer: make([]poll.Device, 3)}
 		p := newPoller(t, server)
-		p.Poll(t.Context(), poll.RoundSessions)
-		p.Poll(t.Context(), poll.RoundLibrary)
+		_ = p.Poll(t.Context(), poll.RoundSessions)
+		_ = p.Poll(t.Context(), poll.RoundLibrary)
 		server.Fail("", errDown)
 
-		time.Sleep(3 * every.Sessions)
-		p.Poll(t.Context(), poll.RoundSessions)
-		if s := p.State(); !s.Sessions.Known() || !s.Info.Known() || s.Up() {
+		time.Sleep(3 * everySessions)
+		_ = p.Poll(t.Context(), poll.RoundSessions)
+		if s := p.State("emby"); !s.Sessions.Known() || !s.Info.Known() || s.Up() {
 			t.Errorf("after three intervals: sessions known %t, info known %t, up %t; want the last answers still served and the server down", s.Sessions.Known(), s.Info.Known(), s.Up())
 		}
 
 		time.Sleep(time.Second)
-		if s := p.State(); s.Sessions.Known() || s.Info.Known() || s.Tasks.Known() {
+		if s := p.State("emby"); s.Sessions.Known() || s.Info.Known() || s.Tasks.Known() {
 			t.Error("the sessions round's answers outlived three intervals")
 		}
-		if s := p.State(); !s.Devices.Known() || !s.Libraries.Known() {
+		if s := p.State("emby"); !s.Devices.Known() || !s.Libraries.Known() {
 			t.Error("the library round's answers were dropped on the sessions round's clock")
 		}
 
-		time.Sleep(3 * every.Library)
-		if s := p.State(); s.Devices.Known() || s.Libraries.Known() || s.Users.Known() {
+		time.Sleep(3 * everyLibrary)
+		if s := p.State("emby"); s.Devices.Known() || s.Libraries.Known() || s.Users.Known() {
 			t.Error("the library round's answers outlived three intervals")
 		}
 	})
@@ -235,7 +239,7 @@ func TestRunPollsOnEverySchedule(t *testing.T) {
 		}
 
 		// five minutes of a round every 15 seconds is 20 more, of one every 30 seconds 10 more, and one more of the round every five minutes
-		time.Sleep(every.Library + time.Second)
+		time.Sleep(everyLibrary + time.Second)
 		synctest.Wait()
 		if server.Asked(polltest.Sessions) != 21 || server.Asked(polltest.Libraries) != 2 || server.Asked(polltest.History) != 11 {
 			t.Errorf("after five minutes: sessions asked %d times, libraries %d and history %d, want 21, 2 and 11", server.Asked(polltest.Sessions), server.Asked(polltest.Libraries), server.Asked(polltest.History))
@@ -254,9 +258,9 @@ func TestARoundIsGivenItsInterval(t *testing.T) {
 		server := &polltest.Server{Slow: time.Hour}
 		p := newPoller(t, server)
 
-		p.Poll(t.Context(), poll.RoundSessions)
+		_ = p.Poll(t.Context(), poll.RoundSessions)
 
-		if r := p.State().SessionsRound; !r.Ran || r.OK || r.Took != every.Sessions || r.Failures != 1 {
+		if r := p.State("emby").SessionsRound; !r.Ran || r.OK || r.Took != everySessions || r.Failures != 1 {
 			t.Errorf("sessions round = %+v, want one that failed after its 15s", r)
 		}
 	})
@@ -275,9 +279,9 @@ func TestStoppingIsNotAFailure(t *testing.T) {
 			time.Sleep(time.Second)
 			cancel()
 		}()
-		p.Poll(ctx, poll.RoundSessions)
+		_ = p.Poll(ctx, poll.RoundSessions)
 
-		if r := p.State().SessionsRound; r.Ran || r.Failures != 0 {
+		if r := p.State("emby").SessionsRound; r.Ran || r.Failures != 0 {
 			t.Errorf("sessions round = %+v, want nothing recorded for a round that was stopped", r)
 		}
 	})
@@ -287,19 +291,26 @@ func TestStoppingIsNotAFailure(t *testing.T) {
 func TestNewRefusesAnIntervalOfNothing(t *testing.T) {
 	t.Parallel()
 
-	for _, bad := range []poll.Intervals{{}, {Sessions: time.Second}, {Library: time.Second}, {Sessions: time.Second, Library: time.Second}, {Sessions: -time.Second, Library: time.Second, History: time.Second}, {Sessions: time.Second, Library: time.Second, History: -time.Second}} {
-		if _, err := poll.New(&polltest.Server{}, bad); err == nil {
-			t.Errorf("New accepted %+v", bad)
+	for _, bad := range []map[string]time.Duration{{}, {"sessions": time.Second}, {"library": time.Second, "history": time.Second}, {"sessions": -time.Second, "library": time.Second, "history": time.Second}} {
+		if _, err := poll.New(bad, &polltest.Server{}); err == nil {
+			t.Errorf("New accepted %v", bad)
 		}
 	}
 }
 
-// The poller is named for its server, which is the server label on every reading.
+// Each server is known by its kind, which is the server label on every reading, and two of one kind cannot be told apart.
 func TestKind(t *testing.T) {
 	t.Parallel()
 
-	p := newPoller(t, &polltest.Server{Named: "jellyfin"})
-	if p.Kind() != "jellyfin" || p.State().Kind != "jellyfin" {
-		t.Errorf("kind = %q and %q, want jellyfin", p.Kind(), p.State().Kind)
+	synctest.Test(t, func(t *testing.T) {
+		p := newPoller(t, &polltest.Server{Named: "jellyfin"})
+		_ = p.Poll(t.Context(), poll.RoundSessions)
+		if p.State("jellyfin").Kind != "jellyfin" || !p.State("jellyfin").SessionsRound.OK || p.State("emby").SessionsRound.Ran {
+			t.Errorf("rounds = %+v for jellyfin and %+v for emby, want only jellyfin asked", p.State("jellyfin").SessionsRound, p.State("emby").SessionsRound)
+		}
+	})
+
+	if _, err := poll.New(poll.Every, &polltest.Server{}, &polltest.Server{}); err == nil {
+		t.Error("New accepted two Embys")
 	}
 }

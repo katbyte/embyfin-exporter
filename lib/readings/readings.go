@@ -7,6 +7,7 @@ import (
 	"time"
 
 	"github.com/katbyte/embyfin-exporter/lib/poll"
+	"github.com/katbyte/go-kt/prometheus/metrics"
 	"github.com/prometheus/client_golang/prometheus"
 )
 
@@ -16,116 +17,105 @@ const Namespace = "embyfin"
 // serverLabel says which server a reading is of: "emby" or "jellyfin".
 const serverLabel = "server"
 
-// all is every reading the page can hold, for Describe.
-var all []*prometheus.Desc
-
-// reading describes one reading of a server; labels are the ones it has beside the server's.
-func reading(name, help string, labels ...string) *prometheus.Desc {
-	d := prometheus.NewDesc(Namespace+"_"+name, help, append([]string{serverLabel}, labels...), nil)
-	all = append(all, d)
-
-	return d
-}
+// list is every reading the page can hold, each of one server.
+var list = metrics.NewList(Namespace, serverLabel)
 
 var (
-	up              = reading("up", "Whether the server answered the last time it was asked for its sessions (1) or not (0).")
-	pollDuration    = reading("poll_duration_seconds", "How long the last poll of the server took, by which: sessions, library or history.", "poll")
-	pollLastSuccess = reading("poll_last_success_timestamp_seconds", "When a poll of the server was last answered in full, in seconds since 1970.", "poll")
-	pollFailures    = reading("poll_failures_total", "How many polls of the server have failed since embyfin-exporter started.", "poll")
+	up = list.Reading("up", "Whether the server answered the last time it was asked for its sessions (1) or not (0).")
 
-	serverInfo      = reading("server_info", "Always 1, with the server's name, its version and the version of its API the client was built from.", "name", "version", "sdk_api_version")
-	restartPending  = reading("server_restart_pending", "Whether the server is waiting to be restarted (1) or not (0).")
-	updateAvailable = reading("server_update_available", "Whether the server says a newer version of itself is available (1) or not (0).")
+	serverInfo      = list.Reading("server_info", "Always 1, with the server's name, its version and the version of its API the client was built from.", "name", "version", "sdk_api_version")
+	restartPending  = list.Reading("server_restart_pending", "Whether the server is waiting to be restarted (1) or not (0).")
+	updateAvailable = list.Reading("server_update_available", "Whether the server says a newer version of itself is available (1) or not (0).")
 
-	sessions         = reading("sessions", "Devices connected to the server, by what they are doing.", "state")
-	streams          = reading("streams", "Sessions playing or paused, by how what they play reaches the device.", "method")
-	streamsByType    = reading("streams_by_type", "Sessions playing or paused, by the kind of thing they play.", "type")
-	videoTranscodes  = reading("video_transcodes", "Sessions whose picture the server is re-encoding, by what does the work.", "encoder")
-	transcodeReasons = reading("transcode_reasons", "Sessions the server is making a stream for, by each reason it gives for not sending the file as it is. A session with two reasons is under both.", "reason")
-	transcodeBitrate = reading("transcode_bits_per_second", "The bitrate of the streams the server is making, added together, in bits a second.")
-	streamsByNetwork = reading("streams_by_network", "Sessions playing or paused, by where the device is: home on the server's own network, remote from outside it, or unknown.", "network")
-	streamsBitrate   = reading("streams_bits_per_second", "The bitrate of what is playing as it leaves the server, added together, in bits a second, by where the devices are.", "network")
-	clientReasons    = reading("client_transcode_reasons", "Sessions the server is making a stream for, by the device, its app and each reason the server gives. Only when the settings ask for devices to be named.", "device", "client", "reason")
+	sessions         = list.Reading("sessions", "Devices connected to the server, by what they are doing.", "state")
+	streams          = list.Reading("streams", "Sessions playing or paused, by how what they play reaches the device.", "method")
+	streamsByType    = list.Reading("streams_by_type", "Sessions playing or paused, by the kind of thing they play.", "type")
+	videoTranscodes  = list.Reading("video_transcodes", "Sessions whose picture the server is re-encoding, by what does the work.", "encoder")
+	transcodeReasons = list.Reading("transcode_reasons", "Sessions the server is making a stream for, by each reason it gives for not sending the file as it is. A session with two reasons is under both.", "reason")
+	transcodeBitrate = list.Reading("transcode_bits_per_second", "The bitrate of the streams the server is making, added together, in bits a second.")
+	streamsByNetwork = list.Reading("streams_by_network", "Sessions playing or paused, by where the device is: home on the server's own network, remote from outside it, or unknown.", "network")
+	streamsBitrate   = list.Reading("streams_bits_per_second", "The bitrate of what is playing as it leaves the server, added together, in bits a second, by where the devices are.", "network")
+	clientReasons    = list.Reading("client_transcode_reasons", "Sessions the server is making a stream for, by the device, its app and each reason the server gives. Only when the settings ask for devices to be named.", "device", "client", "reason")
 
-	sessionInfo     = reading("session_info", "Always 1, for each session playing or paused: the kind of thing it plays, how it reaches the device, whether it is paused, whether the device is at home or remote, and why the server makes a stream of it when it does. Whose it is, what it plays and on what are filled in only when the settings ask.", "session", "user", "title", "type", "device", "client", "method", "state", "network", "reasons")
-	sessionBitrate  = reading("session_bits_per_second", "How many bits a second what each session plays comes to as it leaves the server: the stream the server makes, or the file's own when it is sent as it is.", "session")
-	sessionPosition = reading("session_position_seconds", "How far through what it is playing each session is.", "session")
-	sessionRuntime  = reading("session_runtime_seconds", "How long the whole of what each session is playing is.", "session")
+	sessionInfo     = list.Reading("session_info", "Always 1, for each session playing or paused: the kind of thing it plays, how it reaches the device, whether it is paused, whether the device is at home or remote, and why the server makes a stream of it when it does. Whose it is, what it plays and on what are filled in only when the settings ask.", "session", "user", "title", "type", "device", "client", "method", "state", "network", "reasons")
+	sessionBitrate  = list.Reading("session_bits_per_second", "How many bits a second what each session plays comes to as it leaves the server: the stream the server makes, or the file's own when it is sent as it is.", "session")
+	sessionPosition = list.Reading("session_position_seconds", "How far through what it is playing each session is.", "session")
+	sessionRuntime  = list.Reading("session_runtime_seconds", "How long the whole of what each session is playing is.", "session")
 
-	scheduledTasks       = reading("scheduled_tasks", "The server's scheduled tasks, by what they are doing.", "state")
-	scheduledTasksFailed = reading("scheduled_tasks_failed", "Scheduled tasks whose last run failed.")
-	taskLastFailed       = reading("scheduled_task_last_run_failed", "Whether the last run of each scheduled task that has run failed (1) or not (0).", "task")
-	taskLastEnd          = reading("scheduled_task_last_run_timestamp_seconds", "When the last run of each scheduled task ended, in seconds since 1970.", "task")
-	scanRunning          = reading("library_scan_running", "Whether the scan of every library is running (1) or not (0).")
-	scanProgress         = reading("library_scan_progress_ratio", "How far the scan of every library has got, from 0 to 1, while it runs.")
-	scanLastOK           = reading("library_scan_last_run_ok", "Whether the last scan of every library finished as it should (1) or not (0).")
-	scanLastEnd          = reading("library_scan_last_run_timestamp_seconds", "When the last scan of every library ended, in seconds since 1970.")
-	scanLastTook         = reading("library_scan_last_run_duration_seconds", "How long the last scan of every library took.")
+	scheduledTasks       = list.Reading("scheduled_tasks", "The server's scheduled tasks, by what they are doing.", "state")
+	scheduledTasksFailed = list.Reading("scheduled_tasks_failed", "Scheduled tasks whose last run failed.")
+	taskLastFailed       = list.Reading("scheduled_task_last_run_failed", "Whether the last run of each scheduled task that has run failed (1) or not (0).", "task")
+	taskLastEnd          = list.Reading("scheduled_task_last_run_timestamp_seconds", "When the last run of each scheduled task ended, in seconds since 1970.", "task")
+	scanRunning          = list.Reading("library_scan_running", "Whether the scan of every library is running (1) or not (0).")
+	scanProgress         = list.Reading("library_scan_progress_ratio", "How far the scan of every library has got, from 0 to 1, while it runs.")
+	scanLastOK           = list.Reading("library_scan_last_run_ok", "Whether the last scan of every library finished as it should (1) or not (0).")
+	scanLastEnd          = list.Reading("library_scan_last_run_timestamp_seconds", "When the last scan of every library ended, in seconds since 1970.")
+	scanLastTook         = list.Reading("library_scan_last_run_duration_seconds", "How long the last scan of every library took.")
 
-	libraries    = reading("libraries", "How many libraries the server has.")
-	libraryItems = reading("library_items", "Items in each library, by kind.", "library", "type")
-	libraryAdded = reading("library_items_added", "Items added to each library within the window: the last day, 7 days or 30 days. Films, episodes, tracks and the like, not the shows and albums that hold them. From Emby, which alone can count them.", "library", "window")
-	items        = reading("items", "Items in every library of the server added together, by kind.", "type")
+	libraries    = list.Reading("libraries", "How many libraries the server has.")
+	libraryItems = list.Reading("library_items", "Items in each library, by kind.", "library", "type")
+	libraryAdded = list.Reading("library_items_added", "Items added to each library within the window: the last day, 7 days or 30 days. Films, episodes, tracks and the like, not the shows and albums that hold them. From Emby, which alone can count them.", "library", "window")
+	items        = list.Reading("items", "Items in every library of the server added together, by kind.", "type")
 
-	users         = reading("users", "How many accounts the server has.")
-	usersDisabled = reading("users_disabled", "Accounts that have been disabled.")
-	usersActive   = reading("users_active", "Accounts seen within the window: the last day, 7 days or 30 days.", "window")
-	userLastSeen  = reading("user_last_seen_timestamp_seconds", "When each account last did anything, in seconds since 1970. Only when the settings ask for accounts to be named.", "user")
-	devices       = reading("devices", "How many devices the server knows of, which is every one it has ever seen.")
-	devicesActive = reading("devices_active", "Devices seen within the window: the last day, 7 days or 30 days.", "window")
-	logins        = reading("logins_total", "Times an account was signed in to (ok) and tries that were refused (failed), by the week they were made in, named by its Monday in UTC, and where they came from: home, remote or unknown. This week and the last are on the page.", "week", "result", "network")
-	userLogins    = reading("user_logins_total", "The same sign-ins by account, with tries on a name the server has no account of under unknown. Only when the settings ask for accounts to be named.", "week", "user", "result")
+	users         = list.Reading("users", "How many accounts the server has.")
+	usersDisabled = list.Reading("users_disabled", "Accounts that have been disabled.")
+	usersActive   = list.Reading("users_active", "Accounts seen within the window: the last day, 7 days or 30 days.", "window")
+	userLastSeen  = list.Reading("user_last_seen_timestamp_seconds", "When each account last did anything, in seconds since 1970. Only when the settings ask for accounts to be named.", "user")
+	devices       = list.Reading("devices", "How many devices the server knows of, which is every one it has ever seen.")
+	devicesActive = list.Reading("devices_active", "Devices seen within the window: the last day, 7 days or 30 days.", "window")
+	logins        = list.Reading("logins_total", "Times an account was signed in to (ok) and tries that were refused (failed), by the week they were made in, named by its Monday in UTC, and where they came from: home, remote or unknown. This week and the last are on the page.", "week", "result", "network")
+	userLogins    = list.Reading("user_logins_total", "The same sign-ins by account, with tries on a name the server has no account of under unknown. Only when the settings ask for accounts to be named.", "week", "user", "result")
 
-	plugins        = reading("plugins", "How many plugins the server has installed.")
-	pluginInfo     = reading("plugin_info", "Always 1, one for each plugin installed, with its version.", "plugin", "version")
-	pluginsBehind  = reading("plugins_update_available", "Plugins the server's own catalogue has a newer version of than the one installed, that the server could run. Not on the page while the server cannot reach its catalogue.")
-	pluginIsBehind = reading("plugin_update_available", "Always 1, one for each plugin a newer version is on offer for, with the version installed and the newest on offer.", "plugin", "version", "latest")
+	plugins        = list.Reading("plugins", "How many plugins the server has installed.")
+	pluginInfo     = list.Reading("plugin_info", "Always 1, one for each plugin installed, with its version.", "plugin", "version")
+	pluginsBehind  = list.Reading("plugins_update_available", "Plugins the server's own catalogue has a newer version of than the one installed, that the server could run. Not on the page while the server cannot reach its catalogue.")
+	pluginIsBehind = list.Reading("plugin_update_available", "Always 1, one for each plugin a newer version is on offer for, with the version installed and the newest on offer.", "plugin", "version", "latest")
 
-	historyInstalled = reading("playback_reporting_installed", "Whether the server has the Playback Reporting plugin, which is where the readings of what was played come from (1) or not (0).")
-	playbackSeconds  = reading("playback_seconds_total", "Seconds played, by the kind of thing and how it reached the device, as the server's Playback Reporting plugin has them. Plays are kept under the week they began in, named by its Monday; this week and the last are on the page, and neither ever goes down.", "week", "type", "method")
-	plays            = reading("plays_total", "Plays, by the week they began in, the kind of thing and how it reached the device. A play counts again each time how it reaches the device changes.", "week", "type", "method")
-	userSeconds      = reading("user_playback_seconds_total", "Seconds played, by the week the plays began in, account and the kind of thing. Only when the settings ask for accounts to be named.", "week", "user", "type")
-	userPlays        = reading("user_plays_total", "Plays, by the week they began in, account and the kind of thing. Only when the settings ask for accounts to be named.", "week", "user", "type")
-	titleSeconds     = reading("title_playback_seconds_total", "Seconds played of each show and each film, by the week the plays began in. Only when the settings ask for titles to be named.", "week", "title", "type")
-	titlePlays       = reading("title_plays_total", "Plays of each show and each film, by the week they began in. Only when the settings ask for titles to be named.", "week", "title", "type")
-	shortPlays       = reading("short_plays_total", "Plays that ended within a minute of beginning, which is what one that failed looks like, by the week they began in, the kind of thing and how it reached the device. A play is counted five minutes after it stopped.", "week", "type", "method")
-	reasonSeconds    = reading("transcode_reason_seconds_total", "Seconds played of streams the server made, by the week the plays began in and each reason the server gave for not sending the file as it is. A play with two reasons is under both. From Emby's plugin, which alone keeps the reasons.", "week", "reason")
-	reasonPlays      = reading("transcode_reason_plays_total", "Plays the server made a stream for, by the week they began in and each reason it gave.", "week", "reason")
-	clientSeconds    = reading("client_transcode_reason_seconds_total", "Seconds played of streams the server made, by the week the plays began in, the device, its app and each reason. Only when the settings ask for devices to be named.", "week", "device", "client", "reason")
-	clientPlays      = reading("client_transcode_reason_plays_total", "Plays the server made a stream for, by the week they began in, the device, its app and each reason. Only when the settings ask for devices to be named.", "week", "device", "client", "reason")
+	historyInstalled = list.Reading("playback_reporting_installed", "Whether the server has the Playback Reporting plugin, which is where the readings of what was played come from (1) or not (0).")
+	playbackSeconds  = list.Reading("playback_seconds_total", "Seconds played, by the kind of thing and how it reached the device, as the server's Playback Reporting plugin has them. Plays are kept under the week they began in, named by its Monday; this week and the last are on the page, and neither ever goes down.", "week", "type", "method")
+	plays            = list.Reading("plays_total", "Plays, by the week they began in, the kind of thing and how it reached the device. A play counts again each time how it reaches the device changes.", "week", "type", "method")
+	userSeconds      = list.Reading("user_playback_seconds_total", "Seconds played, by the week the plays began in, account and the kind of thing. Only when the settings ask for accounts to be named.", "week", "user", "type")
+	userPlays        = list.Reading("user_plays_total", "Plays, by the week they began in, account and the kind of thing. Only when the settings ask for accounts to be named.", "week", "user", "type")
+	titleSeconds     = list.Reading("title_playback_seconds_total", "Seconds played of each show and each film, by the week the plays began in. Only when the settings ask for titles to be named.", "week", "title", "type")
+	titlePlays       = list.Reading("title_plays_total", "Plays of each show and each film, by the week they began in. Only when the settings ask for titles to be named.", "week", "title", "type")
+	shortPlays       = list.Reading("short_plays_total", "Plays that ended within a minute of beginning, which is what one that failed looks like, by the week they began in, the kind of thing and how it reached the device. A play is counted five minutes after it stopped.", "week", "type", "method")
+	reasonSeconds    = list.Reading("transcode_reason_seconds_total", "Seconds played of streams the server made, by the week the plays began in and each reason the server gave for not sending the file as it is. A play with two reasons is under both. From Emby's plugin, which alone keeps the reasons.", "week", "reason")
+	reasonPlays      = list.Reading("transcode_reason_plays_total", "Plays the server made a stream for, by the week they began in and each reason it gave.", "week", "reason")
+	clientSeconds    = list.Reading("client_transcode_reason_seconds_total", "Seconds played of streams the server made, by the week the plays began in, the device, its app and each reason. Only when the settings ask for devices to be named.", "week", "device", "client", "reason")
+	clientPlays      = list.Reading("client_transcode_reason_plays_total", "Plays the server made a stream for, by the week they began in, the device, its app and each reason. Only when the settings ask for devices to be named.", "week", "device", "client", "reason")
 )
 
-// Source is where one server's state comes from: a poller, or a test's own.
+// Source is where each server's state comes from: the poller, or a test's own.
 type Source interface {
-	State() poll.State
+	Targets() []string
+	State(kind string) poll.State
 }
 
-// Readings writes what each source knows as readings. It asks no server anything, so a scrape is answered from memory however slow a server is.
+// Readings writes what the source knows of each server as readings. It asks no server anything, so a scrape is answered from memory however slow a
+// server is.
 type Readings struct {
-	sources []Source
+	source Source
 }
 
-// New is the readings of these servers.
-func New(sources ...Source) *Readings {
-	return &Readings{sources: sources}
+// New is the readings of the servers the source knows of.
+func New(source Source) *Readings {
+	return &Readings{source: source}
 }
 
 // Describe names every reading there can be.
 func (*Readings) Describe(ch chan<- *prometheus.Desc) {
-	for _, d := range all {
-		ch <- d
-	}
+	list.Describe(ch)
 }
 
 // Collect writes every reading there is an answer for. A server that has never answered a question has no reading of it, which is not the same as a
 // reading of zero.
 func (r *Readings) Collect(ch chan<- prometheus.Metric) {
 	now := time.Now()
-	for _, source := range r.sources {
-		s := source.State()
-		w := writer{ch: ch, server: s.Kind}
+	for _, kind := range r.source.Targets() {
+		s := r.source.State(kind)
+		w := writer{metrics.NewWriter(ch, s.Kind)}
 
-		w.rounds(&s)
+		w.up(&s)
 		w.info(&s)
 		w.sessions(&s)
 		w.tasks(&s)
@@ -140,57 +130,14 @@ func (r *Readings) Collect(ch chan<- prometheus.Metric) {
 
 // writer writes one server's readings.
 type writer struct {
-	ch     chan<- prometheus.Metric
-	server string
+	*metrics.Writer
 }
 
-// gauge writes one reading that can go up and down.
-func (w writer) gauge(d *prometheus.Desc, value float64, labels ...string) {
-	w.ch <- prometheus.MustNewConstMetric(d, prometheus.GaugeValue, value, append([]string{w.server}, labels...)...)
-}
-
-// count is gauge for a whole number.
-func (w writer) count(d *prometheus.Desc, n int, labels ...string) {
-	w.gauge(d, float64(n), labels...)
-}
-
-// total writes one reading that only goes up, until it starts again from 0.
-func (w writer) total(d *prometheus.Desc, n int, labels ...string) {
-	w.ch <- prometheus.MustNewConstMetric(d, prometheus.CounterValue, float64(n), append([]string{w.server}, labels...)...)
-}
-
-// flag is gauge for a yes or no: 1 or 0.
-func (w writer) flag(d *prometheus.Desc, yes bool, labels ...string) {
-	if yes {
-		w.gauge(d, 1, labels...)
-		return
-	}
-
-	w.gauge(d, 0, labels...)
-}
-
-// at is gauge for a moment, in seconds since 1970.
-func (w writer) at(d *prometheus.Desc, t time.Time, labels ...string) {
-	w.gauge(d, float64(t.UnixMilli())/1000, labels...)
-}
-
-// rounds is how the polling itself is going, which is what says how far to trust the rest.
-func (w writer) rounds(s *poll.State) {
+// up is whether the server answered its last sessions round, which is what says how far to trust the rest. How each round went is the poller's own
+// readings.
+func (w writer) up(s *poll.State) {
 	if s.SessionsRound.Ran {
-		w.flag(up, s.Up())
-	}
-
-	for _, round := range poll.Rounds {
-		r := s.Round(round)
-		if !r.Ran {
-			continue
-		}
-
-		w.gauge(pollDuration, r.Took.Seconds(), string(round))
-		w.total(pollFailures, r.Failures, string(round))
-		if !r.LastSuccess.IsZero() {
-			w.at(pollLastSuccess, r.LastSuccess, string(round))
-		}
+		w.Flag(up, s.Up())
 	}
 }
 
@@ -200,9 +147,9 @@ func (w writer) info(s *poll.State) {
 	}
 
 	i := s.Info.Value
-	w.gauge(serverInfo, 1, i.Name, i.Version, i.APIVersion)
-	w.flag(restartPending, i.RestartPending)
-	w.flag(updateAvailable, i.UpdateAvailable)
+	w.Gauge(serverInfo, 1, i.Name, i.Version, i.APIVersion)
+	w.Flag(restartPending, i.RestartPending)
+	w.Flag(updateAvailable, i.UpdateAvailable)
 }
 
 // stream tells one device and app's reason for a stream from another's.
@@ -260,27 +207,17 @@ func (w writer) sessions(s *poll.State) {
 		playing = append(playing, session)
 	}
 
-	for _, state := range poll.SessionStates {
-		w.count(sessions, states[state], string(state))
-	}
-	for _, method := range poll.Methods {
-		w.count(streams, methods[method], string(method))
-	}
-	for _, kind := range poll.Kinds {
-		w.count(streamsByType, kinds[kind], string(kind))
-	}
-	w.count(videoTranscodes, hardware, "hardware")
-	w.count(videoTranscodes, software, "software")
-	w.count(transcodeBitrate, bitrate)
-	for reason, n := range reasons {
-		w.count(transcodeReasons, n, reason)
-	}
-	for _, network := range poll.Networks {
-		w.count(streamsByNetwork, networks[network], string(network))
-		w.count(streamsBitrate, outgoing[network], string(network))
-	}
+	w.Counts(sessions, poll.SessionStates, states)
+	w.Counts(streams, poll.Methods, methods)
+	w.Counts(streamsByType, poll.Kinds, kinds)
+	w.Gauge(videoTranscodes, hardware, "hardware")
+	w.Gauge(videoTranscodes, software, "software")
+	w.Gauge(transcodeBitrate, bitrate)
+	w.Counts(transcodeReasons, nil, reasons)
+	w.Counts(streamsByNetwork, poll.Networks, networks)
+	w.Counts(streamsBitrate, poll.Networks, outgoing)
 	for by, n := range byClient {
-		w.count(clientReasons, n, by.device, by.client, by.reason)
+		w.Gauge(clientReasons, n, by.device, by.client, by.reason)
 	}
 
 	w.playing(playing)
@@ -298,13 +235,13 @@ func (w writer) playing(sessions []poll.Session) {
 		}
 		written[session.ID] = true
 
-		w.gauge(sessionInfo, 1, session.ID, session.User, session.Title, string(session.Kind), session.Device, session.Client, string(session.Method), string(session.State), string(session.Network), strings.Join(session.Reasons, ","))
-		w.gauge(sessionPosition, session.Position.Seconds(), session.ID)
+		w.Gauge(sessionInfo, 1, session.ID, session.User, session.Title, string(session.Kind), session.Device, session.Client, string(session.Method), string(session.State), string(session.Network), strings.Join(session.Reasons, ","))
+		w.Gauge(sessionPosition, session.Position.Seconds(), session.ID)
 		if session.Outgoing > 0 {
-			w.count(sessionBitrate, session.Outgoing, session.ID)
+			w.Gauge(sessionBitrate, session.Outgoing, session.ID)
 		}
 		if session.Runtime > 0 {
-			w.gauge(sessionRuntime, session.Runtime.Seconds(), session.ID)
+			w.Gauge(sessionRuntime, session.Runtime.Seconds(), session.ID)
 		}
 	}
 }
@@ -332,10 +269,8 @@ func (w writer) tasks(s *poll.State) {
 		}
 	}
 
-	for _, state := range poll.TaskStates {
-		w.count(scheduledTasks, states[state], string(state))
-	}
-	w.count(scheduledTasksFailed, failed)
+	w.Counts(scheduledTasks, poll.TaskStates, states)
+	w.Gauge(scheduledTasksFailed, failed)
 	w.lastRuns(s.Tasks.Value)
 
 	if scan == nil {
@@ -343,21 +278,19 @@ func (w writer) tasks(s *poll.State) {
 	}
 
 	running := scan.State == poll.TaskRunning || scan.State == poll.TaskCancelling
-	w.flag(scanRunning, running)
+	w.Flag(scanRunning, running)
 	if running {
-		w.gauge(scanProgress, scan.Progress)
+		w.Gauge(scanProgress, scan.Progress)
 	}
 
 	run := scan.LastRun
 	if run == nil {
 		return
 	}
-	w.flag(scanLastOK, run.OK)
-	if !run.Ended.IsZero() {
-		w.at(scanLastEnd, run.Ended)
-	}
+	w.Flag(scanLastOK, run.OK)
+	w.At(scanLastEnd, run.Ended)
 	if run.Took > 0 {
-		w.gauge(scanLastTook, run.Took.Seconds())
+		w.Gauge(scanLastTook, run.Took.Seconds())
 	}
 }
 
@@ -382,10 +315,8 @@ func (w writer) lastRuns(tasks []poll.Task) {
 	}
 
 	for name, run := range byName {
-		w.flag(taskLastFailed, run.Failed, name)
-		if !run.Ended.IsZero() {
-			w.at(taskLastEnd, run.Ended, name)
-		}
+		w.Flag(taskLastFailed, run.Failed, name)
+		w.At(taskLastEnd, run.Ended, name)
 	}
 }
 
@@ -396,7 +327,7 @@ func (w writer) libraries(s *poll.State) {
 		return
 	}
 
-	w.count(libraries, len(s.Libraries.Value))
+	w.Gauge(libraries, len(s.Libraries.Value))
 
 	// two libraries of one name are added together: two readings with the same labels would spoil the whole page
 	byName, total, added := map[string]map[string]int{}, map[string]int{}, map[string]map[string]int{}
@@ -420,17 +351,17 @@ func (w writer) libraries(s *poll.State) {
 
 	for name, windows := range added {
 		for window, n := range windows {
-			w.count(libraryAdded, n, name, window)
+			w.Gauge(libraryAdded, n, name, window)
 		}
 	}
 
 	for name, kinds := range byName {
 		for kind, n := range kinds {
-			w.count(libraryItems, n, name, kind)
+			w.Gauge(libraryItems, n, name, kind)
 		}
 	}
 	for kind, n := range total {
-		w.count(items, n, kind)
+		w.Gauge(items, n, kind)
 	}
 }
 
@@ -441,7 +372,7 @@ func (w writer) users(s *poll.State, now time.Time) {
 		return
 	}
 
-	w.count(users, len(s.Users.Value))
+	w.Gauge(users, len(s.Users.Value))
 
 	var disabled int
 	for _, user := range s.Users.Value {
@@ -449,7 +380,7 @@ func (w writer) users(s *poll.State, now time.Time) {
 			disabled++
 		}
 	}
-	w.count(usersDisabled, disabled)
+	w.Gauge(usersDisabled, disabled)
 
 	seen := make([]time.Time, 0, len(s.Users.Value))
 	for _, user := range s.Users.Value {
@@ -466,7 +397,7 @@ func (w writer) users(s *poll.State, now time.Time) {
 		}
 	}
 	for name, at := range lastSeen {
-		w.at(userLastSeen, at, name)
+		w.At(userLastSeen, at, name)
 	}
 }
 
@@ -477,7 +408,7 @@ func (w writer) devices(s *poll.State, now time.Time) {
 		return
 	}
 
-	w.count(devices, len(s.Devices.Value))
+	w.Gauge(devices, len(s.Devices.Value))
 
 	seen := make([]time.Time, 0, len(s.Devices.Value))
 	for _, device := range s.Devices.Value {
@@ -495,7 +426,7 @@ func (w writer) active(d *prometheus.Desc, seen []time.Time, now time.Time) {
 				active++
 			}
 		}
-		w.count(d, active, window.Label)
+		w.Gauge(d, active, window.Label)
 	}
 }
 
@@ -508,29 +439,29 @@ func (w writer) history(s *poll.State) {
 	}
 
 	h := s.History.Value
-	w.flag(historyInstalled, h.Installed)
+	w.Flag(historyInstalled, h.Installed)
 
 	for _, p := range h.Plays {
-		w.total(playbackSeconds, p.Seconds, p.Week, string(p.Kind), string(p.Method))
-		w.total(plays, p.Plays, p.Week, string(p.Kind), string(p.Method))
+		w.Total(playbackSeconds, p.Seconds, p.Week, string(p.Kind), string(p.Method))
+		w.Total(plays, p.Plays, p.Week, string(p.Kind), string(p.Method))
 		// written at 0 beside the plays, so the first short one is a rise a query can see
-		w.total(shortPlays, p.Short, p.Week, string(p.Kind), string(p.Method))
+		w.Total(shortPlays, p.Short, p.Week, string(p.Kind), string(p.Method))
 	}
 	for _, p := range h.ByUser {
-		w.total(userSeconds, p.Seconds, p.Week, p.User, string(p.Kind))
-		w.total(userPlays, p.Plays, p.Week, p.User, string(p.Kind))
+		w.Total(userSeconds, p.Seconds, p.Week, p.User, string(p.Kind))
+		w.Total(userPlays, p.Plays, p.Week, p.User, string(p.Kind))
 	}
 	for _, p := range h.ByTitle {
-		w.total(titleSeconds, p.Seconds, p.Week, p.Title, string(p.Kind))
-		w.total(titlePlays, p.Plays, p.Week, p.Title, string(p.Kind))
+		w.Total(titleSeconds, p.Seconds, p.Week, p.Title, string(p.Kind))
+		w.Total(titlePlays, p.Plays, p.Week, p.Title, string(p.Kind))
 	}
 	for _, p := range h.ByReason {
-		w.total(reasonSeconds, p.Seconds, p.Week, p.Reason)
-		w.total(reasonPlays, p.Plays, p.Week, p.Reason)
+		w.Total(reasonSeconds, p.Seconds, p.Week, p.Reason)
+		w.Total(reasonPlays, p.Plays, p.Week, p.Reason)
 	}
 	for _, p := range h.ByClient {
-		w.total(clientSeconds, p.Seconds, p.Week, p.Device, p.Client, p.Reason)
-		w.total(clientPlays, p.Plays, p.Week, p.Device, p.Client, p.Reason)
+		w.Total(clientSeconds, p.Seconds, p.Week, p.Device, p.Client, p.Reason)
+		w.Total(clientPlays, p.Plays, p.Week, p.Device, p.Client, p.Reason)
 	}
 }
 
@@ -567,10 +498,10 @@ func (w writer) logins(s *poll.State) {
 	}
 
 	for by, n := range byPlace {
-		w.total(logins, n, by.week, by.result, by.network)
+		w.Total(logins, n, by.week, by.result, by.network)
 	}
 	for by, n := range byAccount {
-		w.total(userLogins, n, by.week, by.user, by.result)
+		w.Total(userLogins, n, by.week, by.user, by.result)
 	}
 }
 
@@ -591,15 +522,15 @@ func (w writer) plugins(s *poll.State) {
 		}
 		lines[at] = true
 
-		w.gauge(pluginInfo, 1, plugin.Name, plugin.Version)
+		w.Gauge(pluginInfo, 1, plugin.Name, plugin.Version)
 		if plugin.Latest != "" {
 			behind++
-			w.gauge(pluginIsBehind, 1, plugin.Name, plugin.Version, plugin.Latest)
+			w.Gauge(pluginIsBehind, 1, plugin.Name, plugin.Version, plugin.Latest)
 		}
 	}
 
-	w.count(plugins, len(lines))
+	w.Gauge(plugins, len(lines))
 	if s.Plugins.Value.Checked {
-		w.count(pluginsBehind, behind)
+		w.Gauge(pluginsBehind, behind)
 	}
 }

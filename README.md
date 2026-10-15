@@ -47,7 +47,7 @@ Then point Prometheus or Grafana Alloy at port 9096. [docs/scraping.md](docs/scr
 
 ## What is on the page
 
-Every reading starts `embyfin_` and has a `server` label, `emby` or `jellyfin`. [docs/readings.md](docs/readings.md) lists all 58 with their labels.
+Every reading starts `embyfin_` and has a `server` label, `emby` or `jellyfin`. [docs/readings.md](docs/readings.md) lists all 59 with their labels.
 
 | Group | What it says |
 |---|---|
@@ -96,7 +96,7 @@ Leave a server out by setting neither its address nor its key. A key is never lo
 
 ## How this is built
 
-- The live tests start a real Emby and a real Jellyfin in Docker and check the page against them. They run on every change, and cover 55 of the 58 readings.
+- The live tests start a real Emby and a real Jellyfin in Docker and check the page against them. They run on every change, and cover 56 of the 59 readings.
 - The unit tests keep a saved copy of the whole page, so a renamed reading or label fails them.
 - CI also runs golangci-lint, govulncheck, CodeQL and a Trivy scan of the built and the released programs.
 - It lints the rest too: shell scripts, workflows (actionlint, zizmor, yamllint), spelling, markdown, and that the vendored dependencies match `go.mod`.

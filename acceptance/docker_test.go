@@ -4,7 +4,6 @@ package acceptance_test
 
 import (
 	"context"
-	"net/http"
 	"os"
 	"os/exec"
 	"regexp"
@@ -12,7 +11,8 @@ import (
 	"testing"
 	"time"
 
-	"github.com/katbyte/go-kt/pmetrics"
+	"github.com/katbyte/go-kt/prometheus/metrics"
+	"github.com/katbyte/go-kt/prometheus/metricstest"
 )
 
 // image is the program's own image, as make docker builds it, for the test that runs it. make testacc builds it and names it here.
@@ -84,9 +84,8 @@ func TestAServerThatStopsAnswering(t *testing.T) {
 	if up(stale) != 0 || len(every(stale, "embyfin_poll_failures_total")) == 0 {
 		t.Errorf("with its readings gone the page should still say the server is down and how the asking is going:\n%s", stale)
 	}
-	if status, _ := get(t, base+pmetrics.HealthPath); status != http.StatusOK {
-		t.Errorf("the program's own health check answered HTTP %d while the server was down, want 200: it is the server that is down", status)
-	}
+	// the program's own health check answers while the server is down: it is the server that is down
+	metricstest.Get(t, base+metrics.HealthPath)
 
 	if out, err := docker(t, nil, "unpause", container); err != nil {
 		t.Fatalf("thawing the server: %v: %s", err, out)
@@ -131,7 +130,7 @@ func TestTheImage(t *testing.T) {
 	t.Cleanup(func() { _, _ = docker(t, nil, "rm", "--force", name) })
 
 	// the health check is asked every two seconds where the image says thirty, so the test need not wait half a minute for the first
-	if out, err := docker(t, []string{key + "=" + token}, "run", "--detach", "--name", name, "--publish", "127.0.0.1::9096", "--health-interval", "2s", "--env", server+"=http://"+inside+":8096", "--env", key, "--env", "EMBYFIN_EXPORTER_SESSIONS_INTERVAL=1s", "--env", "EMBYFIN_EXPORTER_DETAIL=users", image); err != nil {
+	if out, err := docker(t, []string{key + "=" + token}, "run", "--detach", "--name", name, "--publish", "127.0.0.1::9096", "--health-interval", "2s", "--env", server+"=http://"+inside+":8096", "--env", key, "--env", "EMBYFIN_EXPORTER_INTERVALS=sessions=1s", "--env", "EMBYFIN_EXPORTER_DETAIL=users", image); err != nil {
 		t.Fatalf("starting the image %s: %v: %s", image, err, out)
 	}
 
@@ -160,8 +159,8 @@ func TestTheImage(t *testing.T) {
 		t.Errorf("told to name accounts alone, the image's page names %v:\n%s", found, text)
 	}
 
-	if status, body := get(t, base+pmetrics.HealthPath); status != http.StatusOK || strings.TrimSpace(body) != "ok" {
-		t.Errorf("%s answered HTTP %d and %q, want 200 and ok", pmetrics.HealthPath, status, body)
+	if body := metricstest.Get(t, base+metrics.HealthPath); strings.TrimSpace(body) != "ok" {
+		t.Errorf("%s answered %q, want ok", metrics.HealthPath, body)
 	}
 
 	if who, err := docker(t, nil, "exec", name, "id", "-u"); err != nil || who == "" || who == "0" {

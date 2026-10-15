@@ -6,13 +6,13 @@ import (
 	"os"
 	"path/filepath"
 	"strings"
-	"time"
 
 	"github.com/katbyte/embyfin-exporter/lib/mediaserver"
 	"github.com/katbyte/embyfin-exporter/lib/poll"
 	"github.com/katbyte/embyfin-exporter/lib/readings"
 	"github.com/katbyte/go-kt/clog"
-	"github.com/katbyte/go-kt/pmetrics"
+	"github.com/katbyte/go-kt/prometheus/metrics"
+	"github.com/katbyte/go-kt/prometheus/poller"
 	"github.com/spf13/cobra"
 	"github.com/spf13/pflag"
 	"github.com/spf13/viper"
@@ -24,41 +24,29 @@ const (
 	kindJellyfin = "jellyfin"
 )
 
-// The defaults: sessions are read twice as often as a scrape every 30 seconds asks, so a reading is never older than one scrape, and libraries
-// every few minutes since they only change when a scan runs or someone is added. What was played is read once a scrape: it is a sum that only
-// grows, so one read late loses nothing.
-const (
-	defaultListen           = ":9096"
-	defaultSessionsInterval = 15 * time.Second
-	defaultLibraryInterval  = 5 * time.Minute
-	defaultHistoryInterval  = 30 * time.Second
-)
+const defaultListen = ":9096"
 
 type FlagData struct {
-	EmbyServer       string        `mapstructure:"emby-server"`
-	EmbyToken        string        `mapstructure:"emby-token"`
-	JellyfinServer   string        `mapstructure:"jellyfin-server"`
-	JellyfinToken    string        `mapstructure:"jellyfin-token"`
-	Listen           string        `mapstructure:"listen"`
-	Labels           string        `mapstructure:"labels"`
-	Detail           string        `mapstructure:"detail"`
-	SessionsInterval time.Duration `mapstructure:"sessions-interval"`
-	LibraryInterval  time.Duration `mapstructure:"library-interval"`
-	HistoryInterval  time.Duration `mapstructure:"history-interval"`
+	EmbyServer     string `mapstructure:"emby-server"`
+	EmbyToken      string `mapstructure:"emby-token"`
+	JellyfinServer string `mapstructure:"jellyfin-server"`
+	JellyfinToken  string `mapstructure:"jellyfin-token"`
+	Listen         string `mapstructure:"listen"`
+	Labels         string `mapstructure:"labels"`
+	Detail         string `mapstructure:"detail"`
+	Intervals      string `mapstructure:"intervals"`
 }
 
 // envNames binds each flag to its environment variable.
 var envNames = map[string]string{ //nolint:gosec // G101: these are env var names, not credentials
-	"emby-server":       "EMBYFIN_EXPORTER_EMBY_SERVER",
-	"emby-token":        "EMBYFIN_EXPORTER_EMBY_TOKEN",
-	"jellyfin-server":   "EMBYFIN_EXPORTER_JELLYFIN_SERVER",
-	"jellyfin-token":    "EMBYFIN_EXPORTER_JELLYFIN_TOKEN",
-	"listen":            "EMBYFIN_EXPORTER_LISTEN",
-	"labels":            "EMBYFIN_EXPORTER_LABELS",
-	"detail":            "EMBYFIN_EXPORTER_DETAIL",
-	"sessions-interval": "EMBYFIN_EXPORTER_SESSIONS_INTERVAL",
-	"library-interval":  "EMBYFIN_EXPORTER_LIBRARY_INTERVAL",
-	"history-interval":  "EMBYFIN_EXPORTER_HISTORY_INTERVAL",
+	"emby-server":     "EMBYFIN_EXPORTER_EMBY_SERVER",
+	"emby-token":      "EMBYFIN_EXPORTER_EMBY_TOKEN",
+	"jellyfin-server": "EMBYFIN_EXPORTER_JELLYFIN_SERVER",
+	"jellyfin-token":  "EMBYFIN_EXPORTER_JELLYFIN_TOKEN",
+	"listen":          "EMBYFIN_EXPORTER_LISTEN",
+	"labels":          "EMBYFIN_EXPORTER_LABELS",
+	"detail":          "EMBYFIN_EXPORTER_DETAIL",
+	"intervals":       "EMBYFIN_EXPORTER_INTERVALS",
 }
 
 // persistent is the flag set configureFlags bound, for the one setting that has to be read before viper is: where the settings file is.
@@ -74,9 +62,7 @@ func configureFlags(root *cobra.Command) error {
 	pflags.String("listen", defaultListen, "serve the metrics page on this address")
 	pflags.String("labels", "", "labels to put on every reading, as name=value,name=value: hostname=nas say, when the page is not scraped on the servers' own host")
 	pflags.String("detail", "", "who and what the page may name, as a list of users, titles, devices or all: nobody and nothing unless asked, so no account's or device's name and no title is on the page by default")
-	pflags.Duration("sessions-interval", defaultSessionsInterval, "how often sessions, streams, scheduled tasks and the server's own state are read")
-	pflags.Duration("library-interval", defaultLibraryInterval, "how often libraries, item counts, users, devices, sign-ins and plugins are read")
-	pflags.Duration("history-interval", defaultHistoryInterval, "how often what was played is read, from a server with the Playback Reporting plugin")
+	pflags.String("intervals", "", "how often each round is read, as name=duration,name=duration: sessions (sessions, streams, scheduled tasks and the server's own state, 15s), library (libraries, item counts, users, devices, sign-ins and plugins, 5m) and history (what was played, from a server with the Playback Reporting plugin, 30s)")
 	pflags.String("config", "", "read settings from this file and no other, in place of ./.embyfin-exporter or ~/.embyfin-exporter (or export EMBYFIN_EXPORTER_CONFIG)")
 
 	persistent = pflags
@@ -249,8 +235,8 @@ func named(d mediaserver.Detail) string {
 // connector makes the client that asks one server its questions, naming accounts and titles only as far as detail allows.
 type connector func(kind, server, token string, detail mediaserver.Detail) (poll.Server, error)
 
-// pollers is a poller for each server the settings name, none of them started.
-func (f *FlagData) pollers(connect connector) ([]*poll.Poller, error) {
+// poller is the poller of every server the settings name, not yet started.
+func (f *FlagData) poller(connect connector) (*poll.Poller, error) {
 	targets, err := f.targets()
 	if err != nil {
 		return nil, err
@@ -261,46 +247,41 @@ func (f *FlagData) pollers(connect connector) ([]*poll.Poller, error) {
 		return nil, err
 	}
 
-	pollers := make([]*poll.Poller, 0, len(targets))
+	every, err := poller.ParseIntervals(f.Intervals, poll.Every)
+	if err != nil {
+		return nil, fmt.Errorf("--intervals (%s): %w", envNames["intervals"], err)
+	}
+
+	servers := make([]poll.Server, 0, len(targets))
 	for _, t := range targets {
 		server, err := connect(t.kind, t.server, t.token, detail)
 		if err != nil {
 			return nil, fmt.Errorf("%s: %w", t.kind, err)
 		}
 
-		p, err := poll.New(server, poll.Intervals{Sessions: f.SessionsInterval, Library: f.LibraryInterval, History: f.HistoryInterval})
-		if err != nil {
-			return nil, err
-		}
-
 		// the address is logged and the key never is
-		clog.Log.Infof("%s: reporting on %s, sessions every %s, libraries every %s and what was played every %s, %s", t.kind, t.server, f.SessionsInterval, f.LibraryInterval, f.HistoryInterval, named(detail))
-		pollers = append(pollers, p)
+		clog.Log.Infof("%s is at %s: sessions are read every %s, libraries every %s and what was played every %s, %s", t.kind, t.server, every["sessions"], every["library"], every["history"], named(detail))
+		servers = append(servers, server)
 	}
 
-	return pollers, nil
+	return poll.New(every, servers...)
 }
 
 // name is what the program is called, on the page's front and in its help.
 const name = "embyfin-exporter"
 
-// page is the metrics page of these pollers' readings, with the labels the settings ask for on every one. A label that cannot be used is said
-// here, before any server is asked anything: one written wrongly, or one named as a reading's own label is, server say.
-func (f *FlagData) page(pollers []*poll.Poller) (*pmetrics.Page, error) {
-	labels, err := pmetrics.ParseLabels(f.Labels)
+// page is the metrics page of the poller's readings and its own, with the labels the settings ask for on every one. A label that cannot be used is
+// said here, before any server is asked anything: one written wrongly, or one named as a reading's own label is, server say.
+func (f *FlagData) page(p *poll.Poller) (*metrics.Page, error) {
+	labels, err := metrics.ParseLabels(f.Labels)
 	if err != nil {
 		return nil, fmt.Errorf("--labels (%s): %w", envNames["labels"], err)
 	}
 
-	sources := make([]readings.Source, 0, len(pollers))
-	for _, p := range pollers {
-		sources = append(sources, p)
-	}
-
-	p, err := pmetrics.New(pmetrics.Options{Name: name, Namespace: readings.Namespace, Labels: labels}, readings.New(sources...))
+	page, err := metrics.New(metrics.Options{Name: name, Labels: labels}, readings.New(p), p)
 	if err != nil {
 		return nil, fmt.Errorf("--labels (%s): %w", envNames["labels"], err)
 	}
 
-	return p, nil
+	return page, nil
 }

@@ -19,13 +19,14 @@ Every reading starts `embyfin_` and has a `server` label, `emby` or `jellyfin`. 
 | Reading | Labels | What it says |
 |---|---|---|
 | `embyfin_up` | | 1 when the server answered the last time it was asked for its sessions, 0 when not. |
-| `embyfin_poll_duration_seconds` | `poll` | How long the last poll took. `poll` is `sessions`, `library` or `history`. |
-| `embyfin_poll_last_success_timestamp_seconds` | `poll` | When a poll was last answered in full, so stale readings can be told from fresh ones. |
-| `embyfin_poll_failures_total` | `poll` | Polls that have failed since the program started. |
+| `embyfin_poll_interval_seconds` | `poll` | How often each round is asked, as [`--intervals`](configuration.md#intervals) sets it. `poll` is `sessions`, `library` or `history`. |
+| `embyfin_poll_duration_seconds` | `poll` | How long the last round took. Its questions are asked at once, so this is the slowest of them. |
+| `embyfin_poll_last_success_timestamp_seconds` | `poll` | When a round was last answered in full, so stale readings can be told from fresh ones. |
+| `embyfin_poll_failures_total` | `poll` | Rounds that have failed since the program started. |
 | `embyfin_server_info` | `name`, `version`, `sdk_api_version` | Always 1. The server's name and version, and the version of its API the client was built from. |
 | `embyfin_server_restart_pending` | | 1 when the server is waiting to be restarted. |
 | `embyfin_server_update_available` | | 1 when the server says a newer version of itself is out. |
-| `embyfin_metrics_build_info` | `version`, `commit`, `goversion` | Always 1. The version of embyfin-exporter that wrote the page. It has no `server` label. |
+| `embyfin_exporter_build_info` | `version`, `commit`, `goversion` | Always 1. The version of embyfin-exporter that wrote the page. It has no `server` label. |
 
 ### When a server stops answering
 

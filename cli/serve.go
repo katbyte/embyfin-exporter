@@ -2,10 +2,9 @@ package cli
 
 import (
 	"os/signal"
-	"sync"
 	"syscall"
 
-	"github.com/katbyte/go-kt/pmetrics"
+	"github.com/katbyte/go-kt/prometheus/exporter"
 	"github.com/spf13/cobra"
 )
 
@@ -16,10 +15,11 @@ func serveCmd(connect connector) *cobra.Command {
 		Long: `Asks each configured server for its state on a schedule and serves the last answers at
 /metrics in the Prometheus text format, with a health probe at /healthz.
 
-A scrape is answered from memory and never waits on a server. Sessions, streams, scheduled
-tasks and the server's own state are read every --sessions-interval; libraries, item counts,
-users, devices, sign-ins and plugins every --library-interval; and what was played every
---history-interval, from a server that has the Playback Reporting plugin. A server that stops answering is
+A scrape is answered from memory and never waits on a server. Each server is asked in three
+rounds: sessions (sessions, streams, scheduled tasks and the server's own state, every 15s),
+library (libraries, item counts, users, devices, sign-ins and plugins, every 5m) and history
+(what was played, from a server that has the Playback Reporting plugin, every 30s).
+--intervals sets any of them, as sessions=30s,library=10m. A server that stops answering is
 reported as embyfin_up 0, and does not stop the other being reported.
 
 No account's or device's name and no title is on the page unless --detail asks: users for
@@ -33,40 +33,29 @@ is not scraped on the servers' own host and the store has no other way to tell w
 
 Every setting is also an environment variable: EMBYFIN_EXPORTER_EMBY_SERVER and
 EMBYFIN_EXPORTER_EMBY_TOKEN, EMBYFIN_EXPORTER_JELLYFIN_SERVER and EMBYFIN_EXPORTER_JELLYFIN_TOKEN,
-EMBYFIN_EXPORTER_LISTEN, EMBYFIN_EXPORTER_LABELS, EMBYFIN_EXPORTER_DETAIL,
-EMBYFIN_EXPORTER_SESSIONS_INTERVAL, EMBYFIN_EXPORTER_LIBRARY_INTERVAL and
-EMBYFIN_EXPORTER_HISTORY_INTERVAL.`,
+EMBYFIN_EXPORTER_LISTEN, EMBYFIN_EXPORTER_LABELS, EMBYFIN_EXPORTER_DETAIL and
+EMBYFIN_EXPORTER_INTERVALS.`,
 		Args:          cobra.NoArgs,
 		SilenceErrors: true,
 		RunE: func(cmd *cobra.Command, _ []string) error {
 			cmd.SilenceUsage = true
 
 			f := GetFlags()
-			pollers, err := f.pollers(connect)
+			p, err := f.poller(connect)
 			if err != nil {
 				return err
 			}
 
-			p, err := f.page(pollers)
+			page, err := f.page(p)
 			if err != nil {
 				return err
 			}
 
-			// one signal stops both the polling and the serving
+			// one signal stops both the polling and the serving, and serving that ends by itself, on a port already taken say, stops the polling
 			ctx, stop := signal.NotifyContext(cmd.Context(), syscall.SIGINT, syscall.SIGTERM)
 			defer stop()
 
-			var wg sync.WaitGroup
-			for _, poller := range pollers {
-				wg.Go(func() { poller.Run(ctx) })
-			}
-
-			err = pmetrics.Serve(ctx, f.Listen, p.Handler())
-			// serving can end by itself, on a port already taken say, and the polling has to end with it
-			stop()
-			wg.Wait()
-
-			return err
+			return exporter.Serve(ctx, f.Listen, p, page)
 		},
 	}
 }

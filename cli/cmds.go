@@ -4,9 +4,8 @@ package cli
 
 import (
 	"fmt"
-	"sync"
 
-	"github.com/katbyte/embyfin-exporter/lib/poll"
+	"github.com/katbyte/go-kt/prometheus/exporter"
 	"github.com/katbyte/go-kt/version"
 	"github.com/spf13/cobra"
 )
@@ -53,39 +52,18 @@ would be reported.`,
 			cmd.SilenceUsage = true
 
 			f := GetFlags()
-			pollers, err := f.pollers(connect)
+			p, err := f.poller(connect)
 			if err != nil {
 				return err
 			}
 
-			p, err := f.page(pollers)
+			page, err := f.page(p)
 			if err != nil {
-				return err
-			}
-
-			var wg sync.WaitGroup
-			for _, p := range pollers {
-				for _, round := range poll.Rounds {
-					wg.Go(func() { p.Poll(cmd.Context(), round) })
-				}
-			}
-			wg.Wait()
-
-			if err := p.Write(cmd.OutOrStdout()); err != nil {
 				return err
 			}
 
 			// the page is printed either way, with what a server that did not answer looks like on it; what went wrong is in the log
-			for _, p := range pollers {
-				s := p.State()
-				for _, round := range poll.Rounds {
-					if !s.Round(round).OK {
-						return fmt.Errorf("%s did not answer every question", p.Kind())
-					}
-				}
-			}
-
-			return nil
+			return exporter.Print(cmd.Context(), cmd.OutOrStdout(), p, page)
 		},
 	})
 

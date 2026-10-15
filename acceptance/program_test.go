@@ -8,14 +8,14 @@ import (
 	"errors"
 	"io"
 	"net"
-	"net/http"
 	"regexp"
 	"strings"
 	"testing"
 	"time"
 
 	"github.com/katbyte/embyfin-exporter/cli"
-	"github.com/katbyte/go-kt/pmetrics"
+	"github.com/katbyte/go-kt/prometheus/metrics"
+	"github.com/katbyte/go-kt/prometheus/metricstest"
 )
 
 // deployed gives the program the server under test the way a deployment does, in its environment, where no settings file or variable of the
@@ -55,7 +55,7 @@ func serving(t *testing.T, sessions, library time.Duration, settings ...string) 
 	}
 	cmd.SetOut(io.Discard)
 	cmd.SetErr(io.Discard)
-	cmd.SetArgs(append([]string{"serve", "--listen", at, "--sessions-interval", sessions.String(), "--library-interval", library.String(), "--history-interval", sessions.String()}, settings...))
+	cmd.SetArgs(append([]string{"serve", "--listen", at, "--intervals", "sessions=" + sessions.String() + ",library=" + library.String() + ",history=" + sessions.String()}, settings...))
 
 	ctx, stop := context.WithCancel(context.WithoutCancel(t.Context()))
 	stopped := make(chan error, 1)
@@ -77,49 +77,12 @@ func serving(t *testing.T, sessions, library time.Duration, settings ...string) 
 	return "http://" + at
 }
 
-// get reads one path from a program that is serving: the status it answers with and what it says. A program still starting is tried for a few
-// seconds, and one that never answers is given back as status 0.
-func get(t *testing.T, at string) (status int, body string) {
-	t.Helper()
-
-	for range 50 {
-		req, err := http.NewRequestWithContext(t.Context(), http.MethodGet, at, http.NoBody)
-		if err != nil {
-			t.Fatal(err)
-		}
-
-		resp, err := http.DefaultClient.Do(req)
-		if err != nil {
-			time.Sleep(100 * time.Millisecond)
-			continue
-		}
-
-		raw, _ := io.ReadAll(resp.Body)
-		_ = resp.Body.Close()
-
-		return resp.StatusCode, string(raw)
-	}
-
-	return 0, ""
-}
-
 // served reads the page from a program that is serving until it satisfies check or patience runs out, and gives back the last page read and
 // whether it did.
 func served(t *testing.T, base string, check func(text string) bool) (string, bool) {
 	t.Helper()
 
-	deadline := time.Now().Add(patience)
-	for {
-		_, text := get(t, base+pmetrics.Path)
-		if check(text) {
-			return text, true
-		}
-		if time.Now().After(deadline) {
-			return text, false
-		}
-
-		time.Sleep(250 * time.Millisecond)
-	}
+	return metricstest.Until(t, base+metrics.Path, patience, check)
 }
 
 // The program itself, given the server as a deployment gives it, prints a page with the server up and its films counted, and the key nowhere on
@@ -167,8 +130,8 @@ func TestTheProgramServesThePage(t *testing.T) {
 
 	base := serving(t, time.Second, 2*time.Second)
 
-	if status, body := get(t, base+pmetrics.HealthPath); status != http.StatusOK || strings.TrimSpace(body) != "ok" {
-		t.Fatalf("%s answered HTTP %d and %q, want 200 and ok", pmetrics.HealthPath, status, body)
+	if body := metricstest.Get(t, base+metrics.HealthPath); strings.TrimSpace(body) != "ok" {
+		t.Fatalf("%s answered %q, want ok", metrics.HealthPath, body)
 	}
 
 	asked := func(text string) float64 {

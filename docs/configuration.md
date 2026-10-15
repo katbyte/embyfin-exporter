@@ -11,9 +11,7 @@ Every setting can be a command-line flag, an environment variable or a line in a
 | `EMBYFIN_EXPORTER_LISTEN` | `--listen` | The address the page is served on. Default `:9096`. |
 | `EMBYFIN_EXPORTER_LABELS` | `--labels` | [Labels of your own](#labels-of-your-own) on every reading. None by default. |
 | `EMBYFIN_EXPORTER_DETAIL` | `--detail` | [Who and what the page may name](#names). Nobody and nothing by default. |
-| `EMBYFIN_EXPORTER_SESSIONS_INTERVAL` | `--sessions-interval` | How often sessions, streams, scheduled tasks and the server's own state are read. Default `15s`. |
-| `EMBYFIN_EXPORTER_LIBRARY_INTERVAL` | `--library-interval` | How often libraries, item counts, users, devices, sign-ins and plugins are read. Default `5m`. |
-| `EMBYFIN_EXPORTER_HISTORY_INTERVAL` | `--history-interval` | How often what was played is read, from a server with the Playback Reporting plugin. Default `30s`. |
+| `EMBYFIN_EXPORTER_INTERVALS` | `--intervals` | [How often each round is read](#intervals). `sessions=15s,library=5m,history=30s` by default. |
 | `EMBYFIN_EXPORTER_LOG` | | The [log level](#log-level). Default `WARN`. |
 | `EMBYFIN_EXPORTER_CONFIG` | `--config` | Read settings from [this file](#configuration-file) and no other. |
 
@@ -34,6 +32,20 @@ A label named as one a reading already has, `server` say, stops the program with
 ## Names
 
 `--detail` is a list of `users`, `titles`, `devices` or `all`, joined with commas. A word it does not know stops the program. [Names, only when you ask](readings.md#names-only-when-you-ask) says what each word adds.
+
+## Intervals
+
+Each server is asked in three rounds, each on its own clock:
+
+| Round | What is read | Default |
+|---|---|---|
+| `sessions` | Sessions, streams, scheduled tasks and the server's own state. | `15s` |
+| `library` | Libraries, item counts, users, devices, sign-ins and plugins. | `5m` |
+| `history` | What was played, from a server with the Playback Reporting plugin. | `30s` |
+
+`--intervals` sets any of them, written `name=duration` with commas between them: `sessions=30s,library=10m`. A round left out keeps its default. A name that is not a round, or a length of time of nothing, stops the program with what is wrong.
+
+A round is given until the next is due, and a server's questions in a round are asked at once.
 
 ## Log level
 

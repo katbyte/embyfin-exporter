@@ -14,7 +14,7 @@ import (
 	"github.com/katbyte/embyfin-exporter/lib/mediaserver"
 	"github.com/katbyte/embyfin-exporter/lib/poll"
 	"github.com/katbyte/embyfin-exporter/lib/poll/polltest"
-	"github.com/katbyte/go-kt/pmetrics"
+	"github.com/katbyte/go-kt/prometheus/metrics"
 	"github.com/spf13/cobra"
 )
 
@@ -73,7 +73,7 @@ func TestMakeBuildsTheCommands(t *testing.T) {
 		}
 	}
 	// a setting is a flag on every command, so it can be given after whichever one is run
-	for _, name := range []string{"emby-server", "jellyfin-token", "listen", "detail", "library-interval", "history-interval", "config"} {
+	for _, name := range []string{"emby-server", "jellyfin-token", "listen", "detail", "intervals", "config"} {
 		if root.PersistentFlags().Lookup(name) == nil {
 			t.Errorf("no --%s flag", name)
 		}
@@ -147,7 +147,7 @@ func TestLabelsGoOnEveryReading(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	for _, want := range []string{`embyfin_up{hostname="nas",server="emby",site="home"} 1`, `embyfin_devices{hostname="nas",server="emby",site="home"} 3`, `embyfin_metrics_build_info{commit="",goversion="`, `hostname="nas",site="home",version="`} {
+	for _, want := range []string{`embyfin_up{hostname="nas",server="emby",site="home"} 1`, `embyfin_devices{hostname="nas",server="emby",site="home"} 3`, `embyfin_exporter_build_info{commit="",goversion="`, `hostname="nas",site="home",version="`} {
 		if !strings.Contains(out, want) {
 			t.Errorf("the page lacks %s:\n%s", want, out)
 		}
@@ -272,14 +272,14 @@ func TestServe(t *testing.T) {
 	stopped := make(chan error, 1)
 	go func() { stopped <- root.ExecuteContext(ctx) }()
 
-	if got := strings.TrimSpace(fetch(t, addr, pmetrics.HealthPath)); got != "ok" {
-		t.Errorf("%s = %q, want ok", pmetrics.HealthPath, got)
+	if got := strings.TrimSpace(fetch(t, addr, metrics.HealthPath)); got != "ok" {
+		t.Errorf("%s = %q, want ok", metrics.HealthPath, got)
 	}
 
 	// the first round is asked as the program starts, so it is on the page within moments
 	var body string
 	for range 50 {
-		body = fetch(t, addr, pmetrics.Path)
+		body = fetch(t, addr, metrics.Path)
 		if strings.Contains(body, `embyfin_devices{server="emby"} 3`) && strings.Contains(body, `embyfin_up{server="jellyfin"} 0`) {
 			break
 		}

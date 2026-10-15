@@ -24,7 +24,7 @@ import (
 	"github.com/katbyte/embyfin-exporter/lib/poll"
 	"github.com/katbyte/embyfin-exporter/lib/readings"
 	"github.com/katbyte/embyfin-mcp/sdk/embyfin"
-	"github.com/katbyte/go-kt/pmetrics"
+	"github.com/katbyte/go-kt/prometheus/metrics"
 )
 
 // What .scripts/testenv.sh up prints: where the server is, a key for it, the two accounts it made, and the container it runs in.
@@ -386,7 +386,7 @@ func scrapeNaming(t *testing.T, only ...poll.Round) string {
 func page(t *testing.T, server *mediaserver.Server, only ...poll.Round) string {
 	t.Helper()
 
-	p, err := poll.New(server, poll.Intervals{Sessions: time.Minute, Library: 5 * time.Minute, History: time.Minute})
+	p, err := poll.New(map[string]time.Duration{"sessions": time.Minute, "library": 5 * time.Minute, "history": time.Minute}, server)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -395,10 +395,11 @@ func page(t *testing.T, server *mediaserver.Server, only ...poll.Round) string {
 		only = poll.Rounds
 	}
 	for _, round := range only {
-		p.Poll(t.Context(), round)
+		// a round that fails is on the page as the server answered it, which is what the test looks at
+		_ = p.Poll(t.Context(), round)
 	}
 
-	made, err := pmetrics.New(pmetrics.Options{Name: "embyfin-exporter", Namespace: readings.Namespace}, readings.New(p))
+	made, err := metrics.New(metrics.Options{Name: "embyfin-exporter"}, readings.New(p), p)
 	if err != nil {
 		t.Fatalf("making the page: %v", err)
 	}

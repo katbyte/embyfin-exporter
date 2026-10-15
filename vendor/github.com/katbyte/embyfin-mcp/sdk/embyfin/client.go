@@ -33,7 +33,7 @@ import (
 	"github.com/katbyte/embyfin-mcp/sdk/emby/4.10.0.40/emby"
 	jfclient "github.com/katbyte/embyfin-mcp/sdk/jf/12.1.0/client"
 	"github.com/katbyte/embyfin-mcp/sdk/jf/12.1.0/jf"
-	"github.com/katbyte/go-kt/chttp"
+	"github.com/katbyte/go-kt/httpc"
 	apiclient "github.com/katbyte/pandorest/client"
 )
 
@@ -129,8 +129,8 @@ func (c *Client) isEmby() bool { return c.backend == Emby }
 // four tries in all, two, four and eight seconds apart. A sweep of a large
 // library is thousands of reads over hours, and one gateway hiccup failed all
 // of it (seen against a real Emby behind a proxy: a 502 after nearly three
-// hours). A write or a delete is never sent again (see chttp.Retry).
-var readRetry = chttp.Retry{Tries: 4, Wait: func(attempt int) time.Duration { return 2 * time.Second << attempt }}
+// hours). A write or a delete is never sent again (see httpc.Retry).
+var readRetry = httpc.Retry{Tries: 4, Wait: func(attempt int) time.Duration { return 2 * time.Second << attempt }}
 
 // ErrNoResult is a lookup the server answered with nothing at all rather than
 // a 404: Emby answers 204 for a null result on any JSON operation (a lookup

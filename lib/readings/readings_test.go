@@ -1,10 +1,7 @@
 package readings_test
 
 import (
-	"flag"
-	"os"
 	"regexp"
-	"runtime"
 	"slices"
 	"strconv"
 	"strings"
@@ -14,9 +11,8 @@ import (
 
 	"github.com/katbyte/embyfin-exporter/lib/poll"
 	"github.com/katbyte/embyfin-exporter/lib/readings"
-	"github.com/katbyte/go-kt/pmetrics"
-	"github.com/katbyte/go-kt/pointer"
-	"github.com/prometheus/client_golang/prometheus/testutil/promlint"
+	"github.com/katbyte/go-kt/prometheus/metrics"
+	"github.com/katbyte/go-kt/prometheus/metricstest"
 )
 
 // saved is where the page is kept as it was last agreed.
@@ -30,14 +26,8 @@ const (
 	lastWeek = "1999-12-20"
 )
 
-// update rewrites the saved page from what the code writes now: go test ./lib/readings -update. Read the difference before keeping it, since a
-// reading that is renamed is one somebody's dashboard no longer finds.
-var update = flag.Bool("update", false, "rewrite testdata/page.txt from the page as it is written now")
-
 // fixed is a server whose state is whatever the test says.
 type fixed poll.State
-
-func (f *fixed) State() poll.State { return poll.State(*f) }
 
 // answered is an answer given now.
 func answered[T any](value T) poll.Answer[T] {
@@ -130,17 +120,26 @@ func down() *fixed {
 	return &fixed{Kind: "jellyfin", SessionsRound: poll.RoundState{Ran: true, Took: 15 * time.Second, Failures: 1}}
 }
 
-// write is the page of these servers' readings as a scrape reads it: the readings, and the one line the page adds to say which build wrote it.
-func write(t *testing.T, sources ...readings.Source) string {
+// write is the page of these servers' readings as a scrape reads it: the readings, how the asking went, and the one line the page adds to say which
+// build wrote it. Each server's state is given to a poller that has asked nothing, as though it had been asked.
+func write(t *testing.T, servers ...*fixed) string {
 	t.Helper()
 
-	p, err := pmetrics.New(pmetrics.Options{Name: "embyfin-exporter", Namespace: readings.Namespace}, readings.New(sources...))
+	p, err := poll.New(poll.Every)
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, s := range servers {
+		p.Set((*poll.State)(s))
+	}
+
+	page, err := metrics.New(metrics.Options{Name: "embyfin-exporter"}, readings.New(p), p)
 	if err != nil {
 		t.Fatal(err)
 	}
 
 	var out strings.Builder
-	if err := p.Write(&out); err != nil {
+	if err := page.Write(&out); err != nil {
 		t.Fatal(err)
 	}
 
@@ -151,7 +150,7 @@ func write(t *testing.T, sources ...readings.Source) string {
 func lines(text string) []string {
 	var out []string
 	for line := range strings.Lines(text) {
-		if line = strings.TrimSpace(line); line != "" && !strings.HasPrefix(line, "#") && !strings.HasPrefix(line, "embyfin_metrics_build_info") {
+		if line = strings.TrimSpace(line); line != "" && !strings.HasPrefix(line, "#") && !strings.HasPrefix(line, "embyfin_exporter_build_info") {
 			out = append(out, line)
 		}
 	}
@@ -176,22 +175,7 @@ func TestThePageIsWhatWasSaved(t *testing.T) {
 	t.Parallel()
 
 	synctest.Test(t, func(t *testing.T) {
-		got := write(t, emby(), down())
-		got = strings.Replace(got, runtime.Version(), "go", 1)
-
-		if pointer.From(update) {
-			if err := os.WriteFile(saved, []byte(got), 0o600); err != nil {
-				t.Fatal(err)
-			}
-		}
-
-		want, err := os.ReadFile(saved)
-		if err != nil {
-			t.Fatal(err)
-		}
-		if got != string(want) {
-			t.Errorf("the page is not the one saved in %s; if the change is meant, run go test ./lib/readings -update and read the difference\n%s", saved, got)
-		}
+		metricstest.Saved(t, write(t, emby(), down()), saved)
 	})
 }
 
@@ -200,17 +184,7 @@ func TestThePageIsWhatWasSaved(t *testing.T) {
 func TestThePageFollowsTheNamingConventions(t *testing.T) {
 	t.Parallel()
 
-	problems, err := promlint.New(strings.NewReader(write(t, emby(), down()))).Lint()
-	if err != nil {
-		t.Fatal(err)
-	}
-	for _, p := range problems {
-		if strings.HasSuffix(p.Metric, "_bits_per_second") && strings.Contains(p.Text, `instead of "bits"`) {
-			continue
-		}
-
-		t.Errorf("%s: %s", p.Metric, p.Text)
-	}
+	metricstest.Lint(t, write(t, emby(), down()), metricstest.Allowed{Reading: "_bits_per_second", Problem: `instead of "bits"`})
 }
 
 // A server that has never been asked has no readings at all, and one that was asked and did not answer has only how the asking went: a reading
@@ -226,6 +200,7 @@ func TestAServerThatNeverAnsweredHasNoReadingsOfItsState(t *testing.T) {
 	want := []string{
 		`embyfin_poll_duration_seconds{poll="sessions",server="jellyfin"} 15`,
 		`embyfin_poll_failures_total{poll="sessions",server="jellyfin"} 1`,
+		`embyfin_poll_interval_seconds{poll="sessions",server="jellyfin"} 15`,
 		`embyfin_up{server="jellyfin"} 0`,
 	}
 	if strings.Join(lines(got), "\n") != strings.Join(want, "\n") {
@@ -767,7 +742,9 @@ func TestActiveIsMeasuredWhenThePageIsWritten(t *testing.T) {
 			t.Errorf("an account seen 23 hours ago is not active within the day:\n%s", got)
 		}
 
+		// the account is asked after again in the meantime, and the server says the same of it
 		time.Sleep(2 * time.Hour)
+		p.Users = answered(p.Users.Value)
 		got := write(t, p)
 		if !has(got, `embyfin_users_active{server="emby",window="1d"} 0`) || !has(got, `embyfin_users_active{server="emby",window="7d"} 1`) {
 			t.Errorf("two hours on, the account should be active within 7 days and no longer within one:\n%s", got)

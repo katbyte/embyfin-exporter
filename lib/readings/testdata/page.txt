@@ -67,9 +67,6 @@ embyfin_logins_total{network="home",result="failed",server="emby",week="1999-12-
 embyfin_logins_total{network="home",result="ok",server="emby",week="1999-12-27"} 4
 embyfin_logins_total{network="remote",result="failed",server="emby",week="1999-12-27"} 43
 embyfin_logins_total{network="remote",result="ok",server="emby",week="1999-12-27"} 3
-# HELP embyfin_metrics_build_info Always 1, with the version of the tool that wrote the page.
-# TYPE embyfin_metrics_build_info gauge
-embyfin_metrics_build_info{commit="",goversion="go",version="dev"} 1
 # HELP embyfin_playback_reporting_installed Whether the server has the Playback Reporting plugin, which is where the readings of what was played come from (1) or not (0).
 # TYPE embyfin_playback_reporting_installed gauge
 embyfin_playback_reporting_installed{server="emby"} 1
@@ -100,17 +97,22 @@ embyfin_plugins{server="emby"} 3
 # HELP embyfin_plugins_update_available Plugins the server's own catalogue has a newer version of than the one installed, that the server could run. Not on the page while the server cannot reach its catalogue.
 # TYPE embyfin_plugins_update_available gauge
 embyfin_plugins_update_available{server="emby"} 2
-# HELP embyfin_poll_duration_seconds How long the last poll of the server took, by which: sessions, library or history.
+# HELP embyfin_poll_duration_seconds How long the last round of each schedule took.
 # TYPE embyfin_poll_duration_seconds gauge
 embyfin_poll_duration_seconds{poll="library",server="emby"} 3
 embyfin_poll_duration_seconds{poll="sessions",server="emby"} 0.25
 embyfin_poll_duration_seconds{poll="sessions",server="jellyfin"} 15
-# HELP embyfin_poll_failures_total How many polls of the server have failed since embyfin-exporter started.
+# HELP embyfin_poll_failures_total How many rounds of each schedule have failed since the tool started.
 # TYPE embyfin_poll_failures_total counter
 embyfin_poll_failures_total{poll="library",server="emby"} 2
 embyfin_poll_failures_total{poll="sessions",server="emby"} 0
 embyfin_poll_failures_total{poll="sessions",server="jellyfin"} 1
-# HELP embyfin_poll_last_success_timestamp_seconds When a poll of the server was last answered in full, in seconds since 1970.
+# HELP embyfin_poll_interval_seconds How often each schedule is asked.
+# TYPE embyfin_poll_interval_seconds gauge
+embyfin_poll_interval_seconds{poll="library",server="emby"} 300
+embyfin_poll_interval_seconds{poll="sessions",server="emby"} 15
+embyfin_poll_interval_seconds{poll="sessions",server="jellyfin"} 15
+# HELP embyfin_poll_last_success_timestamp_seconds When each schedule was last answered in full, in seconds since 1970.
 # TYPE embyfin_poll_last_success_timestamp_seconds gauge
 embyfin_poll_last_success_timestamp_seconds{poll="library",server="emby"} 9.4668474e+08
 embyfin_poll_last_success_timestamp_seconds{poll="sessions",server="emby"} 9.466848e+08

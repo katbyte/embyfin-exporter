@@ -10,15 +10,18 @@ import (
 	"github.com/katbyte/embyfin-exporter/lib/poll"
 )
 
-// A server that is there answers both rounds in full, and says what it is.
+// A server that is there answers both rounds in full, and says what it is. The page says how often each round is asked: every minute for sessions
+// and every five for the library, as the test's poller is told.
 func TestTheServerIsUp(t *testing.T) {
 	live(t)
 
 	text := scrape(t)
 	expect(t, text, map[string]float64{
 		reading("embyfin_up"): 1,
-		reading("embyfin_poll_failures_total", "poll", "sessions"): 0,
-		reading("embyfin_poll_failures_total", "poll", "library"):  0,
+		reading("embyfin_poll_failures_total", "poll", "sessions"):   0,
+		reading("embyfin_poll_failures_total", "poll", "library"):    0,
+		reading("embyfin_poll_interval_seconds", "poll", "sessions"): 60,
+		reading("embyfin_poll_interval_seconds", "poll", "library"):  300,
 	})
 
 	for _, name := range []string{reading("embyfin_server_restart_pending"), reading("embyfin_server_update_available"), reading("embyfin_poll_duration_seconds", "poll", "sessions"), reading("embyfin_poll_duration_seconds", "poll", "library")} {
