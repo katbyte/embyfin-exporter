@@ -1,5 +1,13 @@
 # Changelog
 
+## 0.4.0 (2026-10-15)
+
+embyfin-metrics is now embyfin-exporter, the name most Prometheus exporters go by.
+
+- **Renamed**: the program, the image (`ghcr.io/katbyte/embyfin-exporter`), the Homebrew formula and the repository are now `embyfin-exporter`.
+- **The old settings no longer work**: every `EMBYFIN_METRICS_*` setting is now `EMBYFIN_EXPORTER_*`, and the settings file is `.embyfin-exporter`. Anything still using the old names has to move to the new ones.
+- **The readings keep their names**, `embyfin_metrics_build_info` included, which is renamed in a later release.
+
 ## 0.3.0 (2026-10-14)
 
 Which plugins each server has, and which have a newer version waiting.
