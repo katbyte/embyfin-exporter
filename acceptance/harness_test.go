@@ -20,22 +20,22 @@ import (
 	"testing"
 	"time"
 
+	"github.com/katbyte/embyfin-exporter/lib/mediaserver"
+	"github.com/katbyte/embyfin-exporter/lib/poll"
+	"github.com/katbyte/embyfin-exporter/lib/readings"
 	"github.com/katbyte/embyfin-mcp/sdk/embyfin"
-	"github.com/katbyte/embyfin-metrics/lib/mediaserver"
-	"github.com/katbyte/embyfin-metrics/lib/poll"
-	"github.com/katbyte/embyfin-metrics/lib/readings"
 	"github.com/katbyte/go-kt/pmetrics"
 )
 
 // What .scripts/testenv.sh up prints: where the server is, a key for it, the two accounts it made, and the container it runs in.
 var (
-	backend   = os.Getenv("EMBYFIN_METRICS_TEST_BACKEND")
-	address   = os.Getenv("EMBYFIN_METRICS_TEST_SERVER")
-	token     = os.Getenv("EMBYFIN_METRICS_TEST_TOKEN")
-	admin     = os.Getenv("EMBYFIN_METRICS_TEST_ADMIN")
-	user      = os.Getenv("EMBYFIN_METRICS_TEST_USER")
-	password  = os.Getenv("EMBYFIN_METRICS_TEST_PASSWORD")
-	container = os.Getenv("EMBYFIN_METRICS_TEST_CONTAINER")
+	backend   = os.Getenv("EMBYFIN_EXPORTER_TEST_BACKEND")
+	address   = os.Getenv("EMBYFIN_EXPORTER_TEST_SERVER")
+	token     = os.Getenv("EMBYFIN_EXPORTER_TEST_TOKEN")
+	admin     = os.Getenv("EMBYFIN_EXPORTER_TEST_ADMIN")
+	user      = os.Getenv("EMBYFIN_EXPORTER_TEST_USER")
+	password  = os.Getenv("EMBYFIN_EXPORTER_TEST_PASSWORD")
+	container = os.Getenv("EMBYFIN_EXPORTER_TEST_CONTAINER")
 )
 
 // Which server is under test, as the server label has it.
@@ -177,7 +177,7 @@ func live(t *testing.T) {
 	t.Helper()
 
 	if client == nil {
-		t.Skip(`no server; run: eval "$(EMBYFIN_METRICS_TEST_BACKEND=jellyfin .scripts/testenv.sh up)"`)
+		t.Skip(`no server; run: eval "$(EMBYFIN_EXPORTER_TEST_BACKEND=jellyfin .scripts/testenv.sh up)"`)
 	}
 }
 
@@ -398,7 +398,7 @@ func page(t *testing.T, server *mediaserver.Server, only ...poll.Round) string {
 		p.Poll(t.Context(), round)
 	}
 
-	made, err := pmetrics.New(pmetrics.Options{Name: "embyfin-metrics", Namespace: readings.Namespace}, readings.New(p))
+	made, err := pmetrics.New(pmetrics.Options{Name: "embyfin-exporter", Namespace: readings.Namespace}, readings.New(p))
 	if err != nil {
 		t.Fatalf("making the page: %v", err)
 	}

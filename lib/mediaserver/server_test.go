@@ -13,8 +13,8 @@ import (
 	"testing"
 	"time"
 
+	"github.com/katbyte/embyfin-exporter/lib/poll"
 	"github.com/katbyte/embyfin-mcp/sdk/embyfin"
-	"github.com/katbyte/embyfin-metrics/lib/poll"
 	"github.com/katbyte/go-kt/pointer"
 )
 

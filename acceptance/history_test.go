@@ -12,8 +12,8 @@ import (
 	"testing"
 	"time"
 
-	"github.com/katbyte/embyfin-metrics/lib/mediaserver"
-	"github.com/katbyte/embyfin-metrics/lib/poll"
+	"github.com/katbyte/embyfin-exporter/lib/mediaserver"
+	"github.com/katbyte/embyfin-exporter/lib/poll"
 )
 
 // byHand marks the plays a test lays down itself in the plugin's record, as the app they were played with: a name no real app has, so they can be

@@ -31,11 +31,11 @@ there is to name.
 --labels puts labels of your choosing on every reading, hostname=nas say, for when the page
 is not scraped on the servers' own host and the store has no other way to tell whose it is.
 
-Every setting is also an environment variable: EMBYFIN_METRICS_EMBY_SERVER and
-EMBYFIN_METRICS_EMBY_TOKEN, EMBYFIN_METRICS_JELLYFIN_SERVER and EMBYFIN_METRICS_JELLYFIN_TOKEN,
-EMBYFIN_METRICS_LISTEN, EMBYFIN_METRICS_LABELS, EMBYFIN_METRICS_DETAIL,
-EMBYFIN_METRICS_SESSIONS_INTERVAL, EMBYFIN_METRICS_LIBRARY_INTERVAL and
-EMBYFIN_METRICS_HISTORY_INTERVAL.`,
+Every setting is also an environment variable: EMBYFIN_EXPORTER_EMBY_SERVER and
+EMBYFIN_EXPORTER_EMBY_TOKEN, EMBYFIN_EXPORTER_JELLYFIN_SERVER and EMBYFIN_EXPORTER_JELLYFIN_TOKEN,
+EMBYFIN_EXPORTER_LISTEN, EMBYFIN_EXPORTER_LABELS, EMBYFIN_EXPORTER_DETAIL,
+EMBYFIN_EXPORTER_SESSIONS_INTERVAL, EMBYFIN_EXPORTER_LIBRARY_INTERVAL and
+EMBYFIN_EXPORTER_HISTORY_INTERVAL.`,
 		Args:          cobra.NoArgs,
 		SilenceErrors: true,
 		RunE: func(cmd *cobra.Command, _ []string) error {

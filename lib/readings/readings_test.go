@@ -12,8 +12,8 @@ import (
 	"testing/synctest"
 	"time"
 
-	"github.com/katbyte/embyfin-metrics/lib/poll"
-	"github.com/katbyte/embyfin-metrics/lib/readings"
+	"github.com/katbyte/embyfin-exporter/lib/poll"
+	"github.com/katbyte/embyfin-exporter/lib/readings"
 	"github.com/katbyte/go-kt/pmetrics"
 	"github.com/katbyte/go-kt/pointer"
 	"github.com/prometheus/client_golang/prometheus/testutil/promlint"
@@ -134,7 +134,7 @@ func down() *fixed {
 func write(t *testing.T, sources ...readings.Source) string {
 	t.Helper()
 
-	p, err := pmetrics.New(pmetrics.Options{Name: "embyfin-metrics", Namespace: readings.Namespace}, readings.New(sources...))
+	p, err := pmetrics.New(pmetrics.Options{Name: "embyfin-exporter", Namespace: readings.Namespace}, readings.New(sources...))
 	if err != nil {
 		t.Fatal(err)
 	}

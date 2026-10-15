@@ -14,8 +14,8 @@ import (
 	"testing/synctest"
 	"time"
 
+	"github.com/katbyte/embyfin-exporter/lib/poll"
 	"github.com/katbyte/embyfin-mcp/sdk/embyfin"
-	"github.com/katbyte/embyfin-metrics/lib/poll"
 )
 
 // everything is a server asked to name all it can: accounts, titles and devices.

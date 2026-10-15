@@ -6,7 +6,7 @@ import (
 	"sync"
 	"time"
 
-	"github.com/katbyte/embyfin-metrics/lib/poll"
+	"github.com/katbyte/embyfin-exporter/lib/poll"
 )
 
 // The questions a server is asked, as Fail and Asked name them.

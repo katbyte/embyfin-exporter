@@ -8,9 +8,9 @@ import (
 	"testing"
 	"time"
 
-	"github.com/katbyte/embyfin-metrics/lib/mediaserver"
-	"github.com/katbyte/embyfin-metrics/lib/poll"
-	"github.com/katbyte/embyfin-metrics/lib/poll/polltest"
+	"github.com/katbyte/embyfin-exporter/lib/mediaserver"
+	"github.com/katbyte/embyfin-exporter/lib/poll"
+	"github.com/katbyte/embyfin-exporter/lib/poll/polltest"
 	"github.com/spf13/cobra"
 	"github.com/spf13/pflag"
 	"github.com/spf13/viper"
@@ -18,7 +18,7 @@ import (
 
 // viper is global, so none of these can run in parallel and each resets it.
 const (
-	testUse      = "embyfin-metrics"
+	testUse      = "embyfin-exporter"
 	testEmby     = "http://nas:8096"
 	testJellyfin = "http://nas:8097"
 	testToken    = "s3cret"
@@ -108,16 +108,16 @@ func TestDefaults(t *testing.T) {
 func TestEveryFlagHasAnEnvironmentVariable(t *testing.T) {
 	alone(t)
 
-	t.Setenv("EMBYFIN_METRICS_EMBY_SERVER", testEmby)
-	t.Setenv("EMBYFIN_METRICS_EMBY_TOKEN", "emby-key")
-	t.Setenv("EMBYFIN_METRICS_JELLYFIN_SERVER", testJellyfin)
-	t.Setenv("EMBYFIN_METRICS_JELLYFIN_TOKEN", "jellyfin-key")
-	t.Setenv("EMBYFIN_METRICS_LISTEN", "127.0.0.1:9000")
-	t.Setenv("EMBYFIN_METRICS_LABELS", "hostname=nas")
-	t.Setenv("EMBYFIN_METRICS_DETAIL", "users,titles")
-	t.Setenv("EMBYFIN_METRICS_SESSIONS_INTERVAL", "45s")
-	t.Setenv("EMBYFIN_METRICS_LIBRARY_INTERVAL", "10m")
-	t.Setenv("EMBYFIN_METRICS_HISTORY_INTERVAL", "2m")
+	t.Setenv("EMBYFIN_EXPORTER_EMBY_SERVER", testEmby)
+	t.Setenv("EMBYFIN_EXPORTER_EMBY_TOKEN", "emby-key")
+	t.Setenv("EMBYFIN_EXPORTER_JELLYFIN_SERVER", testJellyfin)
+	t.Setenv("EMBYFIN_EXPORTER_JELLYFIN_TOKEN", "jellyfin-key")
+	t.Setenv("EMBYFIN_EXPORTER_LISTEN", "127.0.0.1:9000")
+	t.Setenv("EMBYFIN_EXPORTER_LABELS", "hostname=nas")
+	t.Setenv("EMBYFIN_EXPORTER_DETAIL", "users,titles")
+	t.Setenv("EMBYFIN_EXPORTER_SESSIONS_INTERVAL", "45s")
+	t.Setenv("EMBYFIN_EXPORTER_LIBRARY_INTERVAL", "10m")
+	t.Setenv("EMBYFIN_EXPORTER_HISTORY_INTERVAL", "2m")
 
 	want := FlagData{
 		EmbyServer: testEmby, EmbyToken: "emby-key", JellyfinServer: testJellyfin, JellyfinToken: "jellyfin-key",
@@ -141,7 +141,7 @@ func TestEveryFlagHasAnEnvironmentVariable(t *testing.T) {
 // A flag beats the environment, which beats a settings file: a container overrides what an image holds, and a command line overrides both.
 func TestFlagThenEnvironmentThenFile(t *testing.T) {
 	home, _ := alone(t)
-	write(t, home, ".embyfin-metrics", "EMBY_SERVER=http://from-file\nEMBY_TOKEN=from-file\nSESSIONS_INTERVAL=45s\nLISTEN=:9000\n")
+	write(t, home, ".embyfin-exporter", "EMBY_SERVER=http://from-file\nEMBY_TOKEN=from-file\nSESSIONS_INTERVAL=45s\nLISTEN=:9000\n")
 
 	f := must(t)
 	if f.EmbyServer != "http://from-file" || f.EmbyToken != "from-file" || f.SessionsInterval != 45*time.Second || f.Listen != ":9000" {
@@ -149,8 +149,8 @@ func TestFlagThenEnvironmentThenFile(t *testing.T) {
 	}
 
 	viper.Reset()
-	t.Setenv("EMBYFIN_METRICS_EMBY_SERVER", "http://from-env")
-	t.Setenv("EMBYFIN_METRICS_SESSIONS_INTERVAL", "20s")
+	t.Setenv("EMBYFIN_EXPORTER_EMBY_SERVER", "http://from-env")
+	t.Setenv("EMBYFIN_EXPORTER_SESSIONS_INTERVAL", "20s")
 	f = must(t)
 	if f.EmbyServer != "http://from-env" || f.SessionsInterval != 20*time.Second || f.EmbyToken != "from-file" {
 		t.Errorf("with the environment = %+v, want it over the file, and the file for the rest", f)
@@ -163,7 +163,7 @@ func TestFlagThenEnvironmentThenFile(t *testing.T) {
 	}
 }
 
-// A .embyfin-metrics in the working directory is found before the one in $HOME, and neither being there is not an error.
+// A .embyfin-exporter in the working directory is found before the one in $HOME, and neither being there is not an error.
 //
 //nolint:paralleltest // viper is global state; these mutate it
 func TestSettingsFilePrecedence(t *testing.T) {
@@ -174,13 +174,13 @@ func TestSettingsFilePrecedence(t *testing.T) {
 	}
 
 	viper.Reset()
-	write(t, home, ".embyfin-metrics", "EMBY_SERVER=http://from-home\n")
+	write(t, home, ".embyfin-exporter", "EMBY_SERVER=http://from-home\n")
 	if f := must(t); f.EmbyServer != "http://from-home" {
 		t.Errorf("server = %q, want the one in $HOME", f.EmbyServer)
 	}
 
 	viper.Reset()
-	write(t, wd, ".embyfin-metrics", "EMBY_SERVER=http://from-here\n")
+	write(t, wd, ".embyfin-exporter", "EMBY_SERVER=http://from-here\n")
 	if f := must(t); f.EmbyServer != "http://from-here" {
 		t.Errorf("server = %q, want the working directory's over $HOME's", f.EmbyServer)
 	}
@@ -190,7 +190,7 @@ func TestSettingsFilePrecedence(t *testing.T) {
 // up with someone else's, or with none.
 func TestANamedSettingsFile(t *testing.T) {
 	home, _ := alone(t)
-	write(t, home, ".embyfin-metrics", "EMBY_SERVER=http://from-home\n")
+	write(t, home, ".embyfin-exporter", "EMBY_SERVER=http://from-home\n")
 	named := write(t, home, "other.env", "JELLYFIN_SERVER=http://from-named\n")
 
 	f := must(t, "--config", named)
@@ -222,9 +222,9 @@ func TestTargets(t *testing.T) {
 		"both":                 {flags: FlagData{EmbyServer: testEmby, EmbyToken: testToken, JellyfinServer: testJellyfin, JellyfinToken: testToken}, kinds: []string{kindEmby, kindJellyfin}},
 		"emby alone":           {flags: FlagData{EmbyServer: testEmby, EmbyToken: testToken}, kinds: []string{kindEmby}},
 		"jellyfin alone":       {flags: FlagData{JellyfinServer: testJellyfin, JellyfinToken: testToken}, kinds: []string{kindJellyfin}},
-		"neither":              {err: "EMBYFIN_METRICS_EMBY_SERVER"},
-		"a server with no key": {flags: FlagData{EmbyServer: testEmby}, err: "EMBYFIN_METRICS_EMBY_TOKEN"},
-		"a key with no server": {flags: FlagData{EmbyServer: testEmby, EmbyToken: testToken, JellyfinToken: testToken}, err: "EMBYFIN_METRICS_JELLYFIN_SERVER"},
+		"neither":              {err: "EMBYFIN_EXPORTER_EMBY_SERVER"},
+		"a server with no key": {flags: FlagData{EmbyServer: testEmby}, err: "EMBYFIN_EXPORTER_EMBY_TOKEN"},
+		"a key with no server": {flags: FlagData{EmbyServer: testEmby, EmbyToken: testToken, JellyfinToken: testToken}, err: "EMBYFIN_EXPORTER_JELLYFIN_SERVER"},
 	} {
 		t.Run(name, func(t *testing.T) {
 			t.Parallel()
@@ -303,7 +303,7 @@ func TestPollers(t *testing.T) {
 	if _, err := f.pollers(func(kind, _, _ string, _ mediaserver.Detail) (poll.Server, error) {
 		made = append(made, kind)
 		return &polltest.Server{Named: kind}, nil
-	}); err == nil || !strings.Contains(err.Error(), `"everyone"`) || !strings.Contains(err.Error(), "EMBYFIN_METRICS_DETAIL") || len(made) != 0 {
+	}); err == nil || !strings.Contains(err.Error(), `"everyone"`) || !strings.Contains(err.Error(), "EMBYFIN_EXPORTER_DETAIL") || len(made) != 0 {
 		t.Errorf("--detail users,everyone = %v with %d clients made, want an error naming the word and the setting and no client", err, len(made))
 	}
 }

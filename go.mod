@@ -1,4 +1,4 @@
-module github.com/katbyte/embyfin-metrics
+module github.com/katbyte/embyfin-exporter
 
 go 1.27.0
 

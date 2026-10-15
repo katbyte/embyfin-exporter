@@ -11,9 +11,9 @@ import (
 	"testing"
 	"time"
 
-	"github.com/katbyte/embyfin-metrics/lib/mediaserver"
-	"github.com/katbyte/embyfin-metrics/lib/poll"
-	"github.com/katbyte/embyfin-metrics/lib/poll/polltest"
+	"github.com/katbyte/embyfin-exporter/lib/mediaserver"
+	"github.com/katbyte/embyfin-exporter/lib/poll"
+	"github.com/katbyte/embyfin-exporter/lib/poll/polltest"
 	"github.com/katbyte/go-kt/pmetrics"
 	"github.com/spf13/cobra"
 )
@@ -85,7 +85,7 @@ func TestVersionCommand(t *testing.T) {
 	alone(t)
 
 	out, err := run(t, servers(), "version")
-	if err != nil || !strings.HasPrefix(out, "embyfin-metrics ") {
+	if err != nil || !strings.HasPrefix(out, "embyfin-exporter ") {
 		t.Errorf("version printed %q (%v), want the name and a version", out, err)
 	}
 }
@@ -97,7 +97,7 @@ func TestNoCommandPointsAtHelp(t *testing.T) {
 	alone(t)
 
 	out, err := run(t, servers())
-	if err != nil || !strings.Contains(out, "embyfin-metrics help") {
+	if err != nil || !strings.Contains(out, "embyfin-exporter help") {
 		t.Errorf("no command printed %q (%v), want a pointer to help", out, err)
 	}
 }
@@ -171,7 +171,7 @@ func TestALabelThatCannotBeUsed(t *testing.T) {
 			emby := &polltest.Server{Named: kindEmby}
 
 			_, err := run(t, servers(emby), command, "--emby-server", testEmby, "--emby-token", testToken, "--listen", "127.0.0.1:0", "--labels", labels)
-			if err == nil || !strings.Contains(err.Error(), want) || !strings.Contains(err.Error(), "EMBYFIN_METRICS_LABELS") {
+			if err == nil || !strings.Contains(err.Error(), want) || !strings.Contains(err.Error(), "EMBYFIN_EXPORTER_LABELS") {
 				t.Errorf("%s --labels %s = %v, want an error naming %q and the setting", command, labels, err, want)
 			}
 			if asked := emby.Asked(polltest.Sessions) + emby.Asked(polltest.Libraries); asked != 0 {
@@ -209,7 +209,7 @@ func TestACommandNeedsAServer(t *testing.T) {
 		alone(t)
 
 		_, err := run(t, servers(), command)
-		if err == nil || !strings.Contains(err.Error(), "EMBYFIN_METRICS_EMBY_SERVER") || !strings.Contains(err.Error(), "EMBYFIN_METRICS_JELLYFIN_SERVER") {
+		if err == nil || !strings.Contains(err.Error(), "EMBYFIN_EXPORTER_EMBY_SERVER") || !strings.Contains(err.Error(), "EMBYFIN_EXPORTER_JELLYFIN_SERVER") {
 			t.Errorf("%s with no server = %v, want an error naming the variables to set", command, err)
 		}
 	}

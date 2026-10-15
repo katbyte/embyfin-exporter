@@ -6,7 +6,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/katbyte/embyfin-metrics/lib/poll"
+	"github.com/katbyte/embyfin-exporter/lib/poll"
 	"github.com/prometheus/client_golang/prometheus"
 )
 
@@ -31,7 +31,7 @@ var (
 	up              = reading("up", "Whether the server answered the last time it was asked for its sessions (1) or not (0).")
 	pollDuration    = reading("poll_duration_seconds", "How long the last poll of the server took, by which: sessions, library or history.", "poll")
 	pollLastSuccess = reading("poll_last_success_timestamp_seconds", "When a poll of the server was last answered in full, in seconds since 1970.", "poll")
-	pollFailures    = reading("poll_failures_total", "How many polls of the server have failed since embyfin-metrics started.", "poll")
+	pollFailures    = reading("poll_failures_total", "How many polls of the server have failed since embyfin-exporter started.", "poll")
 
 	serverInfo      = reading("server_info", "Always 1, with the server's name, its version and the version of its API the client was built from.", "name", "version", "sdk_api_version")
 	restartPending  = reading("server_restart_pending", "Whether the server is waiting to be restarted (1) or not (0).")

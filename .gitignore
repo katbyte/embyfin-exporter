@@ -2,12 +2,14 @@
 .DS_Store
 .idea/
 dist/
+embyfin-exporter
+# the program as it was called before 0.4.0, for a build still lying about from then
 embyfin-metrics
 .tools/bin/
 .tools/venv/
 .tools/npm/
 __pycache__/
 .env
-.embyfin-metrics
+.embyfin-exporter
 .coverage/
 .testenv-*.sh

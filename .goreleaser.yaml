@@ -1,6 +1,6 @@
 version: 2
 
-project_name: embyfin-metrics
+project_name: embyfin-exporter
 
 builds:
   - env:
@@ -68,7 +68,7 @@ archives:
 # tags: v1.2.3, v1.2 and latest (latest skipped for prereleases such as v1.2.3-rc1)
 dockers_v2:
   - images:
-      - ghcr.io/katbyte/embyfin-metrics
+      - ghcr.io/katbyte/embyfin-exporter
     dockerfile: Dockerfile.goreleaser
     tags:
       - '{{ .Tag }}'
@@ -80,7 +80,7 @@ dockers_v2:
     annotations:
       org.opencontainers.image.title: '{{ .ProjectName }}'
       org.opencontainers.image.description: 'Emby and Jellyfin state as a Prometheus metrics page'
-      org.opencontainers.image.source: 'https://github.com/katbyte/embyfin-metrics'
+      org.opencontainers.image.source: 'https://github.com/katbyte/embyfin-exporter'
       org.opencontainers.image.version: '{{ .Version }}'
       org.opencontainers.image.revision: '{{ .FullCommit }}'
       org.opencontainers.image.licenses: 'GPL-3.0-only'

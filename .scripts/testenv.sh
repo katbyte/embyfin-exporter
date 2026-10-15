@@ -5,11 +5,11 @@
 # books and an audiobook), give it the Playback Reporting plugin, complete its
 # setup wizard, mint an API key, and print the environment the live tests need.
 #
-#   eval "$(EMBYFIN_METRICS_TEST_BACKEND=jellyfin .scripts/testenv.sh up)"   # start, export EMBYFIN_METRICS_*
-#   EMBYFIN_METRICS_TEST_BACKEND=jellyfin .scripts/testenv.sh down            # stop and remove everything
+#   eval "$(EMBYFIN_EXPORTER_TEST_BACKEND=jellyfin .scripts/testenv.sh up)"   # start, export EMBYFIN_EXPORTER_*
+#   EMBYFIN_EXPORTER_TEST_BACKEND=jellyfin .scripts/testenv.sh down            # stop and remove everything
 #   .scripts/testenv.sh fixtures                                              # write the media tree only
 #
-# EMBYFIN_METRICS_TEST_ONLINE=1 with up gives the server a way out to the
+# EMBYFIN_EXPORTER_TEST_ONLINE=1 with up gives the server a way out to the
 # internet, for the one test that needs it to reach its plugin catalogue.
 #
 # This script only does what the tests cannot do through the server's API:
@@ -27,38 +27,38 @@
 
 set -euo pipefail
 
-BACKEND="${EMBYFIN_METRICS_TEST_BACKEND:-}"
+BACKEND="${EMBYFIN_EXPORTER_TEST_BACKEND:-}"
 case "$BACKEND" in
   emby)
-    IMAGE="${EMBYFIN_METRICS_TEST_IMAGE:-emby/embyserver:latest}"
-    PORT="${EMBYFIN_METRICS_TEST_PORT:-19097}"
-    PLUGIN="${EMBYFIN_METRICS_TEST_PLUGIN:-https://embydata.com/admin/service/packageFiles/playback_reporting.dll_2.1.0.7.exe}"
+    IMAGE="${EMBYFIN_EXPORTER_TEST_IMAGE:-emby/embyserver:latest}"
+    PORT="${EMBYFIN_EXPORTER_TEST_PORT:-19097}"
+    PLUGIN="${EMBYFIN_EXPORTER_TEST_PLUGIN:-https://embydata.com/admin/service/packageFiles/playback_reporting.dll_2.1.0.7.exe}"
     ;;
   jellyfin)
-    IMAGE="${EMBYFIN_METRICS_TEST_IMAGE:-jellyfin/jellyfin:latest}"
-    PORT="${EMBYFIN_METRICS_TEST_PORT:-19096}"
-    PLUGIN="${EMBYFIN_METRICS_TEST_PLUGIN:-https://repo.jellyfin.org/files/plugin/playback-reporting/playback-reporting_19.0.0.0.zip}"
+    IMAGE="${EMBYFIN_EXPORTER_TEST_IMAGE:-jellyfin/jellyfin:latest}"
+    PORT="${EMBYFIN_EXPORTER_TEST_PORT:-19096}"
+    PLUGIN="${EMBYFIN_EXPORTER_TEST_PLUGIN:-https://repo.jellyfin.org/files/plugin/playback-reporting/playback-reporting_19.0.0.0.zip}"
     ;;
   "")
     if [ "${1:-up}" != "fixtures" ]; then
-      echo "EMBYFIN_METRICS_TEST_BACKEND must be emby or jellyfin" >&2
+      echo "EMBYFIN_EXPORTER_TEST_BACKEND must be emby or jellyfin" >&2
       exit 1
     fi
     ;;
   *)
-    echo "EMBYFIN_METRICS_TEST_BACKEND=$BACKEND: want emby or jellyfin" >&2
+    echo "EMBYFIN_EXPORTER_TEST_BACKEND=$BACKEND: want emby or jellyfin" >&2
     exit 1
     ;;
 esac
 
-NAME="${EMBYFIN_METRICS_TEST_CONTAINER:-embyfin-metrics-test-${BACKEND}}"
+NAME="${EMBYFIN_EXPORTER_TEST_CONTAINER:-embyfin-exporter-test-${BACKEND}}"
 # not TMPDIR: on macOS that is /var/folders/..., which Docker does not share
 # by default, and the bind mounts silently come up empty
-DATA="${EMBYFIN_METRICS_TEST_DATA:-${HOME}/.cache/embyfin-metrics/testenv/${BACKEND:-fixtures}}"
+DATA="${EMBYFIN_EXPORTER_TEST_DATA:-${HOME}/.cache/embyfin-exporter/testenv/${BACKEND:-fixtures}}"
 # the names are ones no reading's name or help holds, so a test can look for
 # them on the page and be sure of what it finds
 ADMIN="wendy"
-PASSWORD="embyfin-metrics-test"
+PASSWORD="embyfin-exporter-test"
 # a second, ordinary account, for the tests to log a device in as
 USER2="alice"
 # no backend means "fixtures", which needs no server: leave the port empty
@@ -71,7 +71,7 @@ log() { echo "==> $*" >&2; }
 api() {
   local method=$1 path=$2 body=${3:-} token=${4:-}
   local args=(-fsS -X "$method" "${URL}${path}" -H 'Content-Type: application/json')
-  [ -n "$token" ] && args+=(-H "X-Emby-Token: ${token}" -H "Authorization: MediaBrowser Token=\"${token}\", Client=\"embyfin-metrics-testenv\", Device=\"testenv\", DeviceId=\"testenv\", Version=\"0\"")
+  [ -n "$token" ] && args+=(-H "X-Emby-Token: ${token}" -H "Authorization: MediaBrowser Token=\"${token}\", Client=\"embyfin-exporter-testenv\", Device=\"testenv\", DeviceId=\"testenv\", Version=\"0\"")
   [ -n "$body" ] && args+=(-d "$body")
   curl "${args[@]}"
 }
@@ -249,7 +249,7 @@ EOF
 # plugins when it starts: the readings of what was played come from it. The
 # address is the one each server's own catalogue gives for the version, and
 # a Jellyfin one is built for one version of Jellyfin: when the server's image
-# moves on, name the newer plugin in EMBYFIN_METRICS_TEST_PLUGIN or above.
+# moves on, name the newer plugin in EMBYFIN_EXPORTER_TEST_PLUGIN or above.
 # Emby's is one file; Jellyfin's is a folder of them, zipped.
 plugin() {
   log "fetching the Playback Reporting plugin"
@@ -356,9 +356,9 @@ up() {
   # NO_PROXY carries the container's own name: Emby pings itself over HTTP
   # on startup, and that has no business going to a proxy that is not there
   local proxy=(-e "HTTP_PROXY=http://127.0.0.1:9" -e "HTTPS_PROXY=http://127.0.0.1:9" -e "http_proxy=http://127.0.0.1:9" -e "https_proxy=http://127.0.0.1:9" -e "NO_PROXY=localhost,127.0.0.1,${NAME}")
-  # EMBYFIN_METRICS_TEST_ONLINE leaves the proxy out, for the one test that
+  # EMBYFIN_EXPORTER_TEST_ONLINE leaves the proxy out, for the one test that
   # needs the server to reach its plugin catalogue. It is never set by make
-  [ -n "${EMBYFIN_METRICS_TEST_ONLINE:-}" ] && proxy=()
+  [ -n "${EMBYFIN_EXPORTER_TEST_ONLINE:-}" ] && proxy=()
   docker run -d --name "$NAME" -p "127.0.0.1:${PORT}:8096" --hostname "$NAME" ${proxy[@]+"${proxy[@]}"} "${mounts[@]}" "$IMAGE" >/dev/null
 
   # /System/Info/Public answers before the wizard endpoints do, so wait on
@@ -378,15 +378,15 @@ up() {
 
   log "logging in"
   local login access key
-  login=$(curl -fsS -X POST "${URL}/Users/AuthenticateByName" -H 'Content-Type: application/json' -H 'X-Emby-Authorization: MediaBrowser Client="embyfin-metrics-testenv", Device="testenv", DeviceId="testenv", Version="0"' -H 'Authorization: MediaBrowser Client="embyfin-metrics-testenv", Device="testenv", DeviceId="testenv", Version="0"' -d "$(jq -n --arg u "$ADMIN" --arg p "$PASSWORD" '{Username: $u, Pw: $p}')")
+  login=$(curl -fsS -X POST "${URL}/Users/AuthenticateByName" -H 'Content-Type: application/json' -H 'X-Emby-Authorization: MediaBrowser Client="embyfin-exporter-testenv", Device="testenv", DeviceId="testenv", Version="0"' -H 'Authorization: MediaBrowser Client="embyfin-exporter-testenv", Device="testenv", DeviceId="testenv", Version="0"' -d "$(jq -n --arg u "$ADMIN" --arg p "$PASSWORD" '{Username: $u, Pw: $p}')")
   access=$(echo "$login" | jq -r '.AccessToken')
   [ "$access" != "null" ] || { echo "no AccessToken in the login response" >&2; exit 1; }
 
-  # an API key is what embyfin-metrics is meant to run on, so the tests
+  # an API key is what embyfin-exporter is meant to run on, so the tests
   # authenticate the way a deployment does rather than with a session token
   log "creating an API key"
-  api POST "/Auth/Keys?app=embyfin-metrics-test" "" "$access" >/dev/null
-  key=$(api GET /Auth/Keys "" "$access" | jq -r '.Items[] | select(.AppName == "embyfin-metrics-test") | .AccessToken' | head -1)
+  api POST "/Auth/Keys?app=embyfin-exporter-test" "" "$access" >/dev/null
+  key=$(api GET /Auth/Keys "" "$access" | jq -r '.Items[] | select(.AppName == "embyfin-exporter-test") | .AccessToken' | head -1)
   [ -n "$key" ] && [ "$key" != "null" ] || { echo "no API key in the response" >&2; exit 1; }
 
   log "creating user ${USER2}"
@@ -400,17 +400,17 @@ up() {
   [ -n "$u2" ] && [ "$u2" != "null" ] || { echo "could not create ${USER2}" >&2; exit 1; }
 
   # consumed with eval "$(.scripts/testenv.sh up)"
-  echo "export EMBYFIN_METRICS_TEST_BACKEND='${BACKEND}'"
-  echo "export EMBYFIN_METRICS_TEST_SERVER='${URL}'"
-  echo "export EMBYFIN_METRICS_TEST_TOKEN='${key}'"
-  echo "export EMBYFIN_METRICS_TEST_ADMIN='${ADMIN}'"
-  echo "export EMBYFIN_METRICS_TEST_USER='${USER2}'"
-  echo "export EMBYFIN_METRICS_TEST_USER_ID='${u2}'"
-  echo "export EMBYFIN_METRICS_TEST_PASSWORD='${PASSWORD}'"
+  echo "export EMBYFIN_EXPORTER_TEST_BACKEND='${BACKEND}'"
+  echo "export EMBYFIN_EXPORTER_TEST_SERVER='${URL}'"
+  echo "export EMBYFIN_EXPORTER_TEST_TOKEN='${key}'"
+  echo "export EMBYFIN_EXPORTER_TEST_ADMIN='${ADMIN}'"
+  echo "export EMBYFIN_EXPORTER_TEST_USER='${USER2}'"
+  echo "export EMBYFIN_EXPORTER_TEST_USER_ID='${u2}'"
+  echo "export EMBYFIN_EXPORTER_TEST_PASSWORD='${PASSWORD}'"
   # for the tests that stop the server answering, or run the program's own image beside it
-  echo "export EMBYFIN_METRICS_TEST_CONTAINER='${NAME}'"
+  echo "export EMBYFIN_EXPORTER_TEST_CONTAINER='${NAME}'"
   # for the test that needs the server to have reached its plugin catalogue
-  echo "export EMBYFIN_METRICS_TEST_ONLINE='${EMBYFIN_METRICS_TEST_ONLINE:-}'"
+  echo "export EMBYFIN_EXPORTER_TEST_ONLINE='${EMBYFIN_EXPORTER_TEST_ONLINE:-}'"
 }
 
 down() {
@@ -427,5 +427,5 @@ case "${1:-up}" in
   fixtures) fixtures ;;   # generate the media tree only, for inspecting the layout
   logs) logs ;;           # what the server wrote about itself, for a failing run
   image) echo "$IMAGE" ;; # the image this backend runs, for a docker pull
-  *) echo "usage: EMBYFIN_METRICS_TEST_BACKEND=emby|jellyfin $0 [up|down|fixtures|logs|image]" >&2; exit 1 ;;
+  *) echo "usage: EMBYFIN_EXPORTER_TEST_BACKEND=emby|jellyfin $0 [up|down|fixtures|logs|image]" >&2; exit 1 ;;
 esac

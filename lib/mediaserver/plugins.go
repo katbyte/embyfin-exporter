@@ -8,8 +8,8 @@ import (
 	"strings"
 	"time"
 
+	"github.com/katbyte/embyfin-exporter/lib/poll"
 	"github.com/katbyte/embyfin-mcp/sdk/embyfin"
-	"github.com/katbyte/embyfin-metrics/lib/poll"
 	"github.com/katbyte/go-kt/clog"
 	"github.com/katbyte/go-kt/outside"
 	apiclient "github.com/katbyte/pandorest/client"

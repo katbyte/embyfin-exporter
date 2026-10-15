@@ -1,4 +1,4 @@
-# Used by goreleaser (dockers_v2 in .goreleaser.yaml) to publish ghcr.io/katbyte/embyfin-metrics on
+# Used by goreleaser (dockers_v2 in .goreleaser.yaml) to publish ghcr.io/katbyte/embyfin-exporter on
 # tag: the build context holds the prebuilt binary per platform, so this only copies it onto
 # alpine. Dockerfile (from source) is what make docker uses; keep the two final stages in sync.
 # alpine comes from Google's mirror of Docker Hub, which does not turn a shared release runner
@@ -7,11 +7,11 @@ FROM mirror.gcr.io/library/alpine:3.24
 RUN apk add --no-cache ca-certificates tzdata \
     && adduser -D -H -u 65532 embyfin
 ARG TARGETPLATFORM
-COPY $TARGETPLATFORM/embyfin-metrics /usr/local/bin/embyfin-metrics
+COPY $TARGETPLATFORM/embyfin-exporter /usr/local/bin/embyfin-exporter
 USER embyfin
-ENV EMBYFIN_METRICS_LISTEN=:9096
+ENV EMBYFIN_EXPORTER_LISTEN=:9096
 EXPOSE 9096
 HEALTHCHECK --interval=30s --timeout=3s --start-period=5s \
   CMD wget -q --spider http://127.0.0.1:9096/healthz || exit 1
-ENTRYPOINT ["embyfin-metrics"]
+ENTRYPOINT ["embyfin-exporter"]
 CMD ["serve"]

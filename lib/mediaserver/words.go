@@ -12,8 +12,8 @@ import (
 	"time"
 	"unicode"
 
+	"github.com/katbyte/embyfin-exporter/lib/poll"
 	"github.com/katbyte/embyfin-mcp/sdk/embyfin"
-	"github.com/katbyte/embyfin-metrics/lib/poll"
 )
 
 // kind is one kind of item: the page's word for it, and the type name the servers know it by.

@@ -9,7 +9,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/katbyte/embyfin-metrics/lib/poll"
+	"github.com/katbyte/embyfin-exporter/lib/poll"
 )
 
 // A name no account of the test server has, for a try to sign in that must be refused.
