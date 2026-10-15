@@ -1,8 +1,8 @@
 package cli
 
 import (
-	"github.com/katbyte/embyfin-metrics/lib/mediaserver"
-	"github.com/katbyte/embyfin-metrics/lib/poll"
+	"github.com/katbyte/embyfin-exporter/lib/mediaserver"
+	"github.com/katbyte/embyfin-exporter/lib/poll"
 )
 
 // connect makes the client that asks one server its questions: embyfin-mcp's, which speaks to either kind.

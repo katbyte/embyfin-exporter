@@ -11,8 +11,8 @@ import (
 	"testing"
 	"time"
 
+	"github.com/katbyte/embyfin-exporter/lib/poll"
 	"github.com/katbyte/embyfin-mcp/sdk/embyfin"
-	"github.com/katbyte/embyfin-metrics/lib/poll"
 )
 
 // fakeLog answers in an activity log's place with the entries it is set to, and remembers since when it was asked for them.

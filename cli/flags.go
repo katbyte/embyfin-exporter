@@ -8,9 +8,9 @@ import (
 	"strings"
 	"time"
 
-	"github.com/katbyte/embyfin-metrics/lib/mediaserver"
-	"github.com/katbyte/embyfin-metrics/lib/poll"
-	"github.com/katbyte/embyfin-metrics/lib/readings"
+	"github.com/katbyte/embyfin-exporter/lib/mediaserver"
+	"github.com/katbyte/embyfin-exporter/lib/poll"
+	"github.com/katbyte/embyfin-exporter/lib/readings"
 	"github.com/katbyte/go-kt/clog"
 	"github.com/katbyte/go-kt/pmetrics"
 	"github.com/spf13/cobra"
@@ -49,16 +49,16 @@ type FlagData struct {
 
 // envNames binds each flag to its environment variable.
 var envNames = map[string]string{ //nolint:gosec // G101: these are env var names, not credentials
-	"emby-server":       "EMBYFIN_METRICS_EMBY_SERVER",
-	"emby-token":        "EMBYFIN_METRICS_EMBY_TOKEN",
-	"jellyfin-server":   "EMBYFIN_METRICS_JELLYFIN_SERVER",
-	"jellyfin-token":    "EMBYFIN_METRICS_JELLYFIN_TOKEN",
-	"listen":            "EMBYFIN_METRICS_LISTEN",
-	"labels":            "EMBYFIN_METRICS_LABELS",
-	"detail":            "EMBYFIN_METRICS_DETAIL",
-	"sessions-interval": "EMBYFIN_METRICS_SESSIONS_INTERVAL",
-	"library-interval":  "EMBYFIN_METRICS_LIBRARY_INTERVAL",
-	"history-interval":  "EMBYFIN_METRICS_HISTORY_INTERVAL",
+	"emby-server":       "EMBYFIN_EXPORTER_EMBY_SERVER",
+	"emby-token":        "EMBYFIN_EXPORTER_EMBY_TOKEN",
+	"jellyfin-server":   "EMBYFIN_EXPORTER_JELLYFIN_SERVER",
+	"jellyfin-token":    "EMBYFIN_EXPORTER_JELLYFIN_TOKEN",
+	"listen":            "EMBYFIN_EXPORTER_LISTEN",
+	"labels":            "EMBYFIN_EXPORTER_LABELS",
+	"detail":            "EMBYFIN_EXPORTER_DETAIL",
+	"sessions-interval": "EMBYFIN_EXPORTER_SESSIONS_INTERVAL",
+	"library-interval":  "EMBYFIN_EXPORTER_LIBRARY_INTERVAL",
+	"history-interval":  "EMBYFIN_EXPORTER_HISTORY_INTERVAL",
 }
 
 // persistent is the flag set configureFlags bound, for the one setting that has to be read before viper is: where the settings file is.
@@ -68,16 +68,16 @@ func configureFlags(root *cobra.Command) error {
 	pflags := root.PersistentFlags()
 
 	pflags.String("emby-server", "", "the Emby server's url, e.g. http://nas:8096")
-	pflags.String("emby-token", "", "the Emby API key (consider exporting to EMBYFIN_METRICS_EMBY_TOKEN instead)")
+	pflags.String("emby-token", "", "the Emby API key (consider exporting to EMBYFIN_EXPORTER_EMBY_TOKEN instead)")
 	pflags.String("jellyfin-server", "", "the Jellyfin server's url, e.g. http://nas:8097")
-	pflags.String("jellyfin-token", "", "the Jellyfin API key (consider exporting to EMBYFIN_METRICS_JELLYFIN_TOKEN instead)")
+	pflags.String("jellyfin-token", "", "the Jellyfin API key (consider exporting to EMBYFIN_EXPORTER_JELLYFIN_TOKEN instead)")
 	pflags.String("listen", defaultListen, "serve the metrics page on this address")
 	pflags.String("labels", "", "labels to put on every reading, as name=value,name=value: hostname=nas say, when the page is not scraped on the servers' own host")
 	pflags.String("detail", "", "who and what the page may name, as a list of users, titles, devices or all: nobody and nothing unless asked, so no account's or device's name and no title is on the page by default")
 	pflags.Duration("sessions-interval", defaultSessionsInterval, "how often sessions, streams, scheduled tasks and the server's own state are read")
 	pflags.Duration("library-interval", defaultLibraryInterval, "how often libraries, item counts, users, devices, sign-ins and plugins are read")
 	pflags.Duration("history-interval", defaultHistoryInterval, "how often what was played is read, from a server with the Playback Reporting plugin")
-	pflags.String("config", "", "read settings from this file and no other, in place of ./.embyfin-metrics or ~/.embyfin-metrics (or export EMBYFIN_METRICS_CONFIG)")
+	pflags.String("config", "", "read settings from this file and no other, in place of ./.embyfin-exporter or ~/.embyfin-exporter (or export EMBYFIN_EXPORTER_CONFIG)")
 
 	persistent = pflags
 
@@ -95,7 +95,7 @@ func configureFlags(root *cobra.Command) error {
 }
 
 // configEnv names the settings file from the environment, as --config does on the command line.
-const configEnv = "EMBYFIN_METRICS_CONFIG"
+const configEnv = "EMBYFIN_EXPORTER_CONFIG"
 
 // configPath is the settings file a run was told to read, "" for none: the flag's, then the environment's. A leading ~/ is the home directory, for
 // whatever starts the program without a shell to expand it.
@@ -116,8 +116,8 @@ func configPath() string {
 	return path
 }
 
-// loadConfig reads the settings file, once the flags are parsed: the one --config or EMBYFIN_METRICS_CONFIG names and no other, or else the first
-// .embyfin-metrics found in the working directory and then in $HOME. A file that was named and cannot be read is an error; one merely absent from
+// loadConfig reads the settings file, once the flags are parsed: the one --config or EMBYFIN_EXPORTER_CONFIG names and no other, or else the first
+// .embyfin-exporter found in the working directory and then in $HOME. A file that was named and cannot be read is an error; one merely absent from
 // the usual places is not.
 func loadConfig() error {
 	viper.SetConfigType("env")
@@ -127,7 +127,7 @@ func loadConfig() error {
 			return fmt.Errorf("reading the settings file %s (--config / %s): %w", path, configEnv, err)
 		}
 	} else {
-		viper.SetConfigName(".embyfin-metrics")
+		viper.SetConfigName(".embyfin-exporter")
 		// viper reads the first file it finds, so the working directory comes first
 		viper.AddConfigPath(".")
 		if home, err := os.UserHomeDir(); err == nil {
@@ -282,7 +282,7 @@ func (f *FlagData) pollers(connect connector) ([]*poll.Poller, error) {
 }
 
 // name is what the program is called, on the page's front and in its help.
-const name = "embyfin-metrics"
+const name = "embyfin-exporter"
 
 // page is the metrics page of these pollers' readings, with the labels the settings ask for on every one. A label that cannot be used is said
 // here, before any server is asked anything: one written wrongly, or one named as a reading's own label is, server say.

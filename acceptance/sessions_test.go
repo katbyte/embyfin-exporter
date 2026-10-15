@@ -8,7 +8,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/katbyte/embyfin-metrics/lib/poll"
+	"github.com/katbyte/embyfin-exporter/lib/poll"
 )
 
 // What the test devices call themselves and their apps: words on no reading, so finding one on the page means it was put there.

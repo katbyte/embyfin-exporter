@@ -6,7 +6,7 @@
 .tools/npm
 .coverage
 dist
-embyfin-metrics
+embyfin-exporter
 *.md
 docker-compose.yml
 .env*

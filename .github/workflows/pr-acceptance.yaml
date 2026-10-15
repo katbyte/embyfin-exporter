@@ -56,5 +56,5 @@ jobs:
       - name: Tear down
         if: always()
         env:
-          EMBYFIN_METRICS_TEST_BACKEND: ${{ matrix.backend }}
+          EMBYFIN_EXPORTER_TEST_BACKEND: ${{ matrix.backend }}
         run: .scripts/testenv.sh down || true

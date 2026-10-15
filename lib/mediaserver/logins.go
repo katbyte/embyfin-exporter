@@ -9,8 +9,8 @@ import (
 	"strings"
 	"time"
 
+	"github.com/katbyte/embyfin-exporter/lib/poll"
 	"github.com/katbyte/embyfin-mcp/sdk/embyfin"
-	"github.com/katbyte/embyfin-metrics/lib/poll"
 	apiclient "github.com/katbyte/pandorest/client"
 )
 

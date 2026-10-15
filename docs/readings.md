@@ -25,7 +25,7 @@ Every reading starts `embyfin_` and has a `server` label, `emby` or `jellyfin`. 
 | `embyfin_server_info` | `name`, `version`, `sdk_api_version` | Always 1. The server's name and version, and the version of its API the client was built from. |
 | `embyfin_server_restart_pending` | | 1 when the server is waiting to be restarted. |
 | `embyfin_server_update_available` | | 1 when the server says a newer version of itself is out. |
-| `embyfin_metrics_build_info` | `version`, `commit`, `goversion` | Always 1. The version of embyfin-metrics that wrote the page. It has no `server` label. |
+| `embyfin_metrics_build_info` | `version`, `commit`, `goversion` | Always 1. The version of embyfin-exporter that wrote the page. It has no `server` label. |
 
 ### When a server stops answering
 
@@ -306,7 +306,7 @@ Left alone, there is no user name, device name, client address or title of what 
 
 A metrics store that keeps names and titles is a viewing history, so it is yours to ask for:
 
-| `EMBYFIN_METRICS_DETAIL` | Adds |
+| `EMBYFIN_EXPORTER_DETAIL` | Adds |
 |---|---|
 | `users` | Whose each session is, the time each account has played, when it was last seen, and its sign-ins. |
 | `titles` | What each session is playing, and the time each show and each film has been played. |

@@ -13,10 +13,10 @@ import (
 	"strings"
 	"time"
 
+	"github.com/katbyte/embyfin-exporter/lib/poll"
 	"github.com/katbyte/embyfin-mcp/sdk/emby/4.10.0.40/emby"
 	"github.com/katbyte/embyfin-mcp/sdk/embyfin"
 	"github.com/katbyte/embyfin-mcp/sdk/jf/12.1.0/jf"
-	"github.com/katbyte/embyfin-metrics/lib/poll"
 	"github.com/katbyte/go-kt/clog"
 	apiclient "github.com/katbyte/pandorest/client"
 )

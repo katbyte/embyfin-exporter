@@ -7,7 +7,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/katbyte/embyfin-metrics/lib/poll"
+	"github.com/katbyte/embyfin-exporter/lib/poll"
 )
 
 // A server that is there answers both rounds in full, and says what it is.

@@ -11,13 +11,13 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/katbyte/embyfin-exporter/lib/poll"
 	"github.com/katbyte/embyfin-mcp/sdk/embyfin"
-	"github.com/katbyte/embyfin-metrics/lib/poll"
 )
 
 // online is set when the test server was started with a way out to the internet, which .scripts/testenv.sh does only when asked: the one thing a
 // test needs it for is the server's catalogue of plugins.
-var online = os.Getenv("EMBYFIN_METRICS_TEST_ONLINE") != ""
+var online = os.Getenv("EMBYFIN_EXPORTER_TEST_ONLINE") != ""
 
 // onOffer is every version the test server's own catalogue has of each plugin, by the plugin's id without its dashes.
 func onOffer(t *testing.T) map[string][]string {
@@ -64,7 +64,7 @@ func onOffer(t *testing.T) map[string][]string {
 // plugin the test server was given among them. The test server has no way out to its catalogue, so the page does not say how many are behind,
 // which is not the same as none.
 //
-// Started with EMBYFIN_METRICS_TEST_ONLINE set, the server reaches its catalogue and the page does say: as many behind as it has lines for, each
+// Started with EMBYFIN_EXPORTER_TEST_ONLINE set, the server reaches its catalogue and the page does say: as many behind as it has lines for, each
 // line a plugin the server lists at that version, and the newer version one the server's own catalogue has of that plugin.
 func TestThePluginsAreOnThePage(t *testing.T) {
 	live(t)

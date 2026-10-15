@@ -1,5 +1,5 @@
 # build with the vendored deps, then ship the static binary on alpine: small, but keeps a shell
-# so you can `docker exec -it embyfin-metrics sh` to poke at things. runs as a non-root user.
+# so you can `docker exec -it embyfin-exporter sh` to poke at things. runs as a non-root user.
 # make docker passes VERSION/COMMIT from git; a bare `docker build .` reports "dev".
 #
 # REGISTRY is where the two base images come from: Google's mirror of Docker Hub, which holds
@@ -20,18 +20,18 @@ RUN CGO_ENABLED=0 go build -trimpath -mod=vendor \
       -ldflags "-s -w \
         -X github.com/katbyte/go-kt/version.Version=${VERSION} \
         -X github.com/katbyte/go-kt/version.GitCommit=${COMMIT}" \
-      -o /embyfin-metrics .
+      -o /embyfin-exporter .
 
 FROM ${REGISTRY}/alpine:${ALPINE_VERSION}
 RUN apk add --no-cache ca-certificates tzdata \
     && adduser -D -H -u 65532 embyfin
-COPY --from=build /embyfin-metrics /usr/local/bin/embyfin-metrics
+COPY --from=build /embyfin-exporter /usr/local/bin/embyfin-exporter
 USER embyfin
-# set each server's EMBYFIN_METRICS_*_SERVER and EMBYFIN_METRICS_*_TOKEN at runtime.
+# set each server's EMBYFIN_EXPORTER_*_SERVER and EMBYFIN_EXPORTER_*_TOKEN at runtime.
 # the healthcheck assumes the default port.
-ENV EMBYFIN_METRICS_LISTEN=:9096
+ENV EMBYFIN_EXPORTER_LISTEN=:9096
 EXPOSE 9096
 HEALTHCHECK --interval=30s --timeout=3s --start-period=5s \
   CMD wget -q --spider http://127.0.0.1:9096/healthz || exit 1
-ENTRYPOINT ["embyfin-metrics"]
+ENTRYPOINT ["embyfin-exporter"]
 CMD ["serve"]

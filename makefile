@@ -9,7 +9,7 @@ TEST_TIMEOUT?=15m
 # dev tool binaries are built into .tools/bin (gitignored) from the versions pinned in
 # .tools/go.mod - the single source of truth for make and CI; dependabot keeps them updated.
 # overridable because binaries cannot execute from a noexec mount (e.g. an smb checkout):
-# make TOOLS_BIN=~/.cache/embyfin-metrics/bin lint
+# make TOOLS_BIN=~/.cache/embyfin-exporter/bin lint
 TOOLS_BIN?=.tools/bin
 ACTIONLINT=$(TOOLS_BIN)/actionlint
 GOFUMPT=$(TOOLS_BIN)/gofumpt
@@ -92,18 +92,18 @@ help: ## Show this help
 	@awk 'BEGIN {FS = ":.*##"; printf "Usage: make \033[36m<target>\033[0m\n"} /^[a-zA-Z0-9_-]+:.*?##/ { printf "  \033[36m%-24s\033[0m%s\n", $$1, $$2 } /^##@/ { printf "\n\033[1m%s\033[0m\n", substr($$0, 5) }' $(MAKEFILE_LIST)
 
 ##@ Build
-build: ## Compile embyfin-metrics with version info from git
+build: ## Compile embyfin-exporter with version info from git
 	@echo "==> building..."
 	go build -ldflags "-X github.com/katbyte/go-kt/version.GitCommit=${GIT_COMMIT} -X github.com/katbyte/go-kt/version.Version=${GIT_VERSION}"
 
-install: ## Install embyfin-metrics into GOPATH/bin with version info from git
+install: ## Install embyfin-exporter into GOPATH/bin with version info from git
 	@echo "==> installing..."
 	go install -ldflags "-X github.com/katbyte/go-kt/version.GitCommit=${GIT_COMMIT} -X github.com/katbyte/go-kt/version.Version=${GIT_VERSION}" .
 
 # the base images come from Google's mirror of Docker Hub, and from Docker Hub itself when the mirror gives nothing, as the build workflow does it
-docker: ## Build the embyfin-metrics container image with version info from git
+docker: ## Build the embyfin-exporter container image with version info from git
 	@echo "==> building docker image..."
-	docker build --build-arg VERSION=${GIT_VERSION} --build-arg COMMIT=${GIT_COMMIT} -t embyfin-metrics . || docker build --build-arg REGISTRY=docker.io/library --build-arg VERSION=${GIT_VERSION} --build-arg COMMIT=${GIT_COMMIT} -t embyfin-metrics .
+	docker build --build-arg VERSION=${GIT_VERSION} --build-arg COMMIT=${GIT_COMMIT} -t embyfin-exporter . || docker build --build-arg REGISTRY=docker.io/library --build-arg VERSION=${GIT_VERSION} --build-arg COMMIT=${GIT_COMMIT} -t embyfin-exporter .
 
 tools: $(ACTIONLINT) $(GOFUMPT) $(GOLANGCI_LINT) $(GOLANGCI_LINT_MODULES) $(MARKDOWNLINT) $(SHELLCHECK) $(TYPOS) $(YAMLLINT) $(ZIZMOR) ## Install all pinned dev tools into .tools/bin
 
@@ -190,8 +190,8 @@ test: build ## Run the tests under the race detector
 BACKENDS?=emby jellyfin
 
 test-live: ## Run the live tests against an already-running server (see testenv-up)
-	@[ -n "${EMBYFIN_METRICS_TEST_BACKEND}" ] && [ -n "${EMBYFIN_METRICS_TEST_SERVER}" ] && [ -n "${EMBYFIN_METRICS_TEST_TOKEN}" ] || \
-		(echo 'EMBYFIN_METRICS_TEST_BACKEND, EMBYFIN_METRICS_TEST_SERVER and EMBYFIN_METRICS_TEST_TOKEN must be set: eval "$$(make testenv-up)", or use "make testacc"'; exit 1)
+	@[ -n "${EMBYFIN_EXPORTER_TEST_BACKEND}" ] && [ -n "${EMBYFIN_EXPORTER_TEST_SERVER}" ] && [ -n "${EMBYFIN_EXPORTER_TEST_TOKEN}" ] || \
+		(echo 'EMBYFIN_EXPORTER_TEST_BACKEND, EMBYFIN_EXPORTER_TEST_SERVER and EMBYFIN_EXPORTER_TEST_TOKEN must be set: eval "$$(make testenv-up)", or use "make testacc"'; exit 1)
 	go test -tags acceptance -count=1 ./acceptance/ -timeout ${TEST_TIMEOUT} -v
 
 testacc: ## Run the live tests against a throwaway server in Docker, for each backend
@@ -203,17 +203,17 @@ testacc-%: docker
 	@echo "==> live tests on $*..."
 	@set -e; \
 		env=".testenv-$*.sh"; \
-		export EMBYFIN_METRICS_TEST_BACKEND=$*; \
-		export EMBYFIN_METRICS_TEST_PROGRAM_IMAGE=embyfin-metrics; \
+		export EMBYFIN_EXPORTER_TEST_BACKEND=$*; \
+		export EMBYFIN_EXPORTER_TEST_PROGRAM_IMAGE=embyfin-exporter; \
 		.scripts/testenv.sh up | grep '^export' > "$$env"; \
 		trap 'st=$$?; [ $$st -eq 0 ] || .scripts/testenv.sh logs || true; .scripts/testenv.sh down; rm -f '"$$env"'; exit $$st' EXIT; \
 		. ./"$$env"; \
 		go test -tags acceptance -count=1 ./acceptance/ -timeout ${TEST_TIMEOUT} -v
 
-testenv-up: ## Start a throwaway media server with the made-up catalogue (EMBYFIN_METRICS_TEST_BACKEND=emby|jellyfin)
+testenv-up: ## Start a throwaway media server with the made-up catalogue (EMBYFIN_EXPORTER_TEST_BACKEND=emby|jellyfin)
 	@.scripts/testenv.sh up
 
-testenv-down: ## Remove the throwaway media server (EMBYFIN_METRICS_TEST_BACKEND=emby|jellyfin)
+testenv-down: ## Remove the throwaway media server (EMBYFIN_EXPORTER_TEST_BACKEND=emby|jellyfin)
 	@.scripts/testenv.sh down
 
 # coverage is written under .coverage (gitignored); the coverage workflow reads the total

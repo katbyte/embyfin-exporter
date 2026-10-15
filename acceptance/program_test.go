@@ -14,7 +14,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/katbyte/embyfin-metrics/cli"
+	"github.com/katbyte/embyfin-exporter/cli"
 	"github.com/katbyte/go-kt/pmetrics"
 )
 
@@ -26,12 +26,12 @@ func deployed(t *testing.T) {
 	t.Setenv("HOME", t.TempDir())
 	t.Chdir(t.TempDir())
 	for _, kind := range []string{"EMBY", "JELLYFIN"} {
-		t.Setenv("EMBYFIN_METRICS_"+kind+"_SERVER", "")
-		t.Setenv("EMBYFIN_METRICS_"+kind+"_TOKEN", "")
+		t.Setenv("EMBYFIN_EXPORTER_"+kind+"_SERVER", "")
+		t.Setenv("EMBYFIN_EXPORTER_"+kind+"_TOKEN", "")
 	}
-	t.Setenv("EMBYFIN_METRICS_DETAIL", "")
-	t.Setenv("EMBYFIN_METRICS_"+strings.ToUpper(backend)+"_SERVER", address)
-	t.Setenv("EMBYFIN_METRICS_"+strings.ToUpper(backend)+"_TOKEN", token)
+	t.Setenv("EMBYFIN_EXPORTER_DETAIL", "")
+	t.Setenv("EMBYFIN_EXPORTER_"+strings.ToUpper(backend)+"_SERVER", address)
+	t.Setenv("EMBYFIN_EXPORTER_"+strings.ToUpper(backend)+"_TOKEN", token)
 }
 
 // serving starts the program serving on a port of its own, asking the server that often, and gives back where it is. What was played is asked

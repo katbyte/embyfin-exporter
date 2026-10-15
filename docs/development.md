@@ -57,12 +57,12 @@ It needs `docker`, `ffmpeg`, `jq` and `unzip`. It takes about four minutes for b
 
 ```bash
 make testacc BACKENDS=jellyfin                                             # one server only
-eval "$(EMBYFIN_METRICS_TEST_BACKEND=emby .scripts/testenv.sh up)"         # or keep one up and run against it as often as needed
+eval "$(EMBYFIN_EXPORTER_TEST_BACKEND=emby .scripts/testenv.sh up)"         # or keep one up and run against it as often as needed
 make test-live
-EMBYFIN_METRICS_TEST_BACKEND=emby .scripts/testenv.sh down
+EMBYFIN_EXPORTER_TEST_BACKEND=emby .scripts/testenv.sh down
 ```
 
-Run by hand like that, the test of the image is skipped unless `EMBYFIN_METRICS_TEST_PROGRAM_IMAGE` names one. `make testacc` builds it and does.
+Run by hand like that, the test of the image is skipped unless `EMBYFIN_EXPORTER_TEST_PROGRAM_IMAGE` names one. `make testacc` builds it and does.
 
 ## What the live tests cannot reach
 
@@ -76,7 +76,7 @@ These stay with the unit tests:
 The last can be run by hand against a server that has one. A throwaway Emby comes with plugins older than its catalogue, so some are behind:
 
 ```bash
-eval "$(EMBYFIN_METRICS_TEST_BACKEND=emby EMBYFIN_METRICS_TEST_ONLINE=1 .scripts/testenv.sh up)"
+eval "$(EMBYFIN_EXPORTER_TEST_BACKEND=emby EMBYFIN_EXPORTER_TEST_ONLINE=1 .scripts/testenv.sh up)"
 go test -tags acceptance -count=1 ./acceptance/ -run TestThePluginsAreOnThePage -v
-EMBYFIN_METRICS_TEST_BACKEND=emby .scripts/testenv.sh down
+EMBYFIN_EXPORTER_TEST_BACKEND=emby .scripts/testenv.sh down
 ```

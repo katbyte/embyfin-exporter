@@ -38,9 +38,9 @@ jobs:
       # itself when the mirror gives nothing: Docker Hub turns a runner away once its shared
       # address has pulled too much, so it is the one asked second
       - run: |
-          docker build --build-arg VERSION=ci --build-arg COMMIT="${GITHUB_SHA::7}" -t embyfin-metrics . ||
-            docker build --build-arg REGISTRY=docker.io/library --build-arg VERSION=ci --build-arg COMMIT="${GITHUB_SHA::7}" -t embyfin-metrics .
+          docker build --build-arg VERSION=ci --build-arg COMMIT="${GITHUB_SHA::7}" -t embyfin-exporter . ||
+            docker build --build-arg REGISTRY=docker.io/library --build-arg VERSION=ci --build-arg COMMIT="${GITHUB_SHA::7}" -t embyfin-exporter .
       # the version the image reports is the one the build was given: a
       # build that reports dev has lost its -X flags
       - name: smoke test the image
-        run: docker run --rm embyfin-metrics version | grep -F 'embyfin-metrics ci'
+        run: docker run --rm embyfin-exporter version | grep -F 'embyfin-exporter ci'

@@ -2,12 +2,12 @@
 .DS_Store
 .idea/
 dist/
-embyfin-metrics
+embyfin-exporter
 .tools/bin/
 .tools/venv/
 .tools/npm/
 __pycache__/
 .env
-.embyfin-metrics
+.embyfin-exporter
 .coverage/
 .testenv-*.sh

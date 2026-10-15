@@ -16,7 +16,7 @@ import (
 )
 
 // image is the program's own image, as make docker builds it, for the test that runs it. make testacc builds it and names it here.
-var image = os.Getenv("EMBYFIN_METRICS_TEST_PROGRAM_IMAGE")
+var image = os.Getenv("EMBYFIN_EXPORTER_TEST_PROGRAM_IMAGE")
 
 // home is the developer's own home, read before any test gives the program another: docker keeps where its daemon is there.
 var home = os.Getenv("HOME")
@@ -40,7 +40,7 @@ func TestAServerThatStopsAnswering(t *testing.T) {
 	live(t)
 
 	if container == "" {
-		t.Skip("no container named: EMBYFIN_METRICS_TEST_CONTAINER is what .scripts/testenv.sh up prints")
+		t.Skip("no container named: EMBYFIN_EXPORTER_TEST_CONTAINER is what .scripts/testenv.sh up prints")
 	}
 
 	base := serving(t, time.Second, 2*time.Second)
@@ -112,7 +112,7 @@ func TestTheImage(t *testing.T) {
 	live(t)
 
 	if image == "" || container == "" {
-		t.Skip("no image to run: make testacc builds one and names it in EMBYFIN_METRICS_TEST_PROGRAM_IMAGE, beside the server named in EMBYFIN_METRICS_TEST_CONTAINER")
+		t.Skip("no image to run: make testacc builds one and names it in EMBYFIN_EXPORTER_TEST_PROGRAM_IMAGE, beside the server named in EMBYFIN_EXPORTER_TEST_CONTAINER")
 	}
 
 	// signed in before the image starts, so the account has been seen by the time the image first asks after accounts
@@ -125,13 +125,13 @@ func TestTheImage(t *testing.T) {
 	}
 
 	name := container + "-program"
-	server, key := "EMBYFIN_METRICS_"+strings.ToUpper(backend)+"_SERVER", "EMBYFIN_METRICS_"+strings.ToUpper(backend)+"_TOKEN"
+	server, key := "EMBYFIN_EXPORTER_"+strings.ToUpper(backend)+"_SERVER", "EMBYFIN_EXPORTER_"+strings.ToUpper(backend)+"_TOKEN"
 
 	_, _ = docker(t, nil, "rm", "--force", name)
 	t.Cleanup(func() { _, _ = docker(t, nil, "rm", "--force", name) })
 
 	// the health check is asked every two seconds where the image says thirty, so the test need not wait half a minute for the first
-	if out, err := docker(t, []string{key + "=" + token}, "run", "--detach", "--name", name, "--publish", "127.0.0.1::9096", "--health-interval", "2s", "--env", server+"=http://"+inside+":8096", "--env", key, "--env", "EMBYFIN_METRICS_SESSIONS_INTERVAL=1s", "--env", "EMBYFIN_METRICS_DETAIL=users", image); err != nil {
+	if out, err := docker(t, []string{key + "=" + token}, "run", "--detach", "--name", name, "--publish", "127.0.0.1::9096", "--health-interval", "2s", "--env", server+"=http://"+inside+":8096", "--env", key, "--env", "EMBYFIN_EXPORTER_SESSIONS_INTERVAL=1s", "--env", "EMBYFIN_EXPORTER_DETAIL=users", image); err != nil {
 		t.Fatalf("starting the image %s: %v: %s", image, err, out)
 	}
 

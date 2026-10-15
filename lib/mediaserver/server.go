@@ -8,8 +8,8 @@ import (
 	"sync/atomic"
 	"time"
 
+	"github.com/katbyte/embyfin-exporter/lib/poll"
 	"github.com/katbyte/embyfin-mcp/sdk/embyfin"
-	"github.com/katbyte/embyfin-metrics/lib/poll"
 	"github.com/katbyte/go-kt/clog"
 	apiclient "github.com/katbyte/pandorest/client"
 )
@@ -55,7 +55,7 @@ type Server struct {
 }
 
 // Connect is the server of that kind, "emby" or "jellyfin", at address, asked with that key, and telling of who plays what only as far as detail
-// allows. Nothing is sent until the first question. Set EMBYFIN_METRICS_LOG=TRACE to see every request and its answer, with the key hidden.
+// allows. Nothing is sent until the first question. Set EMBYFIN_EXPORTER_LOG=TRACE to see every request and its answer, with the key hidden.
 func Connect(kind, address, token string, detail Detail) (*Server, error) {
 	opts := []apiclient.Option{apiclient.WithLog(clog.Log), apiclient.WithRetry(retry)}
 

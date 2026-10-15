@@ -7,8 +7,8 @@ import (
 	"testing/synctest"
 	"time"
 
-	"github.com/katbyte/embyfin-metrics/lib/poll"
-	"github.com/katbyte/embyfin-metrics/lib/poll/polltest"
+	"github.com/katbyte/embyfin-exporter/lib/poll"
+	"github.com/katbyte/embyfin-exporter/lib/poll/polltest"
 )
 
 // every is how often the tests poll: the program's own defaults.

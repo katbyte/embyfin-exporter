@@ -1,13 +1,13 @@
-# embyfin-metrics - Emby and Jellyfin state as a Prometheus metrics page
+# embyfin-exporter - Emby and Jellyfin state as a Prometheus metrics page
 
-[![GitHub release](https://img.shields.io/github/v/release/katbyte/embyfin-metrics?color=blueviolet)](https://github.com/katbyte/embyfin-metrics/releases/latest)
-[![Go Version](https://img.shields.io/github/go-mod/go-version/katbyte/embyfin-metrics?color=00ADD8)](https://github.com/katbyte/embyfin-metrics/blob/main/go.mod)
-[![License](https://img.shields.io/github/license/katbyte/embyfin-metrics?color=blue)](https://github.com/katbyte/embyfin-metrics/blob/main/LICENSE)
-![build](https://github.com/katbyte/embyfin-metrics/actions/workflows/build.yaml/badge.svg)
-![tests](https://github.com/katbyte/embyfin-metrics/actions/workflows/pr-tests.yaml/badge.svg)
-![acceptance](https://github.com/katbyte/embyfin-metrics/actions/workflows/pr-acceptance.yaml/badge.svg)
-![lint](https://github.com/katbyte/embyfin-metrics/actions/workflows/pr-golangci-lint.yaml/badge.svg)
-[![coverage](https://img.shields.io/endpoint?url=https://raw.githubusercontent.com/katbyte/embyfin-metrics/badges/coverage.json)](https://github.com/katbyte/embyfin-metrics/actions/workflows/coverage.yaml)
+[![GitHub release](https://img.shields.io/github/v/release/katbyte/embyfin-exporter?color=blueviolet)](https://github.com/katbyte/embyfin-exporter/releases/latest)
+[![Go Version](https://img.shields.io/github/go-mod/go-version/katbyte/embyfin-exporter?color=00ADD8)](https://github.com/katbyte/embyfin-exporter/blob/main/go.mod)
+[![License](https://img.shields.io/github/license/katbyte/embyfin-exporter?color=blue)](https://github.com/katbyte/embyfin-exporter/blob/main/LICENSE)
+![build](https://github.com/katbyte/embyfin-exporter/actions/workflows/build.yaml/badge.svg)
+![tests](https://github.com/katbyte/embyfin-exporter/actions/workflows/pr-tests.yaml/badge.svg)
+![acceptance](https://github.com/katbyte/embyfin-exporter/actions/workflows/pr-acceptance.yaml/badge.svg)
+![lint](https://github.com/katbyte/embyfin-exporter/actions/workflows/pr-golangci-lint.yaml/badge.svg)
+[![coverage](https://img.shields.io/endpoint?url=https://raw.githubusercontent.com/katbyte/embyfin-exporter/badges/coverage.json)](https://github.com/katbyte/embyfin-exporter/actions/workflows/coverage.yaml)
 
 A small program that reports what an [Emby](https://emby.media) and a [Jellyfin](https://jellyfin.org) server are doing, as a page [Prometheus](https://prometheus.io) can read.
 
@@ -18,9 +18,9 @@ One container covers both servers, or either alone.
 ## Install
 
 ```bash
-docker pull ghcr.io/katbyte/embyfin-metrics:latest     # or
-go install github.com/katbyte/embyfin-metrics@latest   # or
-brew install katbyte/tap/embyfin-metrics
+docker pull ghcr.io/katbyte/embyfin-exporter:latest     # or
+go install github.com/katbyte/embyfin-exporter@latest   # or
+brew install katbyte/tap/embyfin-exporter
 ```
 
 ## Quick start
@@ -28,11 +28,11 @@ brew install katbyte/tap/embyfin-metrics
 Give it a server's address and an API key from that server's dashboard:
 
 ```bash
-export EMBYFIN_METRICS_EMBY_SERVER=http://nas:8096
-export EMBYFIN_METRICS_EMBY_TOKEN=...
+export EMBYFIN_EXPORTER_EMBY_SERVER=http://nas:8096
+export EMBYFIN_EXPORTER_EMBY_TOKEN=...
 
-embyfin-metrics print   # ask each server once and print the page: a check that the address and key work
-embyfin-metrics serve   # serve the page at :9096/metrics, with a health probe at /healthz
+embyfin-exporter print   # ask each server once and print the page: a check that the address and key work
+embyfin-exporter serve   # serve the page at :9096/metrics, with a health probe at /healthz
 ```
 
 With Docker, [`docker-compose.yml`](docker-compose.yml) runs the released image:
@@ -68,7 +68,7 @@ What was played comes from each server's [Playback Reporting](https://github.com
 
 By default no user, device, title or address is on the page. A metrics store that keeps names and titles is a viewing history, so it is yours to ask for:
 
-| `EMBYFIN_METRICS_DETAIL` | Adds |
+| `EMBYFIN_EXPORTER_DETAIL` | Adds |
 |---|---|
 | `users` | Whose each stream is, time played and sign-ins by account, and when each was last seen. |
 | `titles` | What each stream is playing, and time played by show and film. |
@@ -83,12 +83,12 @@ Every setting is a flag, an environment variable or a line in a config file. Mos
 
 | Variable | What it is |
 |---|---|
-| `EMBYFIN_METRICS_EMBY_SERVER` | The Emby server's URL, e.g. `http://nas:8096`. |
-| `EMBYFIN_METRICS_EMBY_TOKEN` | Its API key. |
-| `EMBYFIN_METRICS_JELLYFIN_SERVER` | The Jellyfin server's URL, e.g. `http://nas:8097`. |
-| `EMBYFIN_METRICS_JELLYFIN_TOKEN` | Its API key. |
-| `EMBYFIN_METRICS_LISTEN` | Where the page is served. Default `:9096`. |
-| `EMBYFIN_METRICS_DETAIL` | Who and what the page may name. Nobody by default. |
+| `EMBYFIN_EXPORTER_EMBY_SERVER` | The Emby server's URL, e.g. `http://nas:8096`. |
+| `EMBYFIN_EXPORTER_EMBY_TOKEN` | Its API key. |
+| `EMBYFIN_EXPORTER_JELLYFIN_SERVER` | The Jellyfin server's URL, e.g. `http://nas:8097`. |
+| `EMBYFIN_EXPORTER_JELLYFIN_TOKEN` | Its API key. |
+| `EMBYFIN_EXPORTER_LISTEN` | Where the page is served. Default `:9096`. |
+| `EMBYFIN_EXPORTER_DETAIL` | Who and what the page may name. Nobody by default. |
 
 Leave a server out by setting neither its address nor its key. A key is never logged and never on the page.
 

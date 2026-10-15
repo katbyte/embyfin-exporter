@@ -105,7 +105,7 @@ embyfin_plugins_update_available{server="emby"} 2
 embyfin_poll_duration_seconds{poll="library",server="emby"} 3
 embyfin_poll_duration_seconds{poll="sessions",server="emby"} 0.25
 embyfin_poll_duration_seconds{poll="sessions",server="jellyfin"} 15
-# HELP embyfin_poll_failures_total How many polls of the server have failed since embyfin-metrics started.
+# HELP embyfin_poll_failures_total How many polls of the server have failed since embyfin-exporter started.
 # TYPE embyfin_poll_failures_total counter
 embyfin_poll_failures_total{poll="library",server="emby"} 2
 embyfin_poll_failures_total{poll="sessions",server="emby"} 0
