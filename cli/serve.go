@@ -4,7 +4,10 @@ import (
 	"os/signal"
 	"syscall"
 
+	"github.com/katbyte/go-kt/clog"
 	"github.com/katbyte/go-kt/prometheus/exporter"
+	"github.com/katbyte/go-kt/version"
+	"github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
 )
 
@@ -44,6 +47,11 @@ EMBYFIN_EXPORTER_METRICS, EMBYFIN_EXPORTER_SKIP and EMBYFIN_EXPORTER_INTERVALS.`
 		SilenceErrors: true,
 		RunE: func(cmd *cobra.Command, _ []string) error {
 			cmd.SilenceUsage = true
+
+			// the same version the version command prints, first in the log at any level, so every log says which build wrote it
+			always := clog.NewWithOutput(clog.Log.Out)
+			always.SetLevel(logrus.InfoLevel)
+			always.Infof("embyfin-exporter %s", version.Version)
 
 			f := GetFlags()
 			p, err := f.poller(connect)
