@@ -1,6 +1,8 @@
 # Changelog
 
-## Unreleased
+## 0.6.0 (2026-10-18)
+
+Choose which groups of readings are asked for, and how often each is. The interval words `library` and `history` no longer work.
 
 - **Choose which groups of readings are asked for**: `EMBYFIN_EXPORTER_METRICS` names the only groups, `EMBYFIN_EXPORTER_SKIP` leaves some of those off, and the servers are not asked for what is left off. The groups are `poll`, `sessions`, `reasons`, `streaming`, `tasks`, `plugins`, `libraries`, `accounts`, `sign-ins` and `played`, where `poll` is the `embyfin_poll_*` readings. Every group is on unless they say.
 - **Each group is asked for on its own clock**: `EMBYFIN_EXPORTER_INTERVALS` now names the group's round, as `plugins=1h,played=1m`. The rounds are `server`, `sessions`, `tasks`, `libraries`, `accounts`, `sign-ins`, `plugins` and `played`, with the same timings as before. `library` and `history` no longer work, and the `poll` label of the `embyfin_poll_*` readings names the new rounds.
