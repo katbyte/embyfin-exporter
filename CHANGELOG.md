@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.6.1 (2026-10-18)
+
+The log says which version is running.
+
+- **The version is the first line of every `serve` log**, the same one `embyfin-exporter version` prints, whatever `EMBYFIN_EXPORTER_LOG` is set to.
+
 ## 0.6.0 (2026-10-18)
 
 Choose which groups of readings are asked for, and how often each is. The interval words `library` and `history` no longer work.
