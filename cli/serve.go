@@ -15,12 +15,12 @@ func serveCmd(connect connector) *cobra.Command {
 		Long: `Asks each configured server for its state on a schedule and serves the last answers at
 /metrics in the Prometheus text format, with a health probe at /healthz.
 
-A scrape is answered from memory and never waits on a server. Each server is asked in three
-rounds: sessions (sessions, streams, scheduled tasks and the server's own state, every 15s),
-library (libraries, item counts, users, devices, sign-ins and plugins, every 5m) and history
-(what was played, from a server that has the Playback Reporting plugin, every 30s).
---intervals sets any of them, as sessions=30s,library=10m. A server that stops answering is
-reported as embyfin_up 0, and does not stop the other being reported.
+A scrape is answered from memory and never waits on a server. Each group of readings is asked
+for in a round of its own: the server's own state, sessions and tasks every 15s, libraries,
+accounts, sign-ins and plugins every 5m, and what was played every 30s, from a server that
+has the Playback Reporting plugin. --intervals sets any of them, as plugins=1h,played=1m. A
+server that stops answering is reported as embyfin_up 0, and does not stop the other being
+reported.
 
 No account's or device's name and no title is on the page unless --detail asks: users for
 whose each session is, the time each account has played, its sign-ins and when it was last
@@ -28,13 +28,18 @@ seen, titles for what each session is playing and the time each show and film ha
 played, devices for the device and the app each session plays on, all for everything
 there is to name.
 
+Every group is on the page unless --metrics names the only ones to ask for, from poll,
+sessions, reasons, streaming, tasks, plugins, libraries, accounts, sign-ins and played, and
+--skip leaves some of those off. The servers are not asked for a group left off; poll is
+how the asking goes, the embyfin_poll_* readings, and has no round of its own.
+
 --labels puts labels of your choosing on every reading, hostname=nas say, for when the page
 is not scraped on the servers' own host and the store has no other way to tell whose it is.
 
 Every setting is also an environment variable: EMBYFIN_EXPORTER_EMBY_SERVER and
 EMBYFIN_EXPORTER_EMBY_TOKEN, EMBYFIN_EXPORTER_JELLYFIN_SERVER and EMBYFIN_EXPORTER_JELLYFIN_TOKEN,
-EMBYFIN_EXPORTER_LISTEN, EMBYFIN_EXPORTER_LABELS, EMBYFIN_EXPORTER_DETAIL and
-EMBYFIN_EXPORTER_INTERVALS.`,
+EMBYFIN_EXPORTER_LISTEN, EMBYFIN_EXPORTER_LABELS, EMBYFIN_EXPORTER_DETAIL,
+EMBYFIN_EXPORTER_METRICS, EMBYFIN_EXPORTER_SKIP and EMBYFIN_EXPORTER_INTERVALS.`,
 		Args:          cobra.NoArgs,
 		SilenceErrors: true,
 		RunE: func(cmd *cobra.Command, _ []string) error {

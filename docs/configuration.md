@@ -11,7 +11,9 @@ Every setting can be a command-line flag, an environment variable or a line in a
 | `EMBYFIN_EXPORTER_LISTEN` | `--listen` | The address the page is served on. Default `:9096`. |
 | `EMBYFIN_EXPORTER_LABELS` | `--labels` | [Labels of your own](#labels-of-your-own) on every reading. None by default. |
 | `EMBYFIN_EXPORTER_DETAIL` | `--detail` | [Who and what the page may name](#names). Nobody and nothing by default. |
-| `EMBYFIN_EXPORTER_INTERVALS` | `--intervals` | [How often each round is read](#intervals). `sessions=15s,library=5m,history=30s` by default. |
+| `EMBYFIN_EXPORTER_INTERVALS` | `--intervals` | [How often each round is read](#intervals). `server`, `sessions` and `tasks` every `15s`, `played` every `30s`, the rest every `5m` by default. |
+| `EMBYFIN_EXPORTER_METRICS` | `--metrics` | [The groups of readings to ask for](#choosing-groups), and no others. Every group by default. |
+| `EMBYFIN_EXPORTER_SKIP` | `--skip` | [Groups to leave out](#choosing-groups) of those. None by default. |
 | `EMBYFIN_EXPORTER_LOG` | | The [log level](#log-level). Default `WARN`. |
 | `EMBYFIN_EXPORTER_CONFIG` | `--config` | Read settings from [this file](#configuration-file) and no other. |
 
@@ -35,17 +37,43 @@ A label named as one a reading already has, `server` say, stops the program with
 
 ## Intervals
 
-Each server is asked in three rounds, each on its own clock:
+Each group of readings is asked for in a round of its own, each on its own clock:
 
 | Round | What is read | Default |
 |---|---|---|
-| `sessions` | Sessions, streams, scheduled tasks and the server's own state. | `15s` |
-| `library` | Libraries, item counts, users, devices, sign-ins and plugins. | `5m` |
-| `history` | What was played, from a server with the Playback Reporting plugin. | `30s` |
+| `server` | The server's own state: whether it answers, its version, a restart or update waiting. | `15s` |
+| `sessions` | Sessions and streams, why a stream is made, and who is streaming now: the three groups come from one answer. | `15s` |
+| `tasks` | Scheduled tasks and the library scan. | `15s` |
+| `libraries` | Libraries, what each holds and what is new. | `5m` |
+| `accounts` | Accounts and devices. | `5m` |
+| `sign-ins` | Sign-ins and refused tries. | `5m` |
+| `plugins` | Plugins, and each server's catalogue, which is read at most once an hour. | `5m` |
+| `played` | What was played, from a server with the Playback Reporting plugin. | `30s` |
 
-`--intervals` sets any of them, written `name=duration` with commas between them: `sessions=30s,library=10m`. A round left out keeps its default. A name that is not a round, or a length of time of nothing, stops the program with what is wrong.
+`--intervals` sets any of them, written `round=duration` with commas between them: `plugins=1h,played=1m`. A round left out keeps its default. A name that is not a round, or a length of time of nothing, stops the program with what is wrong.
 
-A round is given until the next is due, and a server's questions in a round are asked at once.
+A round is given until the next is due, and a server's questions in a round are asked at once. A round whose groups are all left off is not run.
+
+## Choosing groups
+
+Every group is on the page unless the settings say otherwise. `--metrics` names the only groups to ask for, and `--skip` leaves some of those off again, each written as words with commas between them: `--metrics sessions,plugins` puts those two groups on the page and no others, and `--skip plugins,sign-ins,played` puts every group on but those three.
+
+| Word | Group |
+|---|---|
+| `poll` | How the asking goes: the [`embyfin_poll_*` readings](readings.md#the-server) |
+| `sessions` | [Sessions and streams](readings.md#sessions-and-streams) |
+| `reasons` | [Why a stream is made](readings.md#why-a-stream-is-made) |
+| `streaming` | [Who is streaming now](readings.md#who-is-streaming-now) |
+| `tasks` | [Scheduled tasks and scans](readings.md#scheduled-tasks-and-scans) |
+| `plugins` | [Plugins](readings.md#plugins) |
+| `libraries` | [Libraries](readings.md#libraries) |
+| `accounts` | [Accounts and devices](readings.md#accounts-and-devices) |
+| `sign-ins` | [Sign-ins](readings.md#sign-ins) |
+| `played` | [What was played](readings.md#what-was-played) |
+
+A group left off is not asked for either, so the servers do less: skipping `played` stops the Playback Reporting plugin being asked at all, and skipping `plugins` stops the hourly read of each server's catalogue. Sessions and streams, why a stream is made and who is streaming now all come from one answer, which is asked while any of the three is on the page. `poll` has no round of its own: leaving it off takes its four readings off the page and saves the servers nothing, and it has no interval.
+
+The rest of [the server's own readings](readings.md#the-server) are always on and are named in neither setting: whether a server answers says how far to trust the rest. A word that is not a group stops the program and names the ones there are.
 
 ## Log level
 

@@ -43,7 +43,7 @@ func TestAServerThatStopsAnswering(t *testing.T) {
 		t.Skip("no container named: EMBYFIN_EXPORTER_TEST_CONTAINER is what .scripts/testenv.sh up prints")
 	}
 
-	base := serving(t, time.Second, 2*time.Second)
+	base := serving(t, 2*time.Second)
 
 	up := func(text string) float64 {
 		is, _ := value(text, reading("embyfin_up"))
@@ -130,7 +130,7 @@ func TestTheImage(t *testing.T) {
 	t.Cleanup(func() { _, _ = docker(t, nil, "rm", "--force", name) })
 
 	// the health check is asked every two seconds where the image says thirty, so the test need not wait half a minute for the first
-	if out, err := docker(t, []string{key + "=" + token}, "run", "--detach", "--name", name, "--publish", "127.0.0.1::9096", "--health-interval", "2s", "--env", server+"=http://"+inside+":8096", "--env", key, "--env", "EMBYFIN_EXPORTER_INTERVALS=sessions=1s", "--env", "EMBYFIN_EXPORTER_DETAIL=users", image); err != nil {
+	if out, err := docker(t, []string{key + "=" + token}, "run", "--detach", "--name", name, "--publish", "127.0.0.1::9096", "--health-interval", "2s", "--env", server+"=http://"+inside+":8096", "--env", key, "--env", "EMBYFIN_EXPORTER_INTERVALS=server=1s,sessions=1s", "--env", "EMBYFIN_EXPORTER_DETAIL=users", image); err != nil {
 		t.Fatalf("starting the image %s: %v: %s", image, err, out)
 	}
 

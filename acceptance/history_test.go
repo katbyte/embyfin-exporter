@@ -108,7 +108,7 @@ func summed(text, name string, labels ...string) float64 {
 func TestTimePlayedIsOnThePageWhileItPlays(t *testing.T) {
 	live(t)
 
-	if installed, found := value(scrape(t, poll.RoundHistory), reading("embyfin_playback_reporting_installed")); !found || installed != 1 {
+	if installed, found := value(scrape(t, poll.RoundPlayed), reading("embyfin_playback_reporting_installed")); !found || installed != 1 {
 		t.Fatalf("the page says the server has the Playback Reporting plugin: %v (said at all: %t), want 1: .scripts/testenv.sh gives it one", installed, found)
 	}
 
@@ -119,7 +119,7 @@ func TestTimePlayedIsOnThePageWhileItPlays(t *testing.T) {
 	played := func(text string) float64 {
 		return summed(text, "embyfin_user_playback_seconds_total", "server", backend, "user", user, "type", "movie")
 	}
-	before := scrapeNaming(t, poll.RoundHistory)
+	before := scrapeNaming(t, poll.RoundPlayed)
 
 	device.report(t, "/Sessions/Playing", id, playSession, "DirectPlay", false)
 	// a stop the test already sent is answered either way
@@ -131,7 +131,7 @@ func TestTimePlayedIsOnThePageWhileItPlays(t *testing.T) {
 	for deadline := time.Now().Add(2 * time.Minute); time.Now().Before(deadline) && second == 0; time.Sleep(2 * time.Second) {
 		device.report(t, "/Sessions/Playing/Progress", id, playSession, "DirectPlay", false)
 
-		text = scrapeNaming(t, poll.RoundHistory)
+		text = scrapeNaming(t, poll.RoundPlayed)
 		switch now := played(text); {
 		case first == 0 && now > played(before):
 			first = now
@@ -164,7 +164,7 @@ func TestTimePlayedIsOnThePageWhileItPlays(t *testing.T) {
 	}
 
 	// a program not told to name anyone has the same time on its page, and nobody's name nor the film's
-	plain := scrape(t, poll.RoundHistory, poll.RoundLibrary)
+	plain := scrape(t, poll.RoundPlayed, poll.RoundLibraries, poll.RoundAccounts, poll.RoundSignIns, poll.RoundPlugins)
 	if got := summed(plain, "embyfin_playback_seconds_total", "type", "movie", "method", "direct_play"); got < second-played(before) {
 		t.Errorf("the page that names nobody has %v seconds of films played as the file is, want at least the %v just played", got, second-played(before))
 	}
@@ -202,7 +202,7 @@ func TestPlaysAreKeptUnderTheWeekTheyBeganIn(t *testing.T) {
 	lay(t, someone.userID, "Movie", film, "DirectPlay", 9999, "21 days")
 	lay(t, gone, "Episode", show+" - s01e03 - Three", "DirectStream", 700, "0 days")
 
-	text := scrapeNaming(t, poll.RoundHistory)
+	text := scrapeNaming(t, poll.RoundPlayed)
 	want := map[string]float64{
 		reading("embyfin_user_playback_seconds_total", "user", user, "type", "episode", "week", lastWeek):       1200,
 		reading("embyfin_user_plays_total", "user", user, "type", "episode", "week", lastWeek):                  2,
@@ -243,10 +243,10 @@ func TestPlaysAreKeptUnderTheWeekTheyBeganIn(t *testing.T) {
 	want[reading("embyfin_user_playback_seconds_total", "user", user, "type", "episode", "week", lastWeek)] = 1800
 	want[reading("embyfin_title_playback_seconds_total", "title", show, "type", "episode", "week", lastWeek)] = 1800
 	want[reading("embyfin_playback_seconds_total", "type", "episode", "method", "direct_play", "week", lastWeek)] = 1600
-	expect(t, page(t, afresh, poll.RoundHistory), want)
+	expect(t, page(t, afresh, poll.RoundPlayed), want)
 
 	// told to name nobody, the same plays are on the page by kind and method alone
-	plain := scrape(t, poll.RoundHistory)
+	plain := scrape(t, poll.RoundPlayed)
 	expect(t, plain, map[string]float64{
 		reading("embyfin_playback_seconds_total", "type", "episode", "method", "direct_play", "week", lastWeek): 1600,
 		reading("embyfin_playback_seconds_total", "type", "movie", "method", "direct_stream", "week", lastWeek): 500,
@@ -296,7 +296,7 @@ func TestPlaysThatEndedWithinAMinuteAndWhyStreamsWereMade(t *testing.T) {
 	// a file sent as it is has no reason
 	lay(t, someone.userID, "Trailer", trailer, "DirectPlay", 59, "7 days")
 
-	plain := scrape(t, poll.RoundHistory)
+	plain := scrape(t, poll.RoundPlayed)
 	expect(t, plain, map[string]float64{
 		reading("embyfin_plays_total", "type", "other", "method", "direct_stream", "week", thisWeek):       3,
 		reading("embyfin_short_plays_total", "type", "other", "method", "direct_stream", "week", thisWeek): 1,
@@ -304,7 +304,7 @@ func TestPlaysThatEndedWithinAMinuteAndWhyStreamsWereMade(t *testing.T) {
 		reading("embyfin_short_plays_total", "type", "other", "method", "direct_play", "week", lastWeek):   1,
 	})
 
-	told := scrapeNaming(t, poll.RoundHistory)
+	told := scrapeNaming(t, poll.RoundPlayed)
 	if backend != emby {
 		for _, text := range []string{plain, told} {
 			if n := len(every(text, "embyfin_transcode_reason_plays_total")) + len(every(text, "embyfin_client_transcode_reason_plays_total")); n != 0 {

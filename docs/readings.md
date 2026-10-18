@@ -2,6 +2,8 @@
 
 Every reading starts `embyfin_` and has a `server` label, `emby` or `jellyfin`. The page holds nothing but these: none of the Go runtime's or the process's own readings.
 
+Every group is on the page by default. [`EMBYFIN_EXPORTER_METRICS` and `EMBYFIN_EXPORTER_SKIP`](configuration.md#choosing-groups) can leave any off but the server's own.
+
 - [The server](#the-server)
 - [Sessions and streams](#sessions-and-streams)
 - [Why a stream is made](#why-a-stream-is-made)
@@ -18,8 +20,8 @@ Every reading starts `embyfin_` and has a `server` label, `emby` or `jellyfin`. 
 
 | Reading | Labels | What it says |
 |---|---|---|
-| `embyfin_up` | | 1 when the server answered the last time it was asked for its sessions, 0 when not. |
-| `embyfin_poll_interval_seconds` | `poll` | How often each round is asked, as [`--intervals`](configuration.md#intervals) sets it. `poll` is `sessions`, `library` or `history`. |
+| `embyfin_up` | | 1 when the server answered the last time it was asked for its own state, 0 when not. |
+| `embyfin_poll_interval_seconds` | `poll` | How often each round is asked, as [`--intervals`](configuration.md#intervals) sets it. `poll` is the round: `server`, `sessions`, `tasks`, `libraries`, `accounts`, `sign-ins`, `plugins` or `played`. |
 | `embyfin_poll_duration_seconds` | `poll` | How long the last round took. Its questions are asked at once, so this is the slowest of them. |
 | `embyfin_poll_last_success_timestamp_seconds` | `poll` | When a round was last answered in full, so stale readings can be told from fresh ones. |
 | `embyfin_poll_failures_total` | `poll` | Rounds that have failed since the program started. |
@@ -28,13 +30,15 @@ Every reading starts `embyfin_` and has a `server` label, `emby` or `jellyfin`. 
 | `embyfin_server_update_available` | | 1 when the server says a newer version of itself is out. |
 | `embyfin_exporter_build_info` | `version`, `commit`, `goversion` | Always 1. The version of embyfin-exporter that wrote the page. It has no `server` label. |
 
+The four `embyfin_poll_*` readings are the `poll` group, and can be [left off](configuration.md#choosing-groups) like any other. The rest of the server's own readings are always on.
+
 ### When a server stops answering
 
-`embyfin_up` goes to 0 at the next poll. The other server's readings carry on.
+`embyfin_up` goes to 0 the next time the server is asked for its own state. The other server's readings carry on.
 
-The stopped server's last readings stay on the page for three polls, to ride out a blip. After that they are left off rather than shown as if they were current. At the default intervals, three polls is 45 seconds for sessions, 90 seconds for what was played and 15 minutes for libraries. A reading that has never been answered is absent, not zero.
+The stopped server's last readings stay on the page for three polls, to ride out a blip. After that they are left off rather than shown as if they were current. At the default intervals, three polls is 45 seconds for sessions, 90 seconds for what was played and 15 minutes for libraries, accounts, sign-ins and plugins. A reading that has never been answered is absent, not zero.
 
-What was played is asked of a plugin and not of the server itself, so it has a poll of its own. A plugin that fails shows as `embyfin_poll_failures_total{poll="history"}` going up, and the server is still up.
+What was played is asked of a plugin and not of the server itself. A plugin that fails shows as `embyfin_poll_failures_total{poll="played"}` going up, and the server is still up.
 
 ## Sessions and streams
 

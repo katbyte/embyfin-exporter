@@ -367,6 +367,10 @@ func first(t *testing.T, library, kind string) (id, name string) {
 	return found[0].ID, found[0].Name
 }
 
+// intervals is how often the test's poller asks: every minute, and every five for the rounds that read what changes when a scan runs or someone is
+// added, as the program does.
+var intervals = map[string]time.Duration{"server": time.Minute, "sessions": time.Minute, "tasks": time.Minute, "libraries": 5 * time.Minute, "accounts": 5 * time.Minute, "sign-ins": 5 * time.Minute, "plugins": 5 * time.Minute, "played": time.Minute}
+
 // scrape asks the server everything once, as the program does when it starts, and gives back the page a scrape would then read. Only is the rounds
 // to ask, every one when none is named. The page names nobody, as the program's does unless it is told to.
 func scrape(t *testing.T, only ...poll.Round) string {
@@ -382,11 +386,11 @@ func scrapeNaming(t *testing.T, only ...poll.Round) string {
 	return page(t, naming, only...)
 }
 
-// page is the page a scrape reads once server has been asked those rounds.
+// page is the page a scrape reads once server has been asked those rounds, and its own state, which the program always asks for.
 func page(t *testing.T, server *mediaserver.Server, only ...poll.Round) string {
 	t.Helper()
 
-	p, err := poll.New(map[string]time.Duration{"sessions": time.Minute, "library": 5 * time.Minute, "history": time.Minute}, server)
+	p, err := poll.New(intervals, nil, server)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -394,12 +398,15 @@ func page(t *testing.T, server *mediaserver.Server, only ...poll.Round) string {
 	if len(only) == 0 {
 		only = poll.Rounds
 	}
+	if !slices.Contains(only, poll.RoundServer) {
+		only = append([]poll.Round{poll.RoundServer}, only...)
+	}
 	for _, round := range only {
 		// a round that fails is on the page as the server answered it, which is what the test looks at
 		_ = p.Poll(t.Context(), round)
 	}
 
-	made, err := metrics.New(metrics.Options{Name: "embyfin-exporter"}, readings.New(p), p)
+	made, err := metrics.New(metrics.Options{Name: "embyfin-exporter"}, readings.Page(p)...)
 	if err != nil {
 		t.Fatalf("making the page: %v", err)
 	}

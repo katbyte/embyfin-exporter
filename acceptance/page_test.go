@@ -10,21 +10,21 @@ import (
 	"github.com/katbyte/embyfin-exporter/lib/poll"
 )
 
-// A server that is there answers both rounds in full, and says what it is. The page says how often each round is asked: every minute for sessions
-// and every five for the library, as the test's poller is told.
+// A server that is there answers every round in full, and says what it is. The page says how often each round is asked: every minute for its own
+// state and every five for the libraries, as the test's poller is told.
 func TestTheServerIsUp(t *testing.T) {
 	live(t)
 
 	text := scrape(t)
 	expect(t, text, map[string]float64{
 		reading("embyfin_up"): 1,
-		reading("embyfin_poll_failures_total", "poll", "sessions"):   0,
-		reading("embyfin_poll_failures_total", "poll", "library"):    0,
-		reading("embyfin_poll_interval_seconds", "poll", "sessions"): 60,
-		reading("embyfin_poll_interval_seconds", "poll", "library"):  300,
+		reading("embyfin_poll_failures_total", "poll", "server"):      0,
+		reading("embyfin_poll_failures_total", "poll", "libraries"):   0,
+		reading("embyfin_poll_interval_seconds", "poll", "server"):    60,
+		reading("embyfin_poll_interval_seconds", "poll", "libraries"): 300,
 	})
 
-	for _, name := range []string{reading("embyfin_server_restart_pending"), reading("embyfin_server_update_available"), reading("embyfin_poll_duration_seconds", "poll", "sessions"), reading("embyfin_poll_duration_seconds", "poll", "library")} {
+	for _, name := range []string{reading("embyfin_server_restart_pending"), reading("embyfin_server_update_available"), reading("embyfin_poll_duration_seconds", "poll", "server"), reading("embyfin_poll_duration_seconds", "poll", "libraries")} {
 		if _, found := value(text, name); !found {
 			t.Errorf("the page has no %s", name)
 		}
@@ -227,7 +227,7 @@ func TestAScanUnderWay(t *testing.T) {
 
 	var caught bool
 	for attempt := 0; attempt < 5 && !caught; attempt++ {
-		before := ended(scrape(t, poll.RoundSessions))
+		before := ended(scrape(t, poll.RoundTasks))
 		if err := client.RefreshLibrary(t.Context()); err != nil {
 			t.Fatalf("asking for a scan of every library: %v", err)
 		}
@@ -235,7 +235,7 @@ func TestAScanUnderWay(t *testing.T) {
 		// until the scan has a newer end than it had, looking again every few milliseconds
 		deadline := time.Now().Add(scanPatience)
 		for {
-			text := scrape(t, poll.RoundSessions)
+			text := scrape(t, poll.RoundTasks)
 			running, _ := value(text, reading("embyfin_library_scan_running"))
 			progress, found := value(text, reading("embyfin_library_scan_progress_ratio"))
 
@@ -266,7 +266,7 @@ func TestAScanUnderWay(t *testing.T) {
 	}
 
 	// the last of them finished as it should, so the tests after this one find the server as they expect it
-	expect(t, scrape(t, poll.RoundSessions), map[string]float64{reading("embyfin_library_scan_running"): 0, reading("embyfin_library_scan_last_run_ok"): 1})
+	expect(t, scrape(t, poll.RoundTasks), map[string]float64{reading("embyfin_library_scan_running"): 0, reading("embyfin_library_scan_last_run_ok"): 1})
 }
 
 // What is new in each library within a day, a week and a month. Everything in the catalogue was laid down minutes ago, so on Emby each library's
@@ -275,7 +275,7 @@ func TestAScanUnderWay(t *testing.T) {
 func TestWhatIsNewInEachLibrary(t *testing.T) {
 	live(t)
 
-	text := scrape(t, poll.RoundLibrary)
+	text := scrape(t, poll.RoundLibraries)
 
 	if backend != emby {
 		if lines := every(text, "embyfin_library_items_added"); len(lines) != 0 {

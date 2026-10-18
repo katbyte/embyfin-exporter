@@ -42,7 +42,7 @@ func TestSignInsAreCounted(t *testing.T) {
 	who := admin
 
 	counted := summed
-	before := scrapeNaming(t, poll.RoundLibrary)
+	before := scrapeNaming(t, poll.RoundSignIns)
 
 	if try(t, device, who, "not-the-password") || try(t, device, stranger, "x") {
 		t.Fatal("the server let in a try with a wrong password or no account")
@@ -53,7 +53,7 @@ func TestSignInsAreCounted(t *testing.T) {
 
 	var text string
 	deadline := time.Now().Add(patience)
-	for text = scrapeNaming(t, poll.RoundLibrary); time.Now().Before(deadline); text = scrapeNaming(t, poll.RoundLibrary) {
+	for text = scrapeNaming(t, poll.RoundSignIns); time.Now().Before(deadline); text = scrapeNaming(t, poll.RoundSignIns) {
 		if counted(text, "embyfin_user_logins_total", "user", who, "result", "ok") > counted(before, "embyfin_user_logins_total", "user", who, "result", "ok") && counted(text, "embyfin_user_logins_total", "user", who, "result", "failed") > counted(before, "embyfin_user_logins_total", "user", who, "result", "failed") {
 			break
 		}
@@ -92,7 +92,7 @@ func TestSignInsAreCounted(t *testing.T) {
 	}
 
 	// what was typed by whoever tried is on no page, and the page that names nobody has the counts and no account
-	plain := scrape(t, poll.RoundLibrary)
+	plain := scrape(t, poll.RoundSignIns)
 	for name, page := range map[string]string{"told to name accounts": text, "told to name nobody": plain} {
 		if strings.Contains(page, stranger) || strings.Contains(page, device) || strings.Contains(page, laptopApp) {
 			t.Errorf("the page of a program %s has the name tried, the device or its app on it", name)

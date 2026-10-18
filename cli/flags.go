@@ -6,6 +6,7 @@ import (
 	"os"
 	"path/filepath"
 	"strings"
+	"time"
 
 	"github.com/katbyte/embyfin-exporter/lib/mediaserver"
 	"github.com/katbyte/embyfin-exporter/lib/poll"
@@ -35,6 +36,8 @@ type FlagData struct {
 	Labels         string `mapstructure:"labels"`
 	Detail         string `mapstructure:"detail"`
 	Intervals      string `mapstructure:"intervals"`
+	Metrics        string `mapstructure:"metrics"`
+	Skip           string `mapstructure:"skip"`
 }
 
 // envNames binds each flag to its environment variable.
@@ -47,6 +50,8 @@ var envNames = map[string]string{ //nolint:gosec // G101: these are env var name
 	"labels":          "EMBYFIN_EXPORTER_LABELS",
 	"detail":          "EMBYFIN_EXPORTER_DETAIL",
 	"intervals":       "EMBYFIN_EXPORTER_INTERVALS",
+	"metrics":         "EMBYFIN_EXPORTER_METRICS",
+	"skip":            "EMBYFIN_EXPORTER_SKIP",
 }
 
 // persistent is the flag set configureFlags bound, for the one setting that has to be read before viper is: where the settings file is.
@@ -62,7 +67,9 @@ func configureFlags(root *cobra.Command) error {
 	pflags.String("listen", defaultListen, "serve the metrics page on this address")
 	pflags.String("labels", "", "labels to put on every reading, as name=value,name=value: hostname=nas say, when the page is not scraped on the servers' own host")
 	pflags.String("detail", "", "who and what the page may name, as a list of users, titles, devices or all: nobody and nothing unless asked, so no account's or device's name and no title is on the page by default")
-	pflags.String("intervals", "", "how often each round is read, as name=duration,name=duration: sessions (sessions, streams, scheduled tasks and the server's own state, 15s), library (libraries, item counts, users, devices, sign-ins and plugins, 5m) and history (what was played, from a server with the Playback Reporting plugin, 30s)")
+	pflags.String("metrics", "", "the groups of readings to ask the servers for and put on the page, and no others, with commas between them: poll, sessions, reasons, streaming, tasks, plugins, libraries, accounts, sign-ins or played. Every group unless this says, and the server's own state always")
+	pflags.String("skip", "", "groups of readings to leave out of those --metrics names, named as for it: plugins,played say. The servers are not asked for them")
+	pflags.String("intervals", "", "how often each round is asked, as round=duration with commas between them: server, sessions and tasks every 15s, libraries, accounts, sign-ins and plugins every 5m, and played every 30s unless this says")
 	pflags.String("config", "", "read settings from this file and no other, in place of ./.embyfin-exporter or ~/.embyfin-exporter (or export EMBYFIN_EXPORTER_CONFIG)")
 
 	persistent = pflags
@@ -252,6 +259,18 @@ func (f *FlagData) poller(connect connector) (*poll.Poller, error) {
 		return nil, fmt.Errorf("--intervals (%s): %w", envNames["intervals"], err)
 	}
 
+	chosen, err := poll.ParseGroups(f.Metrics)
+	if err != nil {
+		return nil, fmt.Errorf("--metrics (%s): %w", envNames["metrics"], err)
+	}
+
+	skipped, err := poll.ParseGroups(f.Skip)
+	if err != nil {
+		return nil, fmt.Errorf("--skip (%s): %w", envNames["skip"], err)
+	}
+
+	skip := poll.Leave(chosen, skipped)
+
 	servers := make([]poll.Server, 0, len(targets))
 	for _, t := range targets {
 		server, err := connect(t.kind, t.server, t.token, detail)
@@ -260,11 +279,45 @@ func (f *FlagData) poller(connect connector) (*poll.Poller, error) {
 		}
 
 		// the address is logged and the key never is
-		clog.Log.Infof("%s is at %s: sessions are read every %s, libraries every %s and what was played every %s, %s", t.kind, t.server, every["sessions"], every["library"], every["history"], named(detail))
+		clog.Log.Infof("%s is at %s, asked for %s, %s%s", t.kind, t.server, asked(every, skip.Runs()), named(detail), skipping(skip))
 		servers = append(servers, server)
 	}
 
-	return poll.New(every, servers...)
+	return poll.New(every, skip, servers...)
+}
+
+// asked is how often each round that runs is asked, for the log, rounds asked as often as one another named together: server, sessions and tasks
+// every 15s, played every 30s.
+func asked(every map[string]time.Duration, rounds []poll.Round) string {
+	var lengths []time.Duration
+	byLength := map[time.Duration][]string{}
+	for _, round := range rounds {
+		length := every[string(round)]
+		if _, seen := byLength[length]; !seen {
+			lengths = append(lengths, length)
+		}
+		byLength[length] = append(byLength[length], string(round))
+	}
+
+	said := make([]string, 0, len(lengths))
+	for _, length := range lengths {
+		words := byLength[length]
+		if n := len(words); n > 1 {
+			words = []string{strings.Join(words[:n-1], ", ") + " and " + words[n-1]}
+		}
+		said = append(said, words[0]+" every "+length.String())
+	}
+
+	return strings.Join(said, ", ")
+}
+
+// skipping is what the page leaves off, for the log: nothing when it leaves off nothing.
+func skipping(skip poll.Skip) string {
+	if len(skip) == 0 {
+		return ""
+	}
+
+	return ", leaving off " + strings.ReplaceAll(skip.String(), ",", ", ")
 }
 
 // name is what the program is called, on the page's front and in its help.
@@ -278,7 +331,7 @@ func (f *FlagData) page(p *poll.Poller) (*metrics.Page, error) {
 		return nil, fmt.Errorf("--labels (%s): %w", envNames["labels"], err)
 	}
 
-	page, err := metrics.New(metrics.Options{Name: name, Labels: labels}, readings.New(p), p)
+	page, err := metrics.New(metrics.Options{Name: name, Labels: labels}, readings.Page(p)...)
 	if err != nil {
 		return nil, fmt.Errorf("--labels (%s): %w", envNames["labels"], err)
 	}

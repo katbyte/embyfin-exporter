@@ -99,22 +99,26 @@ embyfin_plugins{server="emby"} 3
 embyfin_plugins_update_available{server="emby"} 2
 # HELP embyfin_poll_duration_seconds How long the last round of each schedule took.
 # TYPE embyfin_poll_duration_seconds gauge
-embyfin_poll_duration_seconds{poll="library",server="emby"} 3
+embyfin_poll_duration_seconds{poll="libraries",server="emby"} 3
+embyfin_poll_duration_seconds{poll="server",server="emby"} 0.05
+embyfin_poll_duration_seconds{poll="server",server="jellyfin"} 15
 embyfin_poll_duration_seconds{poll="sessions",server="emby"} 0.25
-embyfin_poll_duration_seconds{poll="sessions",server="jellyfin"} 15
 # HELP embyfin_poll_failures_total How many rounds of each schedule have failed since the tool started.
 # TYPE embyfin_poll_failures_total counter
-embyfin_poll_failures_total{poll="library",server="emby"} 2
+embyfin_poll_failures_total{poll="libraries",server="emby"} 2
+embyfin_poll_failures_total{poll="server",server="emby"} 0
+embyfin_poll_failures_total{poll="server",server="jellyfin"} 1
 embyfin_poll_failures_total{poll="sessions",server="emby"} 0
-embyfin_poll_failures_total{poll="sessions",server="jellyfin"} 1
 # HELP embyfin_poll_interval_seconds How often each schedule is asked.
 # TYPE embyfin_poll_interval_seconds gauge
-embyfin_poll_interval_seconds{poll="library",server="emby"} 300
+embyfin_poll_interval_seconds{poll="libraries",server="emby"} 300
+embyfin_poll_interval_seconds{poll="server",server="emby"} 15
+embyfin_poll_interval_seconds{poll="server",server="jellyfin"} 15
 embyfin_poll_interval_seconds{poll="sessions",server="emby"} 15
-embyfin_poll_interval_seconds{poll="sessions",server="jellyfin"} 15
 # HELP embyfin_poll_last_success_timestamp_seconds When each schedule was last answered in full, in seconds since 1970.
 # TYPE embyfin_poll_last_success_timestamp_seconds gauge
-embyfin_poll_last_success_timestamp_seconds{poll="library",server="emby"} 9.4668474e+08
+embyfin_poll_last_success_timestamp_seconds{poll="libraries",server="emby"} 9.4668474e+08
+embyfin_poll_last_success_timestamp_seconds{poll="server",server="emby"} 9.466848e+08
 embyfin_poll_last_success_timestamp_seconds{poll="sessions",server="emby"} 9.466848e+08
 # HELP embyfin_scheduled_task_last_run_failed Whether the last run of each scheduled task that has run failed (1) or not (0).
 # TYPE embyfin_scheduled_task_last_run_failed gauge
@@ -226,7 +230,7 @@ embyfin_transcode_reason_seconds_total{reason="direct_play_error",server="emby",
 # TYPE embyfin_transcode_reasons gauge
 embyfin_transcode_reasons{reason="audio_codec_not_supported",server="emby"} 1
 embyfin_transcode_reasons{reason="container_bitrate_exceeds_limit",server="emby"} 2
-# HELP embyfin_up Whether the server answered the last time it was asked for its sessions (1) or not (0).
+# HELP embyfin_up Whether the server answered the last time it was asked for its own state (1) or not (0).
 # TYPE embyfin_up gauge
 embyfin_up{server="emby"} 1
 embyfin_up{server="jellyfin"} 0

@@ -89,10 +89,12 @@ Every setting is a flag, an environment variable or a line in a config file. Mos
 | `EMBYFIN_EXPORTER_JELLYFIN_TOKEN` | Its API key. |
 | `EMBYFIN_EXPORTER_LISTEN` | Where the page is served. Default `:9096`. |
 | `EMBYFIN_EXPORTER_DETAIL` | Who and what the page may name. Nobody by default. |
+| `EMBYFIN_EXPORTER_METRICS` | The only groups of readings to ask for, e.g. `sessions,plugins`. Every group by default. |
+| `EMBYFIN_EXPORTER_SKIP` | Groups to leave out of those, e.g. `plugins,sign-ins,played`. None by default. |
 
 Leave a server out by setting neither its address nor its key. A key is never logged and never on the page.
 
-[docs/configuration.md](docs/configuration.md) has every setting: the flags, the config file, how often each thing is read, labels of your own and the log level.
+[docs/configuration.md](docs/configuration.md) has every setting: the flags, the config file, how often each thing is read, the words for choosing groups, labels of your own and the log level.
 
 ## How this is built
 

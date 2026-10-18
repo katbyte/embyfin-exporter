@@ -1,5 +1,11 @@
 # Changelog
 
+## Unreleased
+
+- **Choose which groups of readings are asked for**: `EMBYFIN_EXPORTER_METRICS` names the only groups, `EMBYFIN_EXPORTER_SKIP` leaves some of those off, and the servers are not asked for what is left off. The groups are `poll`, `sessions`, `reasons`, `streaming`, `tasks`, `plugins`, `libraries`, `accounts`, `sign-ins` and `played`, where `poll` is the `embyfin_poll_*` readings. Every group is on unless they say.
+- **Each group is asked for on its own clock**: `EMBYFIN_EXPORTER_INTERVALS` now names the group's round, as `plugins=1h,played=1m`. The rounds are `server`, `sessions`, `tasks`, `libraries`, `accounts`, `sign-ins`, `plugins` and `played`, with the same timings as before. `library` and `history` no longer work, and the `poll` label of the `embyfin_poll_*` readings names the new rounds.
+- **`embyfin_up` follows the server's own state**, which is always asked for, and no longer the sessions answer, which can now be left off.
+
 ## 0.5.0 (2026-10-15)
 
 One setting for how often each server is asked, and the asking shared with kt's other exporters. The old interval settings no longer work.

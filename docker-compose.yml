@@ -32,7 +32,9 @@ services:
       - "EMBYFIN_EXPORTER_LOG=INFO"
       # - "EMBYFIN_EXPORTER_LABELS=hostname=nas"   # labels for every reading, when whatever scrapes the page does not add its own
       # - "EMBYFIN_EXPORTER_DETAIL=all"            # name accounts, titles and devices (or a list of those words); nobody is named unless this asks
-      # - "EMBYFIN_EXPORTER_INTERVALS=sessions=15s,library=5m,history=30s" # how often each round is read: sessions and streams, libraries and accounts, what was played
+      # - "EMBYFIN_EXPORTER_METRICS=sessions,plugins" # the only groups of readings to ask for; every group unless this says
+      # - "EMBYFIN_EXPORTER_SKIP=plugins,played"       # groups to leave out of those; the servers are not asked for them
+      # - "EMBYFIN_EXPORTER_INTERVALS=plugins=1h,played=1m" # how often a group's round is asked; server, sessions and tasks 15s, played 30s, the rest 5m
     logging:
       options:
         max-size: 100m

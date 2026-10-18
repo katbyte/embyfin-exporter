@@ -115,7 +115,7 @@ func TestASessionPlayingPausedAndStopped(t *testing.T) {
 	}
 
 	// the account was seen today and the device is one the server knows of
-	after := scrape(t, poll.RoundLibrary)
+	after := scrape(t, poll.RoundAccounts)
 	if active, _ := value(after, reading("embyfin_users_active", "window", "1d")); active < 1 {
 		t.Errorf("accounts seen within a day = %v, want the one that just played", active)
 	}

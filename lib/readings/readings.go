@@ -21,7 +21,7 @@ const serverLabel = "server"
 var list = metrics.NewList(Namespace, serverLabel)
 
 var (
-	up = list.Reading("up", "Whether the server answered the last time it was asked for its sessions (1) or not (0).")
+	up = list.Reading("up", "Whether the server answered the last time it was asked for its own state (1) or not (0).")
 
 	serverInfo      = list.Reading("server_info", "Always 1, with the server's name, its version and the version of its API the client was built from.", "name", "version", "sdk_api_version")
 	restartPending  = list.Reading("server_restart_pending", "Whether the server is waiting to be restarted (1) or not (0).")
@@ -85,10 +85,11 @@ var (
 	clientPlays      = list.Reading("client_transcode_reason_plays_total", "Plays the server made a stream for, by the week they began in, the device, its app and each reason. Only when the settings ask for devices to be named.", "week", "device", "client", "reason")
 )
 
-// Source is where each server's state comes from: the poller, or a test's own.
+// Source is where each server's state comes from, and which groups the page leaves off: the poller, or a test's own.
 type Source interface {
 	Targets() []string
 	State(kind string) poll.State
+	Skipped() poll.Skip
 }
 
 // Readings writes what the source knows of each server as readings. It asks no server anything, so a scrape is answered from memory however slow a
@@ -102,42 +103,65 @@ func New(source Source) *Readings {
 	return &Readings{source: source}
 }
 
+// Page is every source of the page's readings: what the poller knows of each server, and how its asking goes unless that group is left off.
+func Page(p *poll.Poller) []prometheus.Collector {
+	collectors := []prometheus.Collector{New(p)}
+	if !p.Skipped().Has(poll.GroupPoll) {
+		collectors = append(collectors, p)
+	}
+
+	return collectors
+}
+
 // Describe names every reading there can be.
 func (*Readings) Describe(ch chan<- *prometheus.Desc) {
 	list.Describe(ch)
 }
 
-// Collect writes every reading there is an answer for. A server that has never answered a question has no reading of it, which is not the same as a
-// reading of zero.
+// Collect writes every reading there is an answer for, but those of the groups the page leaves off. A server that has never answered a question has
+// no reading of it, which is not the same as a reading of zero.
 func (r *Readings) Collect(ch chan<- prometheus.Metric) {
-	now := time.Now()
+	now, skip := time.Now(), r.source.Skipped()
 	for _, kind := range r.source.Targets() {
 		s := r.source.State(kind)
-		w := writer{metrics.NewWriter(ch, s.Kind)}
+		w := writer{metrics.NewWriter(ch, s.Kind), skip}
 
 		w.up(&s)
 		w.info(&s)
 		w.sessions(&s)
-		w.tasks(&s)
-		w.libraries(&s)
-		w.users(&s, now)
-		w.devices(&s, now)
-		w.logins(&s)
-		w.plugins(&s)
-		w.history(&s)
+		if !skip.Has(poll.GroupTasks) {
+			w.tasks(&s)
+		}
+		if !skip.Has(poll.GroupLibraries) {
+			w.libraries(&s)
+		}
+		if !skip.Has(poll.GroupAccounts) {
+			w.users(&s, now)
+			w.devices(&s, now)
+		}
+		if !skip.Has(poll.GroupSignIns) {
+			w.logins(&s)
+		}
+		if !skip.Has(poll.GroupPlugins) {
+			w.plugins(&s)
+		}
+		if !skip.Has(poll.GroupPlayed) {
+			w.history(&s)
+		}
 	}
 }
 
-// writer writes one server's readings.
+// writer writes one server's readings, leaving off the groups skip names.
 type writer struct {
 	*metrics.Writer
+	skip poll.Skip
 }
 
-// up is whether the server answered its last sessions round, which is what says how far to trust the rest. How each round went is the poller's own
-// readings.
+// up is whether the server answered the last time it was asked for its own state, which is what says how far to trust the rest. How each round went
+// is the poller's own readings.
 func (w writer) up(s *poll.State) {
-	if s.SessionsRound.Ran {
-		w.Flag(up, s.Up())
+	if r := s.Round(poll.RoundServer); r.Ran {
+		w.Flag(up, r.OK)
 	}
 }
 
@@ -157,7 +181,8 @@ type stream struct{ device, client, reason string }
 
 // sessions counts the devices by state and the playing ones by method, by kind and by where they are, and then says of each playing one what it
 // is doing. Every state, method, kind and network is written, at 0 when there is none, so a reading does not vanish when the last stream stops.
-// The reasons are the servers' own and there is no saying which there may be, so a reason is on the page only while a stream has it.
+// The reasons are the servers' own and there is no saying which there may be, so a reason is on the page only while a stream has it. The three
+// groups all come from the one answer, and each is left off on its own.
 func (w writer) sessions(s *poll.State) {
 	if !s.Sessions.Known() {
 		return
@@ -207,20 +232,27 @@ func (w writer) sessions(s *poll.State) {
 		playing = append(playing, session)
 	}
 
-	w.Counts(sessions, poll.SessionStates, states)
-	w.Counts(streams, poll.Methods, methods)
-	w.Counts(streamsByType, poll.Kinds, kinds)
-	w.Gauge(videoTranscodes, hardware, "hardware")
-	w.Gauge(videoTranscodes, software, "software")
-	w.Gauge(transcodeBitrate, bitrate)
-	w.Counts(transcodeReasons, nil, reasons)
-	w.Counts(streamsByNetwork, poll.Networks, networks)
-	w.Counts(streamsBitrate, poll.Networks, outgoing)
-	for by, n := range byClient {
-		w.Gauge(clientReasons, n, by.device, by.client, by.reason)
+	if !w.skip.Has(poll.GroupSessions) {
+		w.Counts(sessions, poll.SessionStates, states)
+		w.Counts(streams, poll.Methods, methods)
+		w.Counts(streamsByType, poll.Kinds, kinds)
+		w.Gauge(videoTranscodes, hardware, "hardware")
+		w.Gauge(videoTranscodes, software, "software")
+		w.Counts(streamsByNetwork, poll.Networks, networks)
+		w.Counts(streamsBitrate, poll.Networks, outgoing)
 	}
 
-	w.playing(playing)
+	if !w.skip.Has(poll.GroupReasons) {
+		w.Gauge(transcodeBitrate, bitrate)
+		w.Counts(transcodeReasons, nil, reasons)
+		for by, n := range byClient {
+			w.Gauge(clientReasons, n, by.device, by.client, by.reason)
+		}
+	}
+
+	if !w.skip.Has(poll.GroupStreaming) {
+		w.playing(playing)
+	}
 }
 
 // playing says of each session playing or paused what it is doing, under the server's own id for the session, which is what ties its readings

@@ -110,14 +110,17 @@ func emby() *fixed {
 			},
 		}),
 
-		SessionsRound: poll.RoundState{Ran: true, OK: true, Took: 250 * time.Millisecond, LastSuccess: now},
-		LibraryRound:  poll.RoundState{Ran: true, OK: true, Took: 3 * time.Second, LastSuccess: now.Add(-time.Minute), Failures: 2},
+		Rounds: map[poll.Round]poll.RoundState{
+			poll.RoundServer:    {Ran: true, OK: true, Took: 50 * time.Millisecond, LastSuccess: now},
+			poll.RoundSessions:  {Ran: true, OK: true, Took: 250 * time.Millisecond, LastSuccess: now},
+			poll.RoundLibraries: {Ran: true, OK: true, Took: 3 * time.Second, LastSuccess: now.Add(-time.Minute), Failures: 2},
+		},
 	}
 }
 
 // down is a server that has been asked once and did not answer.
 func down() *fixed {
-	return &fixed{Kind: "jellyfin", SessionsRound: poll.RoundState{Ran: true, Took: 15 * time.Second, Failures: 1}}
+	return &fixed{Kind: "jellyfin", Rounds: map[poll.Round]poll.RoundState{poll.RoundServer: {Ran: true, Took: 15 * time.Second, Failures: 1}}}
 }
 
 // write is the page of these servers' readings as a scrape reads it: the readings, how the asking went, and the one line the page adds to say which
@@ -125,7 +128,14 @@ func down() *fixed {
 func write(t *testing.T, servers ...*fixed) string {
 	t.Helper()
 
-	p, err := poll.New(poll.Every)
+	return writeSkipping(t, nil, servers...)
+}
+
+// writeSkipping is write for a page that leaves off the groups skip names.
+func writeSkipping(t *testing.T, skip poll.Skip, servers ...*fixed) string {
+	t.Helper()
+
+	p, err := poll.New(poll.Every, skip)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -133,7 +143,7 @@ func write(t *testing.T, servers ...*fixed) string {
 		p.Set((*poll.State)(s))
 	}
 
-	page, err := metrics.New(metrics.Options{Name: "embyfin-exporter"}, readings.New(p), p)
+	page, err := metrics.New(metrics.Options{Name: "embyfin-exporter"}, readings.Page(p)...)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -198,9 +208,9 @@ func TestAServerThatNeverAnsweredHasNoReadingsOfItsState(t *testing.T) {
 
 	got := write(t, down())
 	want := []string{
-		`embyfin_poll_duration_seconds{poll="sessions",server="jellyfin"} 15`,
-		`embyfin_poll_failures_total{poll="sessions",server="jellyfin"} 1`,
-		`embyfin_poll_interval_seconds{poll="sessions",server="jellyfin"} 15`,
+		`embyfin_poll_duration_seconds{poll="server",server="jellyfin"} 15`,
+		`embyfin_poll_failures_total{poll="server",server="jellyfin"} 1`,
+		`embyfin_poll_interval_seconds{poll="server",server="jellyfin"} 15`,
 		`embyfin_up{server="jellyfin"} 0`,
 	}
 	if strings.Join(lines(got), "\n") != strings.Join(want, "\n") {
@@ -882,6 +892,58 @@ func TestTheTimePlayedAddsUpAcrossAWeekEndAndARestart(t *testing.T) {
 	for labels, value := range later {
 		if value != last[labels] {
 			t.Errorf("a week on %s reads %v, want the %v it stopped at", labels, value, last[labels])
+		}
+	}
+}
+
+// names is every reading's name on the page.
+func names(text string) map[string]bool {
+	out := map[string]bool{}
+	for _, line := range lines(text) {
+		name, _, _ := strings.Cut(line, "{")
+		name, _, _ = strings.Cut(name, " ")
+		out[name] = true
+	}
+
+	return out
+}
+
+// Skipping a group leaves its readings off the page, every one of them and nothing else, whether the server answered for them or not. The three
+// groups that come from the sessions answer go each on its own.
+func TestSkippedGroupsAreLeftOff(t *testing.T) {
+	t.Parallel()
+
+	groups := map[poll.Group][]string{
+		poll.GroupPoll:      {"embyfin_poll_interval_seconds", "embyfin_poll_duration_seconds", "embyfin_poll_last_success_timestamp_seconds", "embyfin_poll_failures_total"},
+		poll.GroupSessions:  {"embyfin_sessions", "embyfin_streams", "embyfin_streams_by_type", "embyfin_video_transcodes", "embyfin_streams_by_network", "embyfin_streams_bits_per_second"},
+		poll.GroupReasons:   {"embyfin_transcode_reasons", "embyfin_transcode_bits_per_second", "embyfin_client_transcode_reasons"},
+		poll.GroupStreaming: {"embyfin_session_info", "embyfin_session_bits_per_second", "embyfin_session_position_seconds", "embyfin_session_runtime_seconds"},
+		poll.GroupTasks:     {"embyfin_scheduled_tasks", "embyfin_scheduled_tasks_failed", "embyfin_scheduled_task_last_run_failed", "embyfin_scheduled_task_last_run_timestamp_seconds", "embyfin_library_scan_running", "embyfin_library_scan_progress_ratio", "embyfin_library_scan_last_run_ok", "embyfin_library_scan_last_run_timestamp_seconds", "embyfin_library_scan_last_run_duration_seconds"},
+		poll.GroupPlugins:   {"embyfin_plugins", "embyfin_plugin_info", "embyfin_plugins_update_available", "embyfin_plugin_update_available"},
+		poll.GroupLibraries: {"embyfin_libraries", "embyfin_library_items", "embyfin_items", "embyfin_library_items_added"},
+		poll.GroupAccounts:  {"embyfin_users", "embyfin_users_disabled", "embyfin_users_active", "embyfin_user_last_seen_timestamp_seconds", "embyfin_devices", "embyfin_devices_active"},
+		poll.GroupSignIns:   {"embyfin_logins_total", "embyfin_user_logins_total"},
+		poll.GroupPlayed:    {"embyfin_playback_reporting_installed", "embyfin_playback_seconds_total", "embyfin_plays_total", "embyfin_user_playback_seconds_total", "embyfin_user_plays_total", "embyfin_title_playback_seconds_total", "embyfin_title_plays_total", "embyfin_short_plays_total", "embyfin_transcode_reason_seconds_total", "embyfin_transcode_reason_plays_total", "embyfin_client_transcode_reason_seconds_total", "embyfin_client_transcode_reason_plays_total"},
+	}
+	if len(groups) != len(poll.Groups) {
+		t.Fatalf("%d groups checked, want all %d", len(groups), len(poll.Groups))
+	}
+
+	all := names(write(t, emby()))
+	for group, listed := range groups {
+		left := names(writeSkipping(t, poll.Skip{group: true}, emby()))
+
+		var gone []string
+		for name := range all {
+			if !left[name] {
+				gone = append(gone, name)
+			}
+		}
+		slices.Sort(gone)
+
+		want := slices.Sorted(slices.Values(listed))
+		if !slices.Equal(gone, want) {
+			t.Errorf("skipping %s left off %v, want %v", group, gone, want)
 		}
 	}
 }

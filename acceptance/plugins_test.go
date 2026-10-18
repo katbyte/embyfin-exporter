@@ -77,7 +77,7 @@ func TestThePluginsAreOnThePage(t *testing.T) {
 	// Jellyfin goes on listing a version a newer one has replaced, and a plugin taken out, neither of which it has any more (seen on 12.2)
 	listed := slices.DeleteFunc(all, func(p embyfin.Plugin) bool { return p.Status == "Superseded" || p.Status == "Deleted" })
 
-	text := scrape(t, poll.RoundLibrary)
+	text := scrape(t, poll.RoundPlugins)
 
 	want := map[string]float64{reading("embyfin_plugins"): float64(len(listed))}
 	versions, ids, reporting := map[string]string{}, map[string]string{}, false

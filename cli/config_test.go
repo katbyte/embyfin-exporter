@@ -94,8 +94,11 @@ func TestDefaults(t *testing.T) {
 
 	f := must(t)
 	every, err := poller.ParseIntervals(f.Intervals, poll.Every)
-	if f.Listen != ":9096" || err != nil || every["sessions"] != 15*time.Second || every["library"] != 5*time.Minute || every["history"] != 30*time.Second {
-		t.Errorf("defaults = %s, intervals %v (%v); want :9096, sessions every 15s, library 5m and history 30s", f.Listen, every, err)
+	if f.Listen != ":9096" || err != nil || every["server"] != 15*time.Second || every["sessions"] != 15*time.Second || every["libraries"] != 5*time.Minute || every["played"] != 30*time.Second || len(every) != 8 {
+		t.Errorf("defaults = %s, intervals %v (%v); want :9096, server and sessions every 15s, libraries 5m and played 30s among the 8", f.Listen, every, err)
+	}
+	if f.Metrics != "" || f.Skip != "" {
+		t.Errorf("metrics %q and skip %q with nothing given, want every group on", f.Metrics, f.Skip)
 	}
 	if f.EmbyServer != "" || f.EmbyToken != "" || f.JellyfinServer != "" || f.JellyfinToken != "" || f.Labels != "" {
 		t.Errorf("a server or a label is set with nothing given: %+v", f)
@@ -117,11 +120,13 @@ func TestEveryFlagHasAnEnvironmentVariable(t *testing.T) {
 	t.Setenv("EMBYFIN_EXPORTER_LISTEN", "127.0.0.1:9000")
 	t.Setenv("EMBYFIN_EXPORTER_LABELS", "hostname=nas")
 	t.Setenv("EMBYFIN_EXPORTER_DETAIL", "users,titles")
-	t.Setenv("EMBYFIN_EXPORTER_INTERVALS", "sessions=45s,library=10m,history=2m")
+	t.Setenv("EMBYFIN_EXPORTER_INTERVALS", "sessions=45s,libraries=10m,played=2m")
+	t.Setenv("EMBYFIN_EXPORTER_METRICS", "sessions,plugins,played")
+	t.Setenv("EMBYFIN_EXPORTER_SKIP", "plugins,played")
 
 	want := FlagData{
 		EmbyServer: testEmby, EmbyToken: "emby-key", JellyfinServer: testJellyfin, JellyfinToken: "jellyfin-key",
-		Listen: "127.0.0.1:9000", Labels: "hostname=nas", Detail: "users,titles", Intervals: "sessions=45s,library=10m,history=2m",
+		Listen: "127.0.0.1:9000", Labels: "hostname=nas", Detail: "users,titles", Intervals: "sessions=45s,libraries=10m,played=2m", Metrics: "sessions,plugins,played", Skip: "plugins,played",
 	}
 	if got := *must(t); got != want {
 		t.Errorf("from the environment = %+v, want %+v", got, want)
@@ -261,7 +266,7 @@ func TestTargets(t *testing.T) {
 func TestPoller(t *testing.T) {
 	t.Parallel()
 
-	f := FlagData{EmbyServer: testEmby, EmbyToken: "emby-key", JellyfinServer: testJellyfin, JellyfinToken: "jellyfin-key", Detail: "users", Intervals: "sessions=1s,library=1m,history=1s"}
+	f := FlagData{EmbyServer: testEmby, EmbyToken: "emby-key", JellyfinServer: testJellyfin, JellyfinToken: "jellyfin-key", Detail: "users", Intervals: "sessions=1s,libraries=1m,played=1s"}
 
 	var made []string
 	p, err := f.poller(func(kind, server, token string, detail mediaserver.Detail) (poll.Server, error) {
@@ -297,6 +302,36 @@ func TestPoller(t *testing.T) {
 	if _, err := f.poller(anything); err == nil || !strings.Contains(err.Error(), "EMBYFIN_EXPORTER_INTERVALS") {
 		t.Errorf("an interval of nothing = %v, want it refused, naming the setting", err)
 	}
+
+	f.Intervals, f.Skip = "", "plugins,everything"
+	if _, err := f.poller(anything); err == nil || !strings.Contains(err.Error(), "EMBYFIN_EXPORTER_SKIP") || !strings.Contains(err.Error(), `"everything"`) {
+		t.Errorf("--skip plugins,everything = %v, want it refused, naming the word and the setting", err)
+	}
+
+	f.Skip = "plugins,played"
+	skipped, err := f.poller(anything)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if got := skipped.Skipped().String(); got != "plugins,played" {
+		t.Errorf("--skip plugins,played skips %q, want plugins and played", got)
+	}
+
+	// metrics names the groups on the page, and skip takes some of them off again
+	f.Metrics, f.Skip = "sessions,plugins,played", "played"
+	named, err := f.poller(anything)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if got := named.Skipped().String(); got != "poll,reasons,streaming,tasks,libraries,accounts,sign-ins,played" {
+		t.Errorf("--metrics sessions,plugins,played --skip played skips %q, want all but sessions and plugins", got)
+	}
+
+	f.Metrics = "sessions,everything"
+	if _, err := f.poller(anything); err == nil || !strings.Contains(err.Error(), "EMBYFIN_EXPORTER_METRICS") || !strings.Contains(err.Error(), `"everything"`) {
+		t.Errorf("--metrics sessions,everything = %v, want it refused, naming the word and the setting", err)
+	}
+	f.Metrics, f.Skip = "", ""
 
 	// a word --detail does not know stops the program before any client is made, and the error says which word and which setting
 	f.Intervals, f.Detail = "", "users,everyone"
