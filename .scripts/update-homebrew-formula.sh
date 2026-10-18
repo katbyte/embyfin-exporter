@@ -11,6 +11,9 @@ trap 'rm -rf "$tmp"' EXIT
 
 echo "==> fetching source tarball for ${TAG}..."
 curl -sSfL "https://github.com/katbyte/embyfin-exporter/archive/refs/tags/${TAG}.tar.gz" -o "$tmp/src.tar.gz"
+
+# GitHub answers some missing tarballs with a web page rather than an error, and its hash would make a formula that never installs
+tar -tzf "$tmp/src.tar.gz" > /dev/null 2>&1 || { echo "==> ${TAG} has no source tarball on GitHub yet" >&2; exit 1; }
 SHA256="$(sha256sum "$tmp/src.tar.gz" | cut -d' ' -f1)"
 
 cat > "$tmp/embyfin-exporter.rb" <<FORMULA
