@@ -31,7 +31,7 @@ func (r GetThemeSongsResponse) Answered() bool { return r.Answer != nil }
 // error when the server answered none.
 func (r GetThemeSongsResponse) Record() (ThemeMediaResult, error) {
 	if r.Answer == nil {
-		return ThemeMediaResult{}, errors.New("GetThemeSongs answered no ThemeMediaResult")
+		return ThemeMediaResult{}, errors.New("no ThemeMediaResult answered by GetThemeSongs")
 	}
 
 	return *r.Answer, nil
@@ -54,8 +54,7 @@ type GetThemeSongsOptions struct {
 
 // ToHeaders returns the header parameters the options set.
 func (o GetThemeSongsOptions) ToHeaders() *client.Headers {
-	out := client.Headers{}
-	return &out
+	return &client.Headers{}
 }
 
 // ToQuery returns the query parameters the options set.

@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"net/http"
 	"net/url"
+	"strconv"
 
 	"github.com/katbyte/embyfin-mcp/sdk/emby/4.10.0.40/emby"
 	"github.com/katbyte/pandorest/client"
@@ -15,8 +16,7 @@ import (
 // GetArtistsByNameImagesByTypeByIndex calls GET /Artists/{Name}/Images/{Type}/{Index}. Requires authentication as user.
 func (c Client) GetArtistsByNameImagesByTypeByIndex(ctx context.Context, name string, typeParam emby.ImageType, index int, options ...emby.GetArtistsByNameImagesByTypeByIndexOptions) (result emby.GetArtistsByNameImagesByTypeByIndexResponse, err error) {
 	if len(options) > 1 {
-		err = fmt.Errorf("GetArtistsByNameImagesByTypeByIndex takes one options struct at most, not %d", len(options))
-		return
+		return result, fmt.Errorf("at most one options struct for GetArtistsByNameImagesByTypeByIndex, not %d", len(options))
 	}
 	var option emby.GetArtistsByNameImagesByTypeByIndexOptions
 	if len(options) == 1 {
@@ -31,13 +31,13 @@ func (c Client) GetArtistsByNameImagesByTypeByIndex(ctx context.Context, name st
 		HTTPMethod:     http.MethodGet,
 		Operation:      "GetArtistsByNameImagesByTypeByIndex",
 		OptionsObject:  option,
-		Path:           fmt.Sprintf("/Artists/%s/Images/%s/%d", url.PathEscape(name), url.PathEscape(string(typeParam)), index),
+		Path:           "/Artists/" + url.PathEscape(name) + "/Images/" + url.PathEscape(string(typeParam)) + "/" + strconv.Itoa(index),
 		StreamResponse: true,
 	}
 
 	req, err := c.Client.NewRequest(ctx, opts)
 	if err != nil {
-		return
+		return result, err
 	}
 
 	var resp *client.Response
@@ -46,8 +46,8 @@ func (c Client) GetArtistsByNameImagesByTypeByIndex(ctx context.Context, name st
 		result.HttpResponse = resp.Response
 	}
 	if err != nil {
-		return
+		return result, err
 	}
 
-	return
+	return result, nil
 }

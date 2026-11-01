@@ -30,7 +30,7 @@ func (r GetUIViewResponse) Answered() bool { return r.Answer != nil }
 // error when the server answered none.
 func (r GetUIViewResponse) Record() (UIViewInfo, error) {
 	if r.Answer == nil {
-		return UIViewInfo{}, errors.New("GetUIView answered no UIViewInfo")
+		return UIViewInfo{}, errors.New("no UIViewInfo answered by GetUIView")
 	}
 
 	return *r.Answer, nil
@@ -47,8 +47,7 @@ type GetUIViewOptions struct {
 
 // ToHeaders returns the header parameters the options set.
 func (o GetUIViewOptions) ToHeaders() *client.Headers {
-	out := client.Headers{}
-	return &out
+	return &client.Headers{}
 }
 
 // ToQuery returns the query parameters the options set.

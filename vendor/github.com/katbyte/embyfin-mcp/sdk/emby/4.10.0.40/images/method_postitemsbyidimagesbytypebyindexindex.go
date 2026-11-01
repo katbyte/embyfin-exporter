@@ -4,16 +4,16 @@ package images
 
 import (
 	"context"
-	"fmt"
 	"net/http"
 	"net/url"
+	"strconv"
 
 	"github.com/katbyte/embyfin-mcp/sdk/emby/4.10.0.40/emby"
 	"github.com/katbyte/pandorest/client"
 )
 
 // PostItemsByIdImagesByTypeByIndexIndex calls POST /Items/{Id}/Images/{Type}/{Index}/Index. Updates the index for an item image.
-func (c Client) PostItemsByIdImagesByTypeByIndexIndex(ctx context.Context, id emby.ItemID, typeParam emby.ImageType, index int, newIndex int) (result emby.PostItemsByIdImagesByTypeByIndexIndexResponse, err error) {
+func (c Client) PostItemsByIdImagesByTypeByIndexIndex(ctx context.Context, id emby.ItemID, typeParam emby.ImageType, index, newIndex int) (result emby.PostItemsByIdImagesByTypeByIndexIndexResponse, err error) {
 	var option emby.PostItemsByIdImagesByTypeByIndexIndexOptions
 	option.NewIndex = &newIndex
 
@@ -25,12 +25,12 @@ func (c Client) PostItemsByIdImagesByTypeByIndexIndex(ctx context.Context, id em
 		HTTPMethod:    http.MethodPost,
 		Operation:     "PostItemsByIdImagesByTypeByIndexIndex",
 		OptionsObject: option,
-		Path:          fmt.Sprintf("/Items/%s/Images/%s/%d/Index", url.PathEscape(string(id)), url.PathEscape(string(typeParam)), index),
+		Path:          "/Items/" + url.PathEscape(string(id)) + "/Images/" + url.PathEscape(string(typeParam)) + "/" + strconv.Itoa(index) + "/Index",
 	}
 
 	req, err := c.Client.NewRequest(ctx, opts)
 	if err != nil {
-		return
+		return result, err
 	}
 
 	var resp *client.Response
@@ -39,8 +39,8 @@ func (c Client) PostItemsByIdImagesByTypeByIndexIndex(ctx context.Context, id em
 		result.HttpResponse = resp.Response
 	}
 	if err != nil {
-		return
+		return result, err
 	}
 
-	return
+	return result, nil
 }

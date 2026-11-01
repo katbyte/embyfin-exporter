@@ -29,7 +29,7 @@ func (c Client) GetConnectExchange(ctx context.Context, connectUserId string) (r
 
 	req, err := c.Client.NewRequest(ctx, opts)
 	if err != nil {
-		return
+		return result, err
 	}
 
 	var resp *client.Response
@@ -38,19 +38,19 @@ func (c Client) GetConnectExchange(ctx context.Context, connectUserId string) (r
 		result.HttpResponse = resp.Response
 	}
 	if err != nil {
-		return
+		return result, err
 	}
 
 	if resp.StatusCode == http.StatusNoContent {
-		return
+		return result, nil
 	}
 
 	var answer emby.ConnectConnectAuthenticationExchangeResult
 	result.Answer = &answer
-	if err = resp.Unmarshal(result.Answer); err != nil {
-		return
+	if err := resp.Unmarshal(result.Answer); err != nil {
+		return result, err
 	}
 	result.ConnectConnectAuthenticationExchangeResult = result.Answer
 
-	return
+	return result, nil
 }

@@ -4,10 +4,10 @@ package images
 
 import (
 	"context"
-	"fmt"
 	"io"
 	"net/http"
 	"net/url"
+	"strconv"
 
 	"github.com/katbyte/embyfin-mcp/sdk/emby/4.10.0.40/emby"
 	"github.com/katbyte/pandorest/client"
@@ -25,16 +25,16 @@ func (c Client) PostUsersByIdImagesByTypeByIndex(ctx context.Context, id emby.Us
 		},
 		HTTPMethod: http.MethodPost,
 		Operation:  "PostUsersByIdImagesByTypeByIndex",
-		Path:       fmt.Sprintf("/Users/%s/Images/%s/%d", url.PathEscape(string(id)), url.PathEscape(string(typeParam)), index),
+		Path:       "/Users/" + url.PathEscape(string(id)) + "/Images/" + url.PathEscape(string(typeParam)) + "/" + strconv.Itoa(index),
 	}
 
 	req, err := c.Client.NewRequest(ctx, opts)
 	if err != nil {
-		return
+		return result, err
 	}
 
-	if err = req.SetBody(input, contentType); err != nil {
-		return
+	if err := req.SetBody(input, contentType); err != nil {
+		return result, err
 	}
 
 	var resp *client.Response
@@ -43,8 +43,8 @@ func (c Client) PostUsersByIdImagesByTypeByIndex(ctx context.Context, id emby.Us
 		result.HttpResponse = resp.Response
 	}
 	if err != nil {
-		return
+		return result, err
 	}
 
-	return
+	return result, nil
 }

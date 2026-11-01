@@ -24,7 +24,7 @@ func (c Client) GetSystemStorage(ctx context.Context) (result jf.GetSystemStorag
 
 	req, err := c.Client.NewRequest(ctx, opts)
 	if err != nil {
-		return
+		return result, err
 	}
 
 	var resp *client.Response
@@ -33,15 +33,15 @@ func (c Client) GetSystemStorage(ctx context.Context) (result jf.GetSystemStorag
 		result.HttpResponse = resp.Response
 	}
 	if err != nil {
-		return
+		return result, err
 	}
 
 	var answer jf.SystemStorageDto
 	result.Answer = &answer
-	if err = resp.Unmarshal(result.Answer); err != nil {
-		return
+	if err := resp.Unmarshal(result.Answer); err != nil {
+		return result, err
 	}
 	result.SystemStorageDto = result.Answer
 
-	return
+	return result, nil
 }

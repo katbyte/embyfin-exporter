@@ -28,7 +28,7 @@ func (r GetPlaylistUserResponse) Answered() bool { return r.Answer != nil }
 // error when the server answered none.
 func (r GetPlaylistUserResponse) Record() (PlaylistUserPermissions, error) {
 	if r.Answer == nil {
-		return PlaylistUserPermissions{}, errors.New("GetPlaylistUser answered no PlaylistUserPermissions")
+		return PlaylistUserPermissions{}, errors.New("no PlaylistUserPermissions answered by GetPlaylistUser")
 	}
 
 	return *r.Answer, nil

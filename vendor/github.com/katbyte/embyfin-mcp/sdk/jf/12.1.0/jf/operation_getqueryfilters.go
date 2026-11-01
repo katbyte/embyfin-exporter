@@ -31,7 +31,7 @@ func (r GetQueryFiltersResponse) Answered() bool { return r.Answer != nil }
 // error when the server answered none.
 func (r GetQueryFiltersResponse) Record() (QueryFilters, error) {
 	if r.Answer == nil {
-		return QueryFilters{}, errors.New("GetQueryFilters answered no QueryFilters")
+		return QueryFilters{}, errors.New("no QueryFilters answered by GetQueryFilters")
 	}
 
 	return *r.Answer, nil
@@ -72,8 +72,7 @@ type GetQueryFiltersOptions struct {
 
 // ToHeaders returns the header parameters the options set.
 func (o GetQueryFiltersOptions) ToHeaders() *client.Headers {
-	out := client.Headers{}
-	return &out
+	return &client.Headers{}
 }
 
 // ToQuery returns the query parameters the options set.

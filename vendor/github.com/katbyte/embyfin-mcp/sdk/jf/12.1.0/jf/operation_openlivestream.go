@@ -31,7 +31,7 @@ func (r OpenLiveStreamResponse) Answered() bool { return r.Answer != nil }
 // error when the server answered none.
 func (r OpenLiveStreamResponse) Record() (LiveStreamResponse, error) {
 	if r.Answer == nil {
-		return LiveStreamResponse{}, errors.New("OpenLiveStream answered no LiveStreamResponse")
+		return LiveStreamResponse{}, errors.New("no LiveStreamResponse answered by OpenLiveStream")
 	}
 
 	return *r.Answer, nil
@@ -78,8 +78,7 @@ type OpenLiveStreamOptions struct {
 
 // ToHeaders returns the header parameters the options set.
 func (o OpenLiveStreamOptions) ToHeaders() *client.Headers {
-	out := client.Headers{}
-	return &out
+	return &client.Headers{}
 }
 
 // ToQuery returns the query parameters the options set.

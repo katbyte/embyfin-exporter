@@ -15,8 +15,7 @@ import (
 // GetNextUp calls GET /Shows/NextUp. Gets a list of next up episodes.
 func (c Client) GetNextUp(ctx context.Context, options ...jf.GetNextUpOptions) (result jf.GetNextUpResponse, err error) {
 	if len(options) > 1 {
-		err = fmt.Errorf("GetNextUp takes one options struct at most, not %d", len(options))
-		return
+		return result, fmt.Errorf("at most one options struct for GetNextUp, not %d", len(options))
 	}
 	var option jf.GetNextUpOptions
 	if len(options) == 1 {
@@ -36,7 +35,7 @@ func (c Client) GetNextUp(ctx context.Context, options ...jf.GetNextUpOptions) (
 
 	req, err := c.Client.NewRequest(ctx, opts)
 	if err != nil {
-		return
+		return result, err
 	}
 
 	var resp *client.Response
@@ -45,17 +44,17 @@ func (c Client) GetNextUp(ctx context.Context, options ...jf.GetNextUpOptions) (
 		result.HttpResponse = resp.Response
 	}
 	if err != nil {
-		return
+		return result, err
 	}
 
 	var answer jf.BaseItemDtoQueryResult
 	result.Answer = &answer
-	if err = resp.Unmarshal(result.Answer); err != nil {
-		return
+	if err := resp.Unmarshal(result.Answer); err != nil {
+		return result, err
 	}
 	result.BaseItemDtoQueryResult = result.Answer
 
-	return
+	return result, nil
 }
 
 // GetNextUpComplete calls GetNextUp page by page from options.StartIndex until every
@@ -63,8 +62,7 @@ func (c Client) GetNextUp(ctx context.Context, options ...jf.GetNextUpOptions) (
 // unset.
 func (c Client) GetNextUpComplete(ctx context.Context, options ...jf.GetNextUpOptions) (result jf.GetNextUpCompleteResult, err error) {
 	if len(options) > 1 {
-		err = fmt.Errorf("GetNextUpComplete takes one options struct at most, not %d", len(options))
-		return
+		return result, fmt.Errorf("at most one options struct for GetNextUpComplete, not %d", len(options))
 	}
 	var option jf.GetNextUpOptions
 	if len(options) == 1 {
@@ -77,7 +75,7 @@ func (c Client) GetNextUpComplete(ctx context.Context, options ...jf.GetNextUpOp
 	}
 	option.Limit = &limit
 	start := 0
-	if option.StartIndex != nil {
+	if option.StartIndex != nil && *option.StartIndex > 0 {
 		start = *option.StartIndex
 	}
 	for {
@@ -85,11 +83,10 @@ func (c Client) GetNextUpComplete(ctx context.Context, options ...jf.GetNextUpOp
 		page, err = c.GetNextUp(ctx, option)
 		result.LatestHttpResponse = page.HttpResponse
 		if err != nil {
-			err = fmt.Errorf("loading results: %w", err)
-			return
+			return result, fmt.Errorf("loading results: %w", err)
 		}
 		if page.Answer == nil || len(page.Answer.Items) == 0 {
-			return
+			return result, nil
 		}
 		result.Items = append(result.Items, page.Answer.Items...)
 		start += len(page.Answer.Items)
@@ -97,7 +94,7 @@ func (c Client) GetNextUpComplete(ctx context.Context, options ...jf.GetNextUpOp
 		// a short page is the last; so is reaching the total, when the server
 		// reports one (a list may report 0 whatever it holds)
 		if len(page.Answer.Items) < limit || page.Answer.TotalRecordCount > 0 && start >= page.Answer.TotalRecordCount {
-			return
+			return result, nil
 		}
 	}
 }
@@ -119,7 +116,7 @@ func (c Client) GetNextUpEach(ctx context.Context, options ...jf.GetNextUpOption
 	return func(yield func(jf.BaseItemDto, error) bool) {
 		var zero jf.BaseItemDto
 		if len(options) > 1 {
-			yield(zero, fmt.Errorf("GetNextUpEach takes one options struct at most, not %d", len(options)))
+			yield(zero, fmt.Errorf("at most one options struct for GetNextUpEach, not %d", len(options)))
 			return
 		}
 		var option jf.GetNextUpOptions
@@ -133,7 +130,7 @@ func (c Client) GetNextUpEach(ctx context.Context, options ...jf.GetNextUpOption
 		}
 		option.Limit = &limit
 		start := 0
-		if option.StartIndex != nil {
+		if option.StartIndex != nil && *option.StartIndex > 0 {
 			start = *option.StartIndex
 		}
 		for {
@@ -145,8 +142,8 @@ func (c Client) GetNextUpEach(ctx context.Context, options ...jf.GetNextUpOption
 			if page.Answer == nil || len(page.Answer.Items) == 0 {
 				return
 			}
-			for _, item := range page.Answer.Items {
-				if !yield(item, nil) {
+			for i := range page.Answer.Items {
+				if !yield(page.Answer.Items[i], nil) {
 					return
 				}
 			}

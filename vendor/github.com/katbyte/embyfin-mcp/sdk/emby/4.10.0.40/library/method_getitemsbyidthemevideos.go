@@ -16,8 +16,7 @@ import (
 // GetItemsByIdThemeVideos calls GET /Items/{Id}/ThemeVideos. Gets theme videos for an item.
 func (c Client) GetItemsByIdThemeVideos(ctx context.Context, id emby.ItemID, options ...emby.GetItemsByIdThemeVideosOptions) (result emby.GetItemsByIdThemeVideosResponse, err error) {
 	if len(options) > 1 {
-		err = fmt.Errorf("GetItemsByIdThemeVideos takes one options struct at most, not %d", len(options))
-		return
+		return result, fmt.Errorf("at most one options struct for GetItemsByIdThemeVideos, not %d", len(options))
 	}
 	var option emby.GetItemsByIdThemeVideosOptions
 	if len(options) == 1 {
@@ -33,12 +32,12 @@ func (c Client) GetItemsByIdThemeVideos(ctx context.Context, id emby.ItemID, opt
 		HTTPMethod:    http.MethodGet,
 		Operation:     "GetItemsByIdThemeVideos",
 		OptionsObject: option,
-		Path:          fmt.Sprintf("/Items/%s/ThemeVideos", url.PathEscape(string(id))),
+		Path:          "/Items/" + url.PathEscape(string(id)) + "/ThemeVideos",
 	}
 
 	req, err := c.Client.NewRequest(ctx, opts)
 	if err != nil {
-		return
+		return result, err
 	}
 
 	var resp *client.Response
@@ -47,21 +46,21 @@ func (c Client) GetItemsByIdThemeVideos(ctx context.Context, id emby.ItemID, opt
 		result.HttpResponse = resp.Response
 	}
 	if err != nil {
-		return
+		return result, err
 	}
 
 	if resp.StatusCode == http.StatusNoContent {
-		return
+		return result, nil
 	}
 
 	var answer emby.ThemeMediaResult
 	result.Answer = &answer
-	if err = resp.Unmarshal(result.Answer); err != nil {
-		return
+	if err := resp.Unmarshal(result.Answer); err != nil {
+		return result, err
 	}
 	result.ThemeMediaResult = result.Answer
 
-	return
+	return result, nil
 }
 
 // GetItemsByIdThemeVideosComplete calls GetItemsByIdThemeVideos page by page from options.StartIndex until every
@@ -69,8 +68,7 @@ func (c Client) GetItemsByIdThemeVideos(ctx context.Context, id emby.ItemID, opt
 // unset.
 func (c Client) GetItemsByIdThemeVideosComplete(ctx context.Context, id emby.ItemID, options ...emby.GetItemsByIdThemeVideosOptions) (result emby.GetItemsByIdThemeVideosCompleteResult, err error) {
 	if len(options) > 1 {
-		err = fmt.Errorf("GetItemsByIdThemeVideosComplete takes one options struct at most, not %d", len(options))
-		return
+		return result, fmt.Errorf("at most one options struct for GetItemsByIdThemeVideosComplete, not %d", len(options))
 	}
 	var option emby.GetItemsByIdThemeVideosOptions
 	if len(options) == 1 {
@@ -83,7 +81,7 @@ func (c Client) GetItemsByIdThemeVideosComplete(ctx context.Context, id emby.Ite
 	}
 	option.Limit = &limit
 	start := 0
-	if option.StartIndex != nil {
+	if option.StartIndex != nil && *option.StartIndex > 0 {
 		start = *option.StartIndex
 	}
 	for {
@@ -91,11 +89,10 @@ func (c Client) GetItemsByIdThemeVideosComplete(ctx context.Context, id emby.Ite
 		page, err = c.GetItemsByIdThemeVideos(ctx, id, option)
 		result.LatestHttpResponse = page.HttpResponse
 		if err != nil {
-			err = fmt.Errorf("loading results: %w", err)
-			return
+			return result, fmt.Errorf("loading results: %w", err)
 		}
 		if page.Answer == nil || len(page.Answer.Items) == 0 {
-			return
+			return result, nil
 		}
 		result.Items = append(result.Items, page.Answer.Items...)
 		start += len(page.Answer.Items)
@@ -103,7 +100,7 @@ func (c Client) GetItemsByIdThemeVideosComplete(ctx context.Context, id emby.Ite
 		// a short page is the last; so is reaching the total, when the server
 		// reports one (a list may report 0 whatever it holds)
 		if len(page.Answer.Items) < limit || page.Answer.TotalRecordCount > 0 && start >= page.Answer.TotalRecordCount {
-			return
+			return result, nil
 		}
 	}
 }
@@ -125,7 +122,7 @@ func (c Client) GetItemsByIdThemeVideosEach(ctx context.Context, id emby.ItemID,
 	return func(yield func(emby.BaseItemDto, error) bool) {
 		var zero emby.BaseItemDto
 		if len(options) > 1 {
-			yield(zero, fmt.Errorf("GetItemsByIdThemeVideosEach takes one options struct at most, not %d", len(options)))
+			yield(zero, fmt.Errorf("at most one options struct for GetItemsByIdThemeVideosEach, not %d", len(options)))
 			return
 		}
 		var option emby.GetItemsByIdThemeVideosOptions
@@ -139,7 +136,7 @@ func (c Client) GetItemsByIdThemeVideosEach(ctx context.Context, id emby.ItemID,
 		}
 		option.Limit = &limit
 		start := 0
-		if option.StartIndex != nil {
+		if option.StartIndex != nil && *option.StartIndex > 0 {
 			start = *option.StartIndex
 		}
 		for {
@@ -151,8 +148,8 @@ func (c Client) GetItemsByIdThemeVideosEach(ctx context.Context, id emby.ItemID,
 			if page.Answer == nil || len(page.Answer.Items) == 0 {
 				return
 			}
-			for _, item := range page.Answer.Items {
-				if !yield(item, nil) {
+			for i := range page.Answer.Items {
+				if !yield(page.Answer.Items[i], nil) {
 					return
 				}
 			}

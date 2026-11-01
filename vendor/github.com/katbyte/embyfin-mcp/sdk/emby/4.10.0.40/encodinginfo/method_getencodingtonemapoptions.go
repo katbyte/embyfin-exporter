@@ -25,7 +25,7 @@ func (c Client) GetEncodingToneMapOptions(ctx context.Context) (result emby.GetE
 
 	req, err := c.Client.NewRequest(ctx, opts)
 	if err != nil {
-		return
+		return result, err
 	}
 
 	var resp *client.Response
@@ -34,19 +34,19 @@ func (c Client) GetEncodingToneMapOptions(ctx context.Context) (result emby.GetE
 		result.HttpResponse = resp.Response
 	}
 	if err != nil {
-		return
+		return result, err
 	}
 
 	if resp.StatusCode == http.StatusNoContent {
-		return
+		return result, nil
 	}
 
 	var answer emby.ConfigurationToneMappingToneMapOptions
 	result.Answer = &answer
-	if err = resp.Unmarshal(result.Answer); err != nil {
-		return
+	if err := resp.Unmarshal(result.Answer); err != nil {
+		return result, err
 	}
 	result.ConfigurationToneMappingToneMapOptions = result.Answer
 
-	return
+	return result, nil
 }

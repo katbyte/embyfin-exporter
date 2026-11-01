@@ -4,7 +4,6 @@ package images
 
 import (
 	"context"
-	"fmt"
 	"io"
 	"net/http"
 	"net/url"
@@ -25,16 +24,16 @@ func (c Client) PostUsersByIdImagesByType(ctx context.Context, id emby.UserID, t
 		},
 		HTTPMethod: http.MethodPost,
 		Operation:  "PostUsersByIdImagesByType",
-		Path:       fmt.Sprintf("/Users/%s/Images/%s", url.PathEscape(string(id)), url.PathEscape(string(typeParam))),
+		Path:       "/Users/" + url.PathEscape(string(id)) + "/Images/" + url.PathEscape(string(typeParam)),
 	}
 
 	req, err := c.Client.NewRequest(ctx, opts)
 	if err != nil {
-		return
+		return result, err
 	}
 
-	if err = req.SetBody(input, contentType); err != nil {
-		return
+	if err := req.SetBody(input, contentType); err != nil {
+		return result, err
 	}
 
 	var resp *client.Response
@@ -43,8 +42,8 @@ func (c Client) PostUsersByIdImagesByType(ctx context.Context, id emby.UserID, t
 		result.HttpResponse = resp.Response
 	}
 	if err != nil {
-		return
+		return result, err
 	}
 
-	return
+	return result, nil
 }

@@ -4,8 +4,8 @@ package syncs
 
 import (
 	"context"
-	"fmt"
 	"net/http"
+	"strconv"
 
 	"github.com/katbyte/embyfin-mcp/sdk/emby/4.10.0.40/emby"
 	"github.com/katbyte/pandorest/client"
@@ -21,16 +21,16 @@ func (c Client) PostSyncJobsById(ctx context.Context, id int64, input emby.SyncJ
 		},
 		HTTPMethod: http.MethodPost,
 		Operation:  "PostSyncJobsById",
-		Path:       fmt.Sprintf("/Sync/Jobs/%d", id),
+		Path:       "/Sync/Jobs/" + strconv.FormatInt(id, 10),
 	}
 
 	req, err := c.Client.NewRequest(ctx, opts)
 	if err != nil {
-		return
+		return result, err
 	}
 
-	if err = req.Marshal(input); err != nil {
-		return
+	if err := req.Marshal(input); err != nil {
+		return result, err
 	}
 
 	var resp *client.Response
@@ -39,8 +39,8 @@ func (c Client) PostSyncJobsById(ctx context.Context, id int64, input emby.SyncJ
 		result.HttpResponse = resp.Response
 	}
 	if err != nil {
-		return
+		return result, err
 	}
 
-	return
+	return result, nil
 }

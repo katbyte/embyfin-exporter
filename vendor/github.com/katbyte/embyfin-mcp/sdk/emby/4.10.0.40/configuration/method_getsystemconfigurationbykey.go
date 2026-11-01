@@ -4,7 +4,6 @@ package configuration
 
 import (
 	"context"
-	"fmt"
 	"net/http"
 	"net/url"
 
@@ -21,12 +20,12 @@ func (c Client) GetSystemConfigurationByKey(ctx context.Context, key string) (re
 		},
 		HTTPMethod: http.MethodGet,
 		Operation:  "GetSystemConfigurationByKey",
-		Path:       fmt.Sprintf("/System/Configuration/%s", url.PathEscape(key)),
+		Path:       "/System/Configuration/" + url.PathEscape(key),
 	}
 
 	req, err := c.Client.NewRequest(ctx, opts)
 	if err != nil {
-		return
+		return result, err
 	}
 
 	var resp *client.Response
@@ -35,16 +34,16 @@ func (c Client) GetSystemConfigurationByKey(ctx context.Context, key string) (re
 		result.HttpResponse = resp.Response
 	}
 	if err != nil {
-		return
+		return result, err
 	}
 
 	if resp.StatusCode == http.StatusNoContent {
-		return
+		return result, nil
 	}
 
-	if err = resp.Unmarshal(&result.Answer); err != nil {
-		return
+	if err := resp.Unmarshal(&result.Answer); err != nil {
+		return result, err
 	}
 
-	return
+	return result, nil
 }

@@ -16,8 +16,7 @@ import (
 func (c Client) GetGameGenresByName(ctx context.Context, name string, userId ...emby.UserID) (result emby.GetGameGenresByNameResponse, err error) {
 	var option emby.GetGameGenresByNameOptions
 	if len(userId) > 1 {
-		err = fmt.Errorf("GetGameGenresByName takes one userId at most, not %d", len(userId))
-		return
+		return result, fmt.Errorf("at most one userId for GetGameGenresByName, not %d", len(userId))
 	}
 	if len(userId) == 1 {
 		option.UserId = userId[0]
@@ -32,12 +31,12 @@ func (c Client) GetGameGenresByName(ctx context.Context, name string, userId ...
 		HTTPMethod:    http.MethodGet,
 		Operation:     "GetGameGenresByName",
 		OptionsObject: option,
-		Path:          fmt.Sprintf("/GameGenres/%s", url.PathEscape(name)),
+		Path:          "/GameGenres/" + url.PathEscape(name),
 	}
 
 	req, err := c.Client.NewRequest(ctx, opts)
 	if err != nil {
-		return
+		return result, err
 	}
 
 	var resp *client.Response
@@ -46,19 +45,19 @@ func (c Client) GetGameGenresByName(ctx context.Context, name string, userId ...
 		result.HttpResponse = resp.Response
 	}
 	if err != nil {
-		return
+		return result, err
 	}
 
 	if resp.StatusCode == http.StatusNoContent {
-		return
+		return result, nil
 	}
 
 	var answer emby.BaseItemDto
 	result.Answer = &answer
-	if err = resp.Unmarshal(result.Answer); err != nil {
-		return
+	if err := resp.Unmarshal(result.Answer); err != nil {
+		return result, err
 	}
 	result.BaseItemDto = result.Answer
 
-	return
+	return result, nil
 }

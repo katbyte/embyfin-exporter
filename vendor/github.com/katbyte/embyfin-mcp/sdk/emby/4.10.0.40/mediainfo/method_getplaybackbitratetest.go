@@ -29,7 +29,7 @@ func (c Client) GetPlaybackBitrateTest(ctx context.Context, size int64) (result 
 
 	req, err := c.Client.NewRequest(ctx, opts)
 	if err != nil {
-		return
+		return result, err
 	}
 
 	var resp *client.Response
@@ -38,8 +38,8 @@ func (c Client) GetPlaybackBitrateTest(ctx context.Context, size int64) (result 
 		result.HttpResponse = resp.Response
 	}
 	if err != nil {
-		return
+		return result, err
 	}
 
-	return
+	return result, nil
 }

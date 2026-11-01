@@ -16,8 +16,7 @@ import (
 func (c Client) GetLiveTvRecordingsById(ctx context.Context, id emby.ItemID, userId ...emby.UserID) (result emby.GetLiveTvRecordingsByIdResponse, err error) {
 	var option emby.GetLiveTvRecordingsByIdOptions
 	if len(userId) > 1 {
-		err = fmt.Errorf("GetLiveTvRecordingsById takes one userId at most, not %d", len(userId))
-		return
+		return result, fmt.Errorf("at most one userId for GetLiveTvRecordingsById, not %d", len(userId))
 	}
 	if len(userId) == 1 {
 		option.UserId = userId[0]
@@ -32,12 +31,12 @@ func (c Client) GetLiveTvRecordingsById(ctx context.Context, id emby.ItemID, use
 		HTTPMethod:    http.MethodGet,
 		Operation:     "GetLiveTvRecordingsById",
 		OptionsObject: option,
-		Path:          fmt.Sprintf("/LiveTv/Recordings/%s", url.PathEscape(string(id))),
+		Path:          "/LiveTv/Recordings/" + url.PathEscape(string(id)),
 	}
 
 	req, err := c.Client.NewRequest(ctx, opts)
 	if err != nil {
-		return
+		return result, err
 	}
 
 	var resp *client.Response
@@ -46,19 +45,19 @@ func (c Client) GetLiveTvRecordingsById(ctx context.Context, id emby.ItemID, use
 		result.HttpResponse = resp.Response
 	}
 	if err != nil {
-		return
+		return result, err
 	}
 
 	if resp.StatusCode == http.StatusNoContent {
-		return
+		return result, nil
 	}
 
 	var answer emby.BaseItemDto
 	result.Answer = &answer
-	if err = resp.Unmarshal(result.Answer); err != nil {
-		return
+	if err := resp.Unmarshal(result.Answer); err != nil {
+		return result, err
 	}
 	result.BaseItemDto = result.Answer
 
-	return
+	return result, nil
 }

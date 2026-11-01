@@ -31,7 +31,7 @@ func (r GetThemeMediaResponse) Answered() bool { return r.Answer != nil }
 // error when the server answered none.
 func (r GetThemeMediaResponse) Record() (AllThemeMediaResult, error) {
 	if r.Answer == nil {
-		return AllThemeMediaResult{}, errors.New("GetThemeMedia answered no AllThemeMediaResult")
+		return AllThemeMediaResult{}, errors.New("no AllThemeMediaResult answered by GetThemeMedia")
 	}
 
 	return *r.Answer, nil
@@ -54,8 +54,7 @@ type GetThemeMediaOptions struct {
 
 // ToHeaders returns the header parameters the options set.
 func (o GetThemeMediaOptions) ToHeaders() *client.Headers {
-	out := client.Headers{}
-	return &out
+	return &client.Headers{}
 }
 
 // ToQuery returns the query parameters the options set.

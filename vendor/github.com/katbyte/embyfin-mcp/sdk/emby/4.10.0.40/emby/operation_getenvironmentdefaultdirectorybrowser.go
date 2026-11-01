@@ -28,7 +28,7 @@ func (r GetEnvironmentDefaultDirectoryBrowserResponse) Answered() bool { return 
 // error when the server answered none.
 func (r GetEnvironmentDefaultDirectoryBrowserResponse) Record() (DefaultDirectoryBrowserInfo, error) {
 	if r.Answer == nil {
-		return DefaultDirectoryBrowserInfo{}, errors.New("GetEnvironmentDefaultDirectoryBrowser answered no DefaultDirectoryBrowserInfo")
+		return DefaultDirectoryBrowserInfo{}, errors.New("no DefaultDirectoryBrowserInfo answered by GetEnvironmentDefaultDirectoryBrowser")
 	}
 
 	return *r.Answer, nil

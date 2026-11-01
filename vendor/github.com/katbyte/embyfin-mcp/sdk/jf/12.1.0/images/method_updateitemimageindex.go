@@ -4,16 +4,16 @@ package images
 
 import (
 	"context"
-	"fmt"
 	"net/http"
 	"net/url"
+	"strconv"
 
 	"github.com/katbyte/embyfin-mcp/sdk/jf/12.1.0/jf"
 	"github.com/katbyte/pandorest/client"
 )
 
 // UpdateItemImageIndex calls POST /Items/{itemId}/Images/{imageType}/{imageIndex}/Index. Updates the index for an item image.
-func (c Client) UpdateItemImageIndex(ctx context.Context, itemId jf.ItemID, imageType jf.ImageType, imageIndex int, newIndex int) (result jf.UpdateItemImageIndexResponse, err error) {
+func (c Client) UpdateItemImageIndex(ctx context.Context, itemId jf.ItemID, imageType jf.ImageType, imageIndex, newIndex int) (result jf.UpdateItemImageIndexResponse, err error) {
 	var option jf.UpdateItemImageIndexOptions
 	option.NewIndex = &newIndex
 
@@ -24,12 +24,12 @@ func (c Client) UpdateItemImageIndex(ctx context.Context, itemId jf.ItemID, imag
 		HTTPMethod:    http.MethodPost,
 		Operation:     "UpdateItemImageIndex",
 		OptionsObject: option,
-		Path:          fmt.Sprintf("/Items/%s/Images/%s/%d/Index", url.PathEscape(string(itemId)), url.PathEscape(string(imageType)), imageIndex),
+		Path:          "/Items/" + url.PathEscape(string(itemId)) + "/Images/" + url.PathEscape(string(imageType)) + "/" + strconv.Itoa(imageIndex) + "/Index",
 	}
 
 	req, err := c.Client.NewRequest(ctx, opts)
 	if err != nil {
-		return
+		return result, err
 	}
 
 	var resp *client.Response
@@ -38,8 +38,8 @@ func (c Client) UpdateItemImageIndex(ctx context.Context, itemId jf.ItemID, imag
 		result.HttpResponse = resp.Response
 	}
 	if err != nil {
-		return
+		return result, err
 	}
 
-	return
+	return result, nil
 }

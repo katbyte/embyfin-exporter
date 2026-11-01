@@ -31,7 +31,7 @@ func (r GetLibraryVirtualFoldersQueryResponse) Answered() bool { return r.Answer
 // error when the server answered none.
 func (r GetLibraryVirtualFoldersQueryResponse) Record() (QueryResultVirtualFolderInfo, error) {
 	if r.Answer == nil {
-		return QueryResultVirtualFolderInfo{}, errors.New("GetLibraryVirtualFoldersQuery answered no QueryResultVirtualFolderInfo")
+		return QueryResultVirtualFolderInfo{}, errors.New("no QueryResultVirtualFolderInfo answered by GetLibraryVirtualFoldersQuery")
 	}
 
 	return *r.Answer, nil
@@ -48,8 +48,7 @@ type GetLibraryVirtualFoldersQueryOptions struct {
 
 // ToHeaders returns the header parameters the options set.
 func (o GetLibraryVirtualFoldersQueryOptions) ToHeaders() *client.Headers {
-	out := client.Headers{}
-	return &out
+	return &client.Headers{}
 }
 
 // ToQuery returns the query parameters the options set.

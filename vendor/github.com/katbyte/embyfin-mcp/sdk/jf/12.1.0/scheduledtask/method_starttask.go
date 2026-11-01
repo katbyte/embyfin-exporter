@@ -4,7 +4,6 @@ package scheduledtask
 
 import (
 	"context"
-	"fmt"
 	"net/http"
 	"net/url"
 
@@ -20,12 +19,12 @@ func (c Client) StartTask(ctx context.Context, taskId jf.TaskID) (result jf.Star
 		},
 		HTTPMethod: http.MethodPost,
 		Operation:  "StartTask",
-		Path:       fmt.Sprintf("/ScheduledTasks/Running/%s", url.PathEscape(string(taskId))),
+		Path:       "/ScheduledTasks/Running/" + url.PathEscape(string(taskId)),
 	}
 
 	req, err := c.Client.NewRequest(ctx, opts)
 	if err != nil {
-		return
+		return result, err
 	}
 
 	var resp *client.Response
@@ -34,8 +33,8 @@ func (c Client) StartTask(ctx context.Context, taskId jf.TaskID) (result jf.Star
 		result.HttpResponse = resp.Response
 	}
 	if err != nil {
-		return
+		return result, err
 	}
 
-	return
+	return result, nil
 }

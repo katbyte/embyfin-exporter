@@ -4,7 +4,6 @@ package channel
 
 import (
 	"context"
-	"fmt"
 	"net/http"
 	"net/url"
 
@@ -21,12 +20,12 @@ func (c Client) GetChannelFeatures(ctx context.Context, channelId string) (resul
 		},
 		HTTPMethod: http.MethodGet,
 		Operation:  "GetChannelFeatures",
-		Path:       fmt.Sprintf("/Channels/%s/Features", url.PathEscape(channelId)),
+		Path:       "/Channels/" + url.PathEscape(channelId) + "/Features",
 	}
 
 	req, err := c.Client.NewRequest(ctx, opts)
 	if err != nil {
-		return
+		return result, err
 	}
 
 	var resp *client.Response
@@ -35,15 +34,15 @@ func (c Client) GetChannelFeatures(ctx context.Context, channelId string) (resul
 		result.HttpResponse = resp.Response
 	}
 	if err != nil {
-		return
+		return result, err
 	}
 
 	var answer jf.ChannelFeatures
 	result.Answer = &answer
-	if err = resp.Unmarshal(result.Answer); err != nil {
-		return
+	if err := resp.Unmarshal(result.Answer); err != nil {
+		return result, err
 	}
 	result.ChannelFeatures = result.Answer
 
-	return
+	return result, nil
 }

@@ -26,7 +26,7 @@ type GetItemsByIdByMediaSourceIdSubtitlesByIndexStreamByFormatResponse struct {
 // answer, so a deferred Close is always safe. The body stays readable after
 // the result goes out of scope, and has no size or time limit of the client's:
 // the caller's context is the one bound on a slow read.
-func (r GetItemsByIdByMediaSourceIdSubtitlesByIndexStreamByFormatResponse) Reader() (io.ReadCloser, string) {
+func (r GetItemsByIdByMediaSourceIdSubtitlesByIndexStreamByFormatResponse) Reader() (body io.ReadCloser, contentType string) {
 	if r.HttpResponse == nil || r.HttpResponse.Body == nil {
 		return http.NoBody, ""
 	}
@@ -66,14 +66,14 @@ func (r GetItemsByIdByMediaSourceIdSubtitlesByIndexStreamByFormatResponse) Write
 	return client.Copy(w, r.HttpResponse.Body)
 }
 
-// Bytes reads the file whole, up to max bytes, and closes the body: a file
-// over max is a client.TooLargeError rather than cut short without a word.
-func (r GetItemsByIdByMediaSourceIdSubtitlesByIndexStreamByFormatResponse) Bytes(max int64) ([]byte, error) {
+// Bytes reads the file whole, up to limit bytes, and closes the body: a file
+// over the limit is a client.TooLargeError rather than cut short without a word.
+func (r GetItemsByIdByMediaSourceIdSubtitlesByIndexStreamByFormatResponse) Bytes(limit int64) ([]byte, error) {
 	if r.HttpResponse == nil || r.HttpResponse.Body == nil {
 		return nil, errors.New("no answer to read")
 	}
 
-	return client.ReadAtMost(r.HttpResponse.Body, max)
+	return client.ReadAtMost(r.HttpResponse.Body, limit)
 }
 
 // GetItemsByIdByMediaSourceIdSubtitlesByIndexStreamByFormatOptions holds the query and header parameters of GetItemsByIdByMediaSourceIdSubtitlesByIndexStreamByFormat.
@@ -90,8 +90,7 @@ type GetItemsByIdByMediaSourceIdSubtitlesByIndexStreamByFormatOptions struct {
 
 // ToHeaders returns the header parameters the options set.
 func (o GetItemsByIdByMediaSourceIdSubtitlesByIndexStreamByFormatOptions) ToHeaders() *client.Headers {
-	out := client.Headers{}
-	return &out
+	return &client.Headers{}
 }
 
 // ToQuery returns the query parameters the options set.

@@ -14,8 +14,7 @@ import (
 // PostLiveTvPrograms calls POST /LiveTv/Programs. Gets available live tv epgs..
 func (c Client) PostLiveTvPrograms(ctx context.Context, input emby.ApiBaseItemsRequest, options ...emby.PostLiveTvProgramsOptions) (result emby.PostLiveTvProgramsResponse, err error) {
 	if len(options) > 1 {
-		err = fmt.Errorf("PostLiveTvPrograms takes one options struct at most, not %d", len(options))
-		return
+		return result, fmt.Errorf("at most one options struct for PostLiveTvPrograms, not %d", len(options))
 	}
 	var option emby.PostLiveTvProgramsOptions
 	if len(options) == 1 {
@@ -36,11 +35,11 @@ func (c Client) PostLiveTvPrograms(ctx context.Context, input emby.ApiBaseItemsR
 
 	req, err := c.Client.NewRequest(ctx, opts)
 	if err != nil {
-		return
+		return result, err
 	}
 
-	if err = req.Marshal(input); err != nil {
-		return
+	if err := req.Marshal(input); err != nil {
+		return result, err
 	}
 
 	var resp *client.Response
@@ -49,8 +48,8 @@ func (c Client) PostLiveTvPrograms(ctx context.Context, input emby.ApiBaseItemsR
 		result.HttpResponse = resp.Response
 	}
 	if err != nil {
-		return
+		return result, err
 	}
 
-	return
+	return result, nil
 }

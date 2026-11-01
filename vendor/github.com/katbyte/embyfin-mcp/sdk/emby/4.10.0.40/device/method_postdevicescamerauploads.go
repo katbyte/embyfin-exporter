@@ -29,11 +29,11 @@ func (c Client) PostDevicesCameraUploads(ctx context.Context, input io.Reader, c
 
 	req, err := c.Client.NewRequest(ctx, opts)
 	if err != nil {
-		return
+		return result, err
 	}
 
-	if err = req.SetBody(input, contentType); err != nil {
-		return
+	if err := req.SetBody(input, contentType); err != nil {
+		return result, err
 	}
 
 	var resp *client.Response
@@ -42,8 +42,8 @@ func (c Client) PostDevicesCameraUploads(ctx context.Context, input io.Reader, c
 		result.HttpResponse = resp.Response
 	}
 	if err != nil {
-		return
+		return result, err
 	}
 
-	return
+	return result, nil
 }

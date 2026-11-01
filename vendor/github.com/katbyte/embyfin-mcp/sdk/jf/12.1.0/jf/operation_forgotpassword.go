@@ -28,7 +28,7 @@ func (r ForgotPasswordResponse) Answered() bool { return r.Answer != nil }
 // error when the server answered none.
 func (r ForgotPasswordResponse) Record() (ForgotPasswordResult, error) {
 	if r.Answer == nil {
-		return ForgotPasswordResult{}, errors.New("ForgotPassword answered no ForgotPasswordResult")
+		return ForgotPasswordResult{}, errors.New("no ForgotPasswordResult answered by ForgotPassword")
 	}
 
 	return *r.Answer, nil

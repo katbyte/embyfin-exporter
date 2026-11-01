@@ -14,8 +14,7 @@ import (
 // GetSessionsPlayQueue calls GET /Sessions/PlayQueue. Gets a the current play queue from a session.
 func (c Client) GetSessionsPlayQueue(ctx context.Context, options ...emby.GetSessionsPlayQueueOptions) (result emby.GetSessionsPlayQueueResponse, err error) {
 	if len(options) > 1 {
-		err = fmt.Errorf("GetSessionsPlayQueue takes one options struct at most, not %d", len(options))
-		return
+		return result, fmt.Errorf("at most one options struct for GetSessionsPlayQueue, not %d", len(options))
 	}
 	var option emby.GetSessionsPlayQueueOptions
 	if len(options) == 1 {
@@ -36,7 +35,7 @@ func (c Client) GetSessionsPlayQueue(ctx context.Context, options ...emby.GetSes
 
 	req, err := c.Client.NewRequest(ctx, opts)
 	if err != nil {
-		return
+		return result, err
 	}
 
 	var resp *client.Response
@@ -45,19 +44,19 @@ func (c Client) GetSessionsPlayQueue(ctx context.Context, options ...emby.GetSes
 		result.HttpResponse = resp.Response
 	}
 	if err != nil {
-		return
+		return result, err
 	}
 
 	if resp.StatusCode == http.StatusNoContent {
-		return
+		return result, nil
 	}
 
 	var answer emby.QueryResultBaseItemDto
 	result.Answer = &answer
-	if err = resp.Unmarshal(result.Answer); err != nil {
-		return
+	if err := resp.Unmarshal(result.Answer); err != nil {
+		return result, err
 	}
 	result.QueryResultBaseItemDto = result.Answer
 
-	return
+	return result, nil
 }

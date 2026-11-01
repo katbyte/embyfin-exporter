@@ -28,7 +28,7 @@ func (r GetLiveTvListingProvidersDefaultResponse) Answered() bool { return r.Ans
 // error when the server answered none.
 func (r GetLiveTvListingProvidersDefaultResponse) Record() (LiveTvListingsProviderInfo, error) {
 	if r.Answer == nil {
-		return LiveTvListingsProviderInfo{}, errors.New("GetLiveTvListingProvidersDefault answered no LiveTvListingsProviderInfo")
+		return LiveTvListingsProviderInfo{}, errors.New("no LiveTvListingsProviderInfo answered by GetLiveTvListingProvidersDefault")
 	}
 
 	return *r.Answer, nil

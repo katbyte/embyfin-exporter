@@ -28,7 +28,7 @@ func (r GetChannelFeaturesResponse) Answered() bool { return r.Answer != nil }
 // error when the server answered none.
 func (r GetChannelFeaturesResponse) Record() (ChannelFeatures, error) {
 	if r.Answer == nil {
-		return ChannelFeatures{}, errors.New("GetChannelFeatures answered no ChannelFeatures")
+		return ChannelFeatures{}, errors.New("no ChannelFeatures answered by GetChannelFeatures")
 	}
 
 	return *r.Answer, nil

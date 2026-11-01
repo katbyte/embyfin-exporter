@@ -14,8 +14,7 @@ import (
 // GetScheduledTasks calls GET /ScheduledTasks. Gets scheduled tasks.
 func (c Client) GetScheduledTasks(ctx context.Context, options ...emby.GetScheduledTasksOptions) (result emby.GetScheduledTasksResponse, err error) {
 	if len(options) > 1 {
-		err = fmt.Errorf("GetScheduledTasks takes one options struct at most, not %d", len(options))
-		return
+		return result, fmt.Errorf("at most one options struct for GetScheduledTasks, not %d", len(options))
 	}
 	var option emby.GetScheduledTasksOptions
 	if len(options) == 1 {
@@ -35,7 +34,7 @@ func (c Client) GetScheduledTasks(ctx context.Context, options ...emby.GetSchedu
 
 	req, err := c.Client.NewRequest(ctx, opts)
 	if err != nil {
-		return
+		return result, err
 	}
 
 	var resp *client.Response
@@ -44,16 +43,16 @@ func (c Client) GetScheduledTasks(ctx context.Context, options ...emby.GetSchedu
 		result.HttpResponse = resp.Response
 	}
 	if err != nil {
-		return
+		return result, err
 	}
 
 	if resp.StatusCode == http.StatusNoContent {
-		return
+		return result, nil
 	}
 
-	if err = resp.Unmarshal(&result.Answer); err != nil {
-		return
+	if err := resp.Unmarshal(&result.Answer); err != nil {
+		return result, err
 	}
 
-	return
+	return result, nil
 }

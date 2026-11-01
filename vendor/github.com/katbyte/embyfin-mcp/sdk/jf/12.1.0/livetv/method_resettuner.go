@@ -4,7 +4,6 @@ package livetv
 
 import (
 	"context"
-	"fmt"
 	"net/http"
 	"net/url"
 
@@ -20,12 +19,12 @@ func (c Client) ResetTuner(ctx context.Context, tunerId string) (result jf.Reset
 		},
 		HTTPMethod: http.MethodPost,
 		Operation:  "ResetTuner",
-		Path:       fmt.Sprintf("/LiveTv/Tuners/%s/Reset", url.PathEscape(tunerId)),
+		Path:       "/LiveTv/Tuners/" + url.PathEscape(tunerId) + "/Reset",
 	}
 
 	req, err := c.Client.NewRequest(ctx, opts)
 	if err != nil {
-		return
+		return result, err
 	}
 
 	var resp *client.Response
@@ -34,8 +33,8 @@ func (c Client) ResetTuner(ctx context.Context, tunerId string) (result jf.Reset
 		result.HttpResponse = resp.Response
 	}
 	if err != nil {
-		return
+		return result, err
 	}
 
-	return
+	return result, nil
 }

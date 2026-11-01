@@ -30,7 +30,7 @@ func (r GetSyncJobItemsResponse) Answered() bool { return r.Answer != nil }
 // error when the server answered none.
 func (r GetSyncJobItemsResponse) Record() (QueryResultSyncJobItem, error) {
 	if r.Answer == nil {
-		return QueryResultSyncJobItem{}, errors.New("GetSyncJobItems answered no QueryResultSyncJobItem")
+		return QueryResultSyncJobItem{}, errors.New("no QueryResultSyncJobItem answered by GetSyncJobItems")
 	}
 
 	return *r.Answer, nil
@@ -44,8 +44,7 @@ type GetSyncJobItemsOptions struct {
 
 // ToHeaders returns the header parameters the options set.
 func (o GetSyncJobItemsOptions) ToHeaders() *client.Headers {
-	out := client.Headers{}
-	return &out
+	return &client.Headers{}
 }
 
 // ToQuery returns the query parameters the options set.

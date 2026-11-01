@@ -4,7 +4,6 @@ package bif
 
 import (
 	"context"
-	"fmt"
 	"net/http"
 	"net/url"
 
@@ -25,13 +24,13 @@ func (c Client) GetVideosByIdIndexBif(ctx context.Context, id emby.ItemID, width
 		HTTPMethod:     http.MethodGet,
 		Operation:      "GetVideosByIdIndexBif",
 		OptionsObject:  option,
-		Path:           fmt.Sprintf("/Videos/%s/index.bif", url.PathEscape(string(id))),
+		Path:           "/Videos/" + url.PathEscape(string(id)) + "/index.bif",
 		StreamResponse: true,
 	}
 
 	req, err := c.Client.NewRequest(ctx, opts)
 	if err != nil {
-		return
+		return result, err
 	}
 
 	var resp *client.Response
@@ -40,8 +39,8 @@ func (c Client) GetVideosByIdIndexBif(ctx context.Context, id emby.ItemID, width
 		result.HttpResponse = resp.Response
 	}
 	if err != nil {
-		return
+		return result, err
 	}
 
-	return
+	return result, nil
 }

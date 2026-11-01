@@ -15,8 +15,7 @@ import (
 // GetMusicGenreImage calls GET /MusicGenres/{name}/Images/{imageType}. Get music genre image by name.
 func (c Client) GetMusicGenreImage(ctx context.Context, name string, imageType jf.ImageType, options ...jf.GetMusicGenreImageOptions) (result jf.GetMusicGenreImageResponse, err error) {
 	if len(options) > 1 {
-		err = fmt.Errorf("GetMusicGenreImage takes one options struct at most, not %d", len(options))
-		return
+		return result, fmt.Errorf("at most one options struct for GetMusicGenreImage, not %d", len(options))
 	}
 	var option jf.GetMusicGenreImageOptions
 	if len(options) == 1 {
@@ -31,13 +30,13 @@ func (c Client) GetMusicGenreImage(ctx context.Context, name string, imageType j
 		HTTPMethod:     http.MethodGet,
 		Operation:      "GetMusicGenreImage",
 		OptionsObject:  option,
-		Path:           fmt.Sprintf("/MusicGenres/%s/Images/%s", url.PathEscape(name), url.PathEscape(string(imageType))),
+		Path:           "/MusicGenres/" + url.PathEscape(name) + "/Images/" + url.PathEscape(string(imageType)),
 		StreamResponse: true,
 	}
 
 	req, err := c.Client.NewRequest(ctx, opts)
 	if err != nil {
-		return
+		return result, err
 	}
 
 	var resp *client.Response
@@ -46,8 +45,8 @@ func (c Client) GetMusicGenreImage(ctx context.Context, name string, imageType j
 		result.HttpResponse = resp.Response
 	}
 	if err != nil {
-		return
+		return result, err
 	}
 
-	return
+	return result, nil
 }

@@ -28,7 +28,7 @@ func (r GetDefaultMetadataOptionsResponse) Answered() bool { return r.Answer != 
 // error when the server answered none.
 func (r GetDefaultMetadataOptionsResponse) Record() (MetadataOptions, error) {
 	if r.Answer == nil {
-		return MetadataOptions{}, errors.New("GetDefaultMetadataOptions answered no MetadataOptions")
+		return MetadataOptions{}, errors.New("no MetadataOptions answered by GetDefaultMetadataOptions")
 	}
 
 	return *r.Answer, nil

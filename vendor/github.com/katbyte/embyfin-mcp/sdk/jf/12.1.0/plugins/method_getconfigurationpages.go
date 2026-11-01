@@ -15,8 +15,7 @@ import (
 func (c Client) GetConfigurationPages(ctx context.Context, enableInMainMenu ...bool) (result jf.GetConfigurationPagesResponse, err error) {
 	var option jf.GetConfigurationPagesOptions
 	if len(enableInMainMenu) > 1 {
-		err = fmt.Errorf("GetConfigurationPages takes one enableInMainMenu at most, not %d", len(enableInMainMenu))
-		return
+		return result, fmt.Errorf("at most one enableInMainMenu for GetConfigurationPages, not %d", len(enableInMainMenu))
 	}
 	if len(enableInMainMenu) == 1 {
 		option.EnableInMainMenu = &enableInMainMenu[0]
@@ -34,7 +33,7 @@ func (c Client) GetConfigurationPages(ctx context.Context, enableInMainMenu ...b
 
 	req, err := c.Client.NewRequest(ctx, opts)
 	if err != nil {
-		return
+		return result, err
 	}
 
 	var resp *client.Response
@@ -43,12 +42,12 @@ func (c Client) GetConfigurationPages(ctx context.Context, enableInMainMenu ...b
 		result.HttpResponse = resp.Response
 	}
 	if err != nil {
-		return
+		return result, err
 	}
 
-	if err = resp.Unmarshal(&result.Answer); err != nil {
-		return
+	if err := resp.Unmarshal(&result.Answer); err != nil {
+		return result, err
 	}
 
-	return
+	return result, nil
 }

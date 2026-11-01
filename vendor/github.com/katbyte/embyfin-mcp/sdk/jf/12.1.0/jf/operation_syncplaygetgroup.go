@@ -28,7 +28,7 @@ func (r SyncPlayGetGroupResponse) Answered() bool { return r.Answer != nil }
 // error when the server answered none.
 func (r SyncPlayGetGroupResponse) Record() (GroupInfoDto, error) {
 	if r.Answer == nil {
-		return GroupInfoDto{}, errors.New("SyncPlayGetGroup answered no GroupInfoDto")
+		return GroupInfoDto{}, errors.New("no GroupInfoDto answered by SyncPlayGetGroup")
 	}
 
 	return *r.Answer, nil

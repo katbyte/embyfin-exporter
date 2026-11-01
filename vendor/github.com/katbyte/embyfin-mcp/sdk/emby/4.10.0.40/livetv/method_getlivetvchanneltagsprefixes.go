@@ -14,8 +14,7 @@ import (
 // GetLiveTvChannelTagsPrefixes calls GET /LiveTv/ChannelTags/Prefixes. Gets live tv channel tag prefixes.
 func (c Client) GetLiveTvChannelTagsPrefixes(ctx context.Context, options ...emby.GetLiveTvChannelTagsPrefixesOptions) (result emby.GetLiveTvChannelTagsPrefixesResponse, err error) {
 	if len(options) > 1 {
-		err = fmt.Errorf("GetLiveTvChannelTagsPrefixes takes one options struct at most, not %d", len(options))
-		return
+		return result, fmt.Errorf("at most one options struct for GetLiveTvChannelTagsPrefixes, not %d", len(options))
 	}
 	var option emby.GetLiveTvChannelTagsPrefixesOptions
 	if len(options) == 1 {
@@ -35,7 +34,7 @@ func (c Client) GetLiveTvChannelTagsPrefixes(ctx context.Context, options ...emb
 
 	req, err := c.Client.NewRequest(ctx, opts)
 	if err != nil {
-		return
+		return result, err
 	}
 
 	var resp *client.Response
@@ -44,16 +43,16 @@ func (c Client) GetLiveTvChannelTagsPrefixes(ctx context.Context, options ...emb
 		result.HttpResponse = resp.Response
 	}
 	if err != nil {
-		return
+		return result, err
 	}
 
 	if resp.StatusCode == http.StatusNoContent {
-		return
+		return result, nil
 	}
 
-	if err = resp.Unmarshal(&result.Answer); err != nil {
-		return
+	if err := resp.Unmarshal(&result.Answer); err != nil {
+		return result, err
 	}
 
-	return
+	return result, nil
 }

@@ -31,7 +31,7 @@ func (r GetRemoteImagesResponse) Answered() bool { return r.Answer != nil }
 // error when the server answered none.
 func (r GetRemoteImagesResponse) Record() (RemoteImageResult, error) {
 	if r.Answer == nil {
-		return RemoteImageResult{}, errors.New("GetRemoteImages answered no RemoteImageResult")
+		return RemoteImageResult{}, errors.New("no RemoteImageResult answered by GetRemoteImages")
 	}
 
 	return *r.Answer, nil
@@ -57,8 +57,7 @@ type GetRemoteImagesOptions struct {
 
 // ToHeaders returns the header parameters the options set.
 func (o GetRemoteImagesOptions) ToHeaders() *client.Headers {
-	out := client.Headers{}
-	return &out
+	return &client.Headers{}
 }
 
 // ToQuery returns the query parameters the options set.

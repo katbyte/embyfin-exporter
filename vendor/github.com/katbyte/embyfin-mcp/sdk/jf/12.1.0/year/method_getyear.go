@@ -6,6 +6,7 @@ import (
 	"context"
 	"fmt"
 	"net/http"
+	"strconv"
 
 	"github.com/katbyte/embyfin-mcp/sdk/jf/12.1.0/jf"
 	"github.com/katbyte/pandorest/client"
@@ -15,8 +16,7 @@ import (
 func (c Client) GetYear(ctx context.Context, year int, userId ...jf.UserID) (result jf.GetYearResponse, err error) {
 	var option jf.GetYearOptions
 	if len(userId) > 1 {
-		err = fmt.Errorf("GetYear takes one userId at most, not %d", len(userId))
-		return
+		return result, fmt.Errorf("at most one userId for GetYear, not %d", len(userId))
 	}
 	if len(userId) == 1 {
 		option.UserId = userId[0]
@@ -30,12 +30,12 @@ func (c Client) GetYear(ctx context.Context, year int, userId ...jf.UserID) (res
 		HTTPMethod:    http.MethodGet,
 		Operation:     "GetYear",
 		OptionsObject: option,
-		Path:          fmt.Sprintf("/Years/%d", year),
+		Path:          "/Years/" + strconv.Itoa(year),
 	}
 
 	req, err := c.Client.NewRequest(ctx, opts)
 	if err != nil {
-		return
+		return result, err
 	}
 
 	var resp *client.Response
@@ -44,15 +44,15 @@ func (c Client) GetYear(ctx context.Context, year int, userId ...jf.UserID) (res
 		result.HttpResponse = resp.Response
 	}
 	if err != nil {
-		return
+		return result, err
 	}
 
 	var answer jf.BaseItemDto
 	result.Answer = &answer
-	if err = resp.Unmarshal(result.Answer); err != nil {
-		return
+	if err := resp.Unmarshal(result.Answer); err != nil {
+		return result, err
 	}
 	result.BaseItemDto = result.Answer
 
-	return
+	return result, nil
 }

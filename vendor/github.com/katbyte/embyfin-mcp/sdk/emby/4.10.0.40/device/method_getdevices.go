@@ -15,8 +15,7 @@ import (
 func (c Client) GetDevices(ctx context.Context, sortOrder ...string) (result emby.GetDevicesResponse, err error) {
 	var option emby.GetDevicesOptions
 	if len(sortOrder) > 1 {
-		err = fmt.Errorf("GetDevices takes one sortOrder at most, not %d", len(sortOrder))
-		return
+		return result, fmt.Errorf("at most one sortOrder for GetDevices, not %d", len(sortOrder))
 	}
 	if len(sortOrder) == 1 {
 		option.SortOrder = sortOrder[0]
@@ -36,7 +35,7 @@ func (c Client) GetDevices(ctx context.Context, sortOrder ...string) (result emb
 
 	req, err := c.Client.NewRequest(ctx, opts)
 	if err != nil {
-		return
+		return result, err
 	}
 
 	var resp *client.Response
@@ -45,19 +44,19 @@ func (c Client) GetDevices(ctx context.Context, sortOrder ...string) (result emb
 		result.HttpResponse = resp.Response
 	}
 	if err != nil {
-		return
+		return result, err
 	}
 
 	if resp.StatusCode == http.StatusNoContent {
-		return
+		return result, nil
 	}
 
 	var answer emby.QueryResultDevicesDeviceInfo
 	result.Answer = &answer
-	if err = resp.Unmarshal(result.Answer); err != nil {
-		return
+	if err := resp.Unmarshal(result.Answer); err != nil {
+		return result, err
 	}
 	result.QueryResultDevicesDeviceInfo = result.Answer
 
-	return
+	return result, nil
 }

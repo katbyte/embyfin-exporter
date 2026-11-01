@@ -30,7 +30,7 @@ func (r GetItemsByIdPlaybackInfoResponse) Answered() bool { return r.Answer != n
 // error when the server answered none.
 func (r GetItemsByIdPlaybackInfoResponse) Record() (PlaybackInfoResponse, error) {
 	if r.Answer == nil {
-		return PlaybackInfoResponse{}, errors.New("GetItemsByIdPlaybackInfo answered no PlaybackInfoResponse")
+		return PlaybackInfoResponse{}, errors.New("no PlaybackInfoResponse answered by GetItemsByIdPlaybackInfo")
 	}
 
 	return *r.Answer, nil
@@ -44,8 +44,7 @@ type GetItemsByIdPlaybackInfoOptions struct {
 
 // ToHeaders returns the header parameters the options set.
 func (o GetItemsByIdPlaybackInfoOptions) ToHeaders() *client.Headers {
-	out := client.Headers{}
-	return &out
+	return &client.Headers{}
 }
 
 // ToQuery returns the query parameters the options set.

@@ -31,7 +31,7 @@ func (r GetRecordingsResponse) Answered() bool { return r.Answer != nil }
 // error when the server answered none.
 func (r GetRecordingsResponse) Record() (BaseItemDtoQueryResult, error) {
 	if r.Answer == nil {
-		return BaseItemDtoQueryResult{}, errors.New("GetRecordings answered no BaseItemDtoQueryResult")
+		return BaseItemDtoQueryResult{}, errors.New("no BaseItemDtoQueryResult answered by GetRecordings")
 	}
 
 	return *r.Answer, nil
@@ -99,8 +99,7 @@ type GetRecordingsOptions struct {
 
 // ToHeaders returns the header parameters the options set.
 func (o GetRecordingsOptions) ToHeaders() *client.Headers {
-	out := client.Headers{}
-	return &out
+	return &client.Headers{}
 }
 
 // ToQuery returns the query parameters the options set.

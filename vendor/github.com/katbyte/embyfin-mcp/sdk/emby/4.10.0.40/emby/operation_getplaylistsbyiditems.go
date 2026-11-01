@@ -31,7 +31,7 @@ func (r GetPlaylistsByIdItemsResponse) Answered() bool { return r.Answer != nil 
 // error when the server answered none.
 func (r GetPlaylistsByIdItemsResponse) Record() (QueryResultBaseItemDto, error) {
 	if r.Answer == nil {
-		return QueryResultBaseItemDto{}, errors.New("GetPlaylistsByIdItems answered no QueryResultBaseItemDto")
+		return QueryResultBaseItemDto{}, errors.New("no QueryResultBaseItemDto answered by GetPlaylistsByIdItems")
 	}
 
 	return *r.Answer, nil
@@ -71,8 +71,7 @@ type GetPlaylistsByIdItemsOptions struct {
 
 // ToHeaders returns the header parameters the options set.
 func (o GetPlaylistsByIdItemsOptions) ToHeaders() *client.Headers {
-	out := client.Headers{}
-	return &out
+	return &client.Headers{}
 }
 
 // ToQuery returns the query parameters the options set.

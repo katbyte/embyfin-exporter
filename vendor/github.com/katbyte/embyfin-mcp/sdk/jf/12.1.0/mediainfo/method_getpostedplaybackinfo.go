@@ -15,8 +15,7 @@ import (
 // GetPostedPlaybackInfo calls POST /Items/{itemId}/PlaybackInfo. Gets live playback media info for an item.
 func (c Client) GetPostedPlaybackInfo(ctx context.Context, itemId jf.ItemID, input jf.PlaybackInfoDto, options ...jf.GetPostedPlaybackInfoOptions) (result jf.GetPostedPlaybackInfoResponse, err error) {
 	if len(options) > 1 {
-		err = fmt.Errorf("GetPostedPlaybackInfo takes one options struct at most, not %d", len(options))
-		return
+		return result, fmt.Errorf("at most one options struct for GetPostedPlaybackInfo, not %d", len(options))
 	}
 	var option jf.GetPostedPlaybackInfoOptions
 	if len(options) == 1 {
@@ -32,16 +31,16 @@ func (c Client) GetPostedPlaybackInfo(ctx context.Context, itemId jf.ItemID, inp
 		HTTPMethod:    http.MethodPost,
 		Operation:     "GetPostedPlaybackInfo",
 		OptionsObject: option,
-		Path:          fmt.Sprintf("/Items/%s/PlaybackInfo", url.PathEscape(string(itemId))),
+		Path:          "/Items/" + url.PathEscape(string(itemId)) + "/PlaybackInfo",
 	}
 
 	req, err := c.Client.NewRequest(ctx, opts)
 	if err != nil {
-		return
+		return result, err
 	}
 
-	if err = req.Marshal(input); err != nil {
-		return
+	if err := req.Marshal(input); err != nil {
+		return result, err
 	}
 
 	var resp *client.Response
@@ -50,15 +49,15 @@ func (c Client) GetPostedPlaybackInfo(ctx context.Context, itemId jf.ItemID, inp
 		result.HttpResponse = resp.Response
 	}
 	if err != nil {
-		return
+		return result, err
 	}
 
 	var answer jf.PlaybackInfoResponse
 	result.Answer = &answer
-	if err = resp.Unmarshal(result.Answer); err != nil {
-		return
+	if err := resp.Unmarshal(result.Answer); err != nil {
+		return result, err
 	}
 	result.PlaybackInfoResponse = result.Answer
 
-	return
+	return result, nil
 }

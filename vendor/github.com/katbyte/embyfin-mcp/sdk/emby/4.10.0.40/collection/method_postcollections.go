@@ -14,8 +14,7 @@ import (
 // PostCollections calls POST /Collections. Creates a new collection.
 func (c Client) PostCollections(ctx context.Context, options ...emby.PostCollectionsOptions) (result emby.PostCollectionsResponse, err error) {
 	if len(options) > 1 {
-		err = fmt.Errorf("PostCollections takes one options struct at most, not %d", len(options))
-		return
+		return result, fmt.Errorf("at most one options struct for PostCollections, not %d", len(options))
 	}
 	var option emby.PostCollectionsOptions
 	if len(options) == 1 {
@@ -36,7 +35,7 @@ func (c Client) PostCollections(ctx context.Context, options ...emby.PostCollect
 
 	req, err := c.Client.NewRequest(ctx, opts)
 	if err != nil {
-		return
+		return result, err
 	}
 
 	var resp *client.Response
@@ -45,19 +44,19 @@ func (c Client) PostCollections(ctx context.Context, options ...emby.PostCollect
 		result.HttpResponse = resp.Response
 	}
 	if err != nil {
-		return
+		return result, err
 	}
 
 	if resp.StatusCode == http.StatusNoContent {
-		return
+		return result, nil
 	}
 
 	var answer emby.CollectionsCollectionCreationResult
 	result.Answer = &answer
-	if err = resp.Unmarshal(result.Answer); err != nil {
-		return
+	if err := resp.Unmarshal(result.Answer); err != nil {
+		return result, err
 	}
 	result.CollectionsCollectionCreationResult = result.Answer
 
-	return
+	return result, nil
 }

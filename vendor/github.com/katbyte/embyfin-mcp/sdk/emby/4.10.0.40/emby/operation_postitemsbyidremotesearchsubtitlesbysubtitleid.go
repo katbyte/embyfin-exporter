@@ -32,7 +32,7 @@ func (r PostItemsByIdRemoteSearchSubtitlesBySubtitleIdResponse) Answered() bool 
 // error when the server answered none.
 func (r PostItemsByIdRemoteSearchSubtitlesBySubtitleIdResponse) Record() (SubtitlesSubtitleDownloadResult, error) {
 	if r.Answer == nil {
-		return SubtitlesSubtitleDownloadResult{}, errors.New("PostItemsByIdRemoteSearchSubtitlesBySubtitleId answered no SubtitlesSubtitleDownloadResult")
+		return SubtitlesSubtitleDownloadResult{}, errors.New("no SubtitlesSubtitleDownloadResult answered by PostItemsByIdRemoteSearchSubtitlesBySubtitleId")
 	}
 
 	return *r.Answer, nil
@@ -46,8 +46,7 @@ type PostItemsByIdRemoteSearchSubtitlesBySubtitleIdOptions struct {
 
 // ToHeaders returns the header parameters the options set.
 func (o PostItemsByIdRemoteSearchSubtitlesBySubtitleIdOptions) ToHeaders() *client.Headers {
-	out := client.Headers{}
-	return &out
+	return &client.Headers{}
 }
 
 // ToQuery returns the query parameters the options set.

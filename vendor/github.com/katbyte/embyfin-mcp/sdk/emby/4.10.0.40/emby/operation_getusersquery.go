@@ -31,7 +31,7 @@ func (r GetUsersQueryResponse) Answered() bool { return r.Answer != nil }
 // error when the server answered none.
 func (r GetUsersQueryResponse) Record() (QueryResultUserDto, error) {
 	if r.Answer == nil {
-		return QueryResultUserDto{}, errors.New("GetUsersQuery answered no QueryResultUserDto")
+		return QueryResultUserDto{}, errors.New("no QueryResultUserDto answered by GetUsersQuery")
 	}
 
 	return *r.Answer, nil
@@ -60,8 +60,7 @@ type GetUsersQueryOptions struct {
 
 // ToHeaders returns the header parameters the options set.
 func (o GetUsersQueryOptions) ToHeaders() *client.Headers {
-	out := client.Headers{}
-	return &out
+	return &client.Headers{}
 }
 
 // ToQuery returns the query parameters the options set.

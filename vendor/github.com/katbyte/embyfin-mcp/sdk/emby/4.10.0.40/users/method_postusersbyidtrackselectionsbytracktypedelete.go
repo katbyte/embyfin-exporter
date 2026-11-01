@@ -4,7 +4,6 @@ package users
 
 import (
 	"context"
-	"fmt"
 	"net/http"
 	"net/url"
 
@@ -21,12 +20,12 @@ func (c Client) PostUsersByIdTrackSelectionsByTrackTypeDelete(ctx context.Contex
 		},
 		HTTPMethod: http.MethodPost,
 		Operation:  "PostUsersByIdTrackSelectionsByTrackTypeDelete",
-		Path:       fmt.Sprintf("/Users/%s/TrackSelections/%s/Delete", url.PathEscape(string(id)), url.PathEscape(trackType)),
+		Path:       "/Users/" + url.PathEscape(string(id)) + "/TrackSelections/" + url.PathEscape(trackType) + "/Delete",
 	}
 
 	req, err := c.Client.NewRequest(ctx, opts)
 	if err != nil {
-		return
+		return result, err
 	}
 
 	var resp *client.Response
@@ -35,8 +34,8 @@ func (c Client) PostUsersByIdTrackSelectionsByTrackTypeDelete(ctx context.Contex
 		result.HttpResponse = resp.Response
 	}
 	if err != nil {
-		return
+		return result, err
 	}
 
-	return
+	return result, nil
 }

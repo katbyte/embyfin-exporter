@@ -4,7 +4,6 @@ package bif
 
 import (
 	"context"
-	"fmt"
 	"net/http"
 	"net/url"
 
@@ -26,12 +25,12 @@ func (c Client) GetItemsByIdThumbnailSet(ctx context.Context, id emby.ItemID, wi
 		HTTPMethod:    http.MethodGet,
 		Operation:     "GetItemsByIdThumbnailSet",
 		OptionsObject: option,
-		Path:          fmt.Sprintf("/Items/%s/ThumbnailSet", url.PathEscape(string(id))),
+		Path:          "/Items/" + url.PathEscape(string(id)) + "/ThumbnailSet",
 	}
 
 	req, err := c.Client.NewRequest(ctx, opts)
 	if err != nil {
-		return
+		return result, err
 	}
 
 	var resp *client.Response
@@ -40,19 +39,19 @@ func (c Client) GetItemsByIdThumbnailSet(ctx context.Context, id emby.ItemID, wi
 		result.HttpResponse = resp.Response
 	}
 	if err != nil {
-		return
+		return result, err
 	}
 
 	if resp.StatusCode == http.StatusNoContent {
-		return
+		return result, nil
 	}
 
 	var answer emby.RokuMetadataApiThumbnailSetInfo
 	result.Answer = &answer
-	if err = resp.Unmarshal(result.Answer); err != nil {
-		return
+	if err := resp.Unmarshal(result.Answer); err != nil {
+		return result, err
 	}
 	result.RokuMetadataApiThumbnailSetInfo = result.Answer
 
-	return
+	return result, nil
 }

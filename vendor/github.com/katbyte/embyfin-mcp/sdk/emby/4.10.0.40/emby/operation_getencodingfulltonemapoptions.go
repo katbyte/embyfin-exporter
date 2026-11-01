@@ -28,7 +28,7 @@ func (r GetEncodingFullToneMapOptionsResponse) Answered() bool { return r.Answer
 // error when the server answered none.
 func (r GetEncodingFullToneMapOptionsResponse) Record() (EditObjectContainer, error) {
 	if r.Answer == nil {
-		return EditObjectContainer{}, errors.New("GetEncodingFullToneMapOptions answered no EditObjectContainer")
+		return EditObjectContainer{}, errors.New("no EditObjectContainer answered by GetEncodingFullToneMapOptions")
 	}
 
 	return *r.Answer, nil

@@ -4,7 +4,6 @@ package lyric
 
 import (
 	"context"
-	"fmt"
 	"net/http"
 	"net/url"
 
@@ -21,12 +20,12 @@ func (c Client) GetLyrics(ctx context.Context, itemId jf.ItemID) (result jf.GetL
 		},
 		HTTPMethod: http.MethodGet,
 		Operation:  "GetLyrics",
-		Path:       fmt.Sprintf("/Audio/%s/Lyrics", url.PathEscape(string(itemId))),
+		Path:       "/Audio/" + url.PathEscape(string(itemId)) + "/Lyrics",
 	}
 
 	req, err := c.Client.NewRequest(ctx, opts)
 	if err != nil {
-		return
+		return result, err
 	}
 
 	var resp *client.Response
@@ -35,15 +34,15 @@ func (c Client) GetLyrics(ctx context.Context, itemId jf.ItemID) (result jf.GetL
 		result.HttpResponse = resp.Response
 	}
 	if err != nil {
-		return
+		return result, err
 	}
 
 	var answer jf.LyricDto
 	result.Answer = &answer
-	if err = resp.Unmarshal(result.Answer); err != nil {
-		return
+	if err := resp.Unmarshal(result.Answer); err != nil {
+		return result, err
 	}
 	result.LyricDto = result.Answer
 
-	return
+	return result, nil
 }

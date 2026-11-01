@@ -21,8 +21,7 @@ type DeleteLiveTvChannelMappingOptionsOptions struct {
 
 // ToHeaders returns the header parameters the options set.
 func (o DeleteLiveTvChannelMappingOptionsOptions) ToHeaders() *client.Headers {
-	out := client.Headers{}
-	return &out
+	return &client.Headers{}
 }
 
 // ToQuery returns the query parameters the options set.

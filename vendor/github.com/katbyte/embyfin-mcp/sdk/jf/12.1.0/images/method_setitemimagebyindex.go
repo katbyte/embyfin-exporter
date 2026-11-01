@@ -4,10 +4,10 @@ package images
 
 import (
 	"context"
-	"fmt"
 	"io"
 	"net/http"
 	"net/url"
+	"strconv"
 
 	"github.com/katbyte/embyfin-mcp/sdk/jf/12.1.0/jf"
 	"github.com/katbyte/pandorest/client"
@@ -25,16 +25,16 @@ func (c Client) SetItemImageByIndex(ctx context.Context, itemId jf.ItemID, image
 		},
 		HTTPMethod: http.MethodPost,
 		Operation:  "SetItemImageByIndex",
-		Path:       fmt.Sprintf("/Items/%s/Images/%s/%d", url.PathEscape(string(itemId)), url.PathEscape(string(imageType)), imageIndex),
+		Path:       "/Items/" + url.PathEscape(string(itemId)) + "/Images/" + url.PathEscape(string(imageType)) + "/" + strconv.Itoa(imageIndex),
 	}
 
 	req, err := c.Client.NewRequest(ctx, opts)
 	if err != nil {
-		return
+		return result, err
 	}
 
-	if err = req.SetBody(input, contentType); err != nil {
-		return
+	if err := req.SetBody(input, contentType); err != nil {
+		return result, err
 	}
 
 	var resp *client.Response
@@ -43,8 +43,8 @@ func (c Client) SetItemImageByIndex(ctx context.Context, itemId jf.ItemID, image
 		result.HttpResponse = resp.Response
 	}
 	if err != nil {
-		return
+		return result, err
 	}
 
-	return
+	return result, nil
 }

@@ -4,7 +4,6 @@ package livetv
 
 import (
 	"context"
-	"fmt"
 	"net/http"
 	"net/url"
 
@@ -20,12 +19,12 @@ func (c Client) CancelTimer(ctx context.Context, timerId string) (result jf.Canc
 		},
 		HTTPMethod: http.MethodDelete,
 		Operation:  "CancelTimer",
-		Path:       fmt.Sprintf("/LiveTv/Timers/%s", url.PathEscape(timerId)),
+		Path:       "/LiveTv/Timers/" + url.PathEscape(timerId),
 	}
 
 	req, err := c.Client.NewRequest(ctx, opts)
 	if err != nil {
-		return
+		return result, err
 	}
 
 	var resp *client.Response
@@ -34,8 +33,8 @@ func (c Client) CancelTimer(ctx context.Context, timerId string) (result jf.Canc
 		result.HttpResponse = resp.Response
 	}
 	if err != nil {
-		return
+		return result, err
 	}
 
-	return
+	return result, nil
 }

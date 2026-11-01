@@ -15,8 +15,7 @@ import (
 // GetStreamLanguages calls GET /StreamLanguages. Gets items based on a query.
 func (c Client) GetStreamLanguages(ctx context.Context, options ...emby.GetStreamLanguagesOptions) (result emby.GetStreamLanguagesResponse, err error) {
 	if len(options) > 1 {
-		err = fmt.Errorf("GetStreamLanguages takes one options struct at most, not %d", len(options))
-		return
+		return result, fmt.Errorf("at most one options struct for GetStreamLanguages, not %d", len(options))
 	}
 	var option emby.GetStreamLanguagesOptions
 	if len(options) == 1 {
@@ -37,7 +36,7 @@ func (c Client) GetStreamLanguages(ctx context.Context, options ...emby.GetStrea
 
 	req, err := c.Client.NewRequest(ctx, opts)
 	if err != nil {
-		return
+		return result, err
 	}
 
 	var resp *client.Response
@@ -46,21 +45,21 @@ func (c Client) GetStreamLanguages(ctx context.Context, options ...emby.GetStrea
 		result.HttpResponse = resp.Response
 	}
 	if err != nil {
-		return
+		return result, err
 	}
 
 	if resp.StatusCode == http.StatusNoContent {
-		return
+		return result, nil
 	}
 
 	var answer emby.QueryResultUserLibraryTagItem
 	result.Answer = &answer
-	if err = resp.Unmarshal(result.Answer); err != nil {
-		return
+	if err := resp.Unmarshal(result.Answer); err != nil {
+		return result, err
 	}
 	result.QueryResultUserLibraryTagItem = result.Answer
 
-	return
+	return result, nil
 }
 
 // GetStreamLanguagesComplete calls GetStreamLanguages page by page from options.StartIndex until every
@@ -68,8 +67,7 @@ func (c Client) GetStreamLanguages(ctx context.Context, options ...emby.GetStrea
 // unset.
 func (c Client) GetStreamLanguagesComplete(ctx context.Context, options ...emby.GetStreamLanguagesOptions) (result emby.GetStreamLanguagesCompleteResult, err error) {
 	if len(options) > 1 {
-		err = fmt.Errorf("GetStreamLanguagesComplete takes one options struct at most, not %d", len(options))
-		return
+		return result, fmt.Errorf("at most one options struct for GetStreamLanguagesComplete, not %d", len(options))
 	}
 	var option emby.GetStreamLanguagesOptions
 	if len(options) == 1 {
@@ -82,7 +80,7 @@ func (c Client) GetStreamLanguagesComplete(ctx context.Context, options ...emby.
 	}
 	option.Limit = &limit
 	start := 0
-	if option.StartIndex != nil {
+	if option.StartIndex != nil && *option.StartIndex > 0 {
 		start = *option.StartIndex
 	}
 	for {
@@ -90,11 +88,10 @@ func (c Client) GetStreamLanguagesComplete(ctx context.Context, options ...emby.
 		page, err = c.GetStreamLanguages(ctx, option)
 		result.LatestHttpResponse = page.HttpResponse
 		if err != nil {
-			err = fmt.Errorf("loading results: %w", err)
-			return
+			return result, fmt.Errorf("loading results: %w", err)
 		}
 		if page.Answer == nil || len(page.Answer.Items) == 0 {
-			return
+			return result, nil
 		}
 		result.Items = append(result.Items, page.Answer.Items...)
 		start += len(page.Answer.Items)
@@ -102,7 +99,7 @@ func (c Client) GetStreamLanguagesComplete(ctx context.Context, options ...emby.
 		// a short page is the last; so is reaching the total, when the server
 		// reports one (a list may report 0 whatever it holds)
 		if len(page.Answer.Items) < limit || page.Answer.TotalRecordCount > 0 && start >= page.Answer.TotalRecordCount {
-			return
+			return result, nil
 		}
 	}
 }
@@ -124,7 +121,7 @@ func (c Client) GetStreamLanguagesEach(ctx context.Context, options ...emby.GetS
 	return func(yield func(emby.UserLibraryTagItem, error) bool) {
 		var zero emby.UserLibraryTagItem
 		if len(options) > 1 {
-			yield(zero, fmt.Errorf("GetStreamLanguagesEach takes one options struct at most, not %d", len(options)))
+			yield(zero, fmt.Errorf("at most one options struct for GetStreamLanguagesEach, not %d", len(options)))
 			return
 		}
 		var option emby.GetStreamLanguagesOptions
@@ -138,7 +135,7 @@ func (c Client) GetStreamLanguagesEach(ctx context.Context, options ...emby.GetS
 		}
 		option.Limit = &limit
 		start := 0
-		if option.StartIndex != nil {
+		if option.StartIndex != nil && *option.StartIndex > 0 {
 			start = *option.StartIndex
 		}
 		for {
@@ -150,8 +147,8 @@ func (c Client) GetStreamLanguagesEach(ctx context.Context, options ...emby.GetS
 			if page.Answer == nil || len(page.Answer.Items) == 0 {
 				return
 			}
-			for _, item := range page.Answer.Items {
-				if !yield(item, nil) {
+			for i := range page.Answer.Items {
+				if !yield(page.Answer.Items[i], nil) {
 					return
 				}
 			}

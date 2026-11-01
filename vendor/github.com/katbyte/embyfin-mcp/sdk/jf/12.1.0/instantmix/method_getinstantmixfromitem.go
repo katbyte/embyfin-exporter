@@ -15,8 +15,7 @@ import (
 // GetInstantMixFromItem calls GET /Items/{itemId}/InstantMix. Creates an instant playlist based on a given item.
 func (c Client) GetInstantMixFromItem(ctx context.Context, itemId jf.ItemID, options ...jf.GetInstantMixFromItemOptions) (result jf.GetInstantMixFromItemResponse, err error) {
 	if len(options) > 1 {
-		err = fmt.Errorf("GetInstantMixFromItem takes one options struct at most, not %d", len(options))
-		return
+		return result, fmt.Errorf("at most one options struct for GetInstantMixFromItem, not %d", len(options))
 	}
 	var option jf.GetInstantMixFromItemOptions
 	if len(options) == 1 {
@@ -31,12 +30,12 @@ func (c Client) GetInstantMixFromItem(ctx context.Context, itemId jf.ItemID, opt
 		HTTPMethod:    http.MethodGet,
 		Operation:     "GetInstantMixFromItem",
 		OptionsObject: option,
-		Path:          fmt.Sprintf("/Items/%s/InstantMix", url.PathEscape(string(itemId))),
+		Path:          "/Items/" + url.PathEscape(string(itemId)) + "/InstantMix",
 	}
 
 	req, err := c.Client.NewRequest(ctx, opts)
 	if err != nil {
-		return
+		return result, err
 	}
 
 	var resp *client.Response
@@ -45,15 +44,15 @@ func (c Client) GetInstantMixFromItem(ctx context.Context, itemId jf.ItemID, opt
 		result.HttpResponse = resp.Response
 	}
 	if err != nil {
-		return
+		return result, err
 	}
 
 	var answer jf.BaseItemDtoQueryResult
 	result.Answer = &answer
-	if err = resp.Unmarshal(result.Answer); err != nil {
-		return
+	if err := resp.Unmarshal(result.Answer); err != nil {
+		return result, err
 	}
 	result.BaseItemDtoQueryResult = result.Answer
 
-	return
+	return result, nil
 }

@@ -4,7 +4,6 @@ package plugins
 
 import (
 	"context"
-	"fmt"
 	"net/http"
 	"net/url"
 
@@ -13,19 +12,19 @@ import (
 )
 
 // UninstallPluginByVersion calls DELETE /Plugins/{pluginId}/{version}. Uninstalls a plugin by version.
-func (c Client) UninstallPluginByVersion(ctx context.Context, pluginId string, version string) (result jf.UninstallPluginByVersionResponse, err error) {
+func (c Client) UninstallPluginByVersion(ctx context.Context, pluginId, version string) (result jf.UninstallPluginByVersionResponse, err error) {
 	opts := client.RequestOptions{
 		ExpectedStatusCodes: []int{
 			http.StatusNoContent,
 		},
 		HTTPMethod: http.MethodDelete,
 		Operation:  "UninstallPluginByVersion",
-		Path:       fmt.Sprintf("/Plugins/%s/%s", url.PathEscape(pluginId), url.PathEscape(version)),
+		Path:       "/Plugins/" + url.PathEscape(pluginId) + "/" + url.PathEscape(version),
 	}
 
 	req, err := c.Client.NewRequest(ctx, opts)
 	if err != nil {
-		return
+		return result, err
 	}
 
 	var resp *client.Response
@@ -34,8 +33,8 @@ func (c Client) UninstallPluginByVersion(ctx context.Context, pluginId string, v
 		result.HttpResponse = resp.Response
 	}
 	if err != nil {
-		return
+		return result, err
 	}
 
-	return
+	return result, nil
 }

@@ -31,7 +31,7 @@ func (r PostUsersByUserIdItemsByIdHideFromResumeResponse) Answered() bool { retu
 // error when the server answered none.
 func (r PostUsersByUserIdItemsByIdHideFromResumeResponse) Record() (UserItemDataDto, error) {
 	if r.Answer == nil {
-		return UserItemDataDto{}, errors.New("PostUsersByUserIdItemsByIdHideFromResume answered no UserItemDataDto")
+		return UserItemDataDto{}, errors.New("no UserItemDataDto answered by PostUsersByUserIdItemsByIdHideFromResume")
 	}
 
 	return *r.Answer, nil
@@ -45,8 +45,7 @@ type PostUsersByUserIdItemsByIdHideFromResumeOptions struct {
 
 // ToHeaders returns the header parameters the options set.
 func (o PostUsersByUserIdItemsByIdHideFromResumeOptions) ToHeaders() *client.Headers {
-	out := client.Headers{}
-	return &out
+	return &client.Headers{}
 }
 
 // ToQuery returns the query parameters the options set.

@@ -4,7 +4,6 @@ package session
 
 import (
 	"context"
-	"fmt"
 	"net/http"
 	"net/url"
 
@@ -21,16 +20,16 @@ func (c Client) SendFullGeneralCommand(ctx context.Context, sessionId jf.Session
 		},
 		HTTPMethod: http.MethodPost,
 		Operation:  "SendFullGeneralCommand",
-		Path:       fmt.Sprintf("/Sessions/%s/Command", url.PathEscape(string(sessionId))),
+		Path:       "/Sessions/" + url.PathEscape(string(sessionId)) + "/Command",
 	}
 
 	req, err := c.Client.NewRequest(ctx, opts)
 	if err != nil {
-		return
+		return result, err
 	}
 
-	if err = req.Marshal(input); err != nil {
-		return
+	if err := req.Marshal(input); err != nil {
+		return result, err
 	}
 
 	var resp *client.Response
@@ -39,8 +38,8 @@ func (c Client) SendFullGeneralCommand(ctx context.Context, sessionId jf.Session
 		result.HttpResponse = resp.Response
 	}
 	if err != nil {
-		return
+		return result, err
 	}
 
-	return
+	return result, nil
 }

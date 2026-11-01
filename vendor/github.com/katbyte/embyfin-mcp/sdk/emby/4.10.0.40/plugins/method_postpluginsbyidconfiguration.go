@@ -4,7 +4,6 @@ package plugins
 
 import (
 	"context"
-	"fmt"
 	"io"
 	"net/http"
 	"net/url"
@@ -25,16 +24,16 @@ func (c Client) PostPluginsByIdConfiguration(ctx context.Context, id string, inp
 		},
 		HTTPMethod: http.MethodPost,
 		Operation:  "PostPluginsByIdConfiguration",
-		Path:       fmt.Sprintf("/Plugins/%s/Configuration", url.PathEscape(id)),
+		Path:       "/Plugins/" + url.PathEscape(id) + "/Configuration",
 	}
 
 	req, err := c.Client.NewRequest(ctx, opts)
 	if err != nil {
-		return
+		return result, err
 	}
 
-	if err = req.SetBody(input, contentType); err != nil {
-		return
+	if err := req.SetBody(input, contentType); err != nil {
+		return result, err
 	}
 
 	var resp *client.Response
@@ -43,8 +42,8 @@ func (c Client) PostPluginsByIdConfiguration(ctx context.Context, id string, inp
 		result.HttpResponse = resp.Response
 	}
 	if err != nil {
-		return
+		return result, err
 	}
 
-	return
+	return result, nil
 }

@@ -15,8 +15,7 @@ import (
 // GetSeasons calls GET /Shows/{seriesId}/Seasons. Gets seasons for a tv series.
 func (c Client) GetSeasons(ctx context.Context, seriesId jf.ItemID, options ...jf.GetSeasonsOptions) (result jf.GetSeasonsResponse, err error) {
 	if len(options) > 1 {
-		err = fmt.Errorf("GetSeasons takes one options struct at most, not %d", len(options))
-		return
+		return result, fmt.Errorf("at most one options struct for GetSeasons, not %d", len(options))
 	}
 	var option jf.GetSeasonsOptions
 	if len(options) == 1 {
@@ -31,12 +30,12 @@ func (c Client) GetSeasons(ctx context.Context, seriesId jf.ItemID, options ...j
 		HTTPMethod:    http.MethodGet,
 		Operation:     "GetSeasons",
 		OptionsObject: option,
-		Path:          fmt.Sprintf("/Shows/%s/Seasons", url.PathEscape(string(seriesId))),
+		Path:          "/Shows/" + url.PathEscape(string(seriesId)) + "/Seasons",
 	}
 
 	req, err := c.Client.NewRequest(ctx, opts)
 	if err != nil {
-		return
+		return result, err
 	}
 
 	var resp *client.Response
@@ -45,15 +44,15 @@ func (c Client) GetSeasons(ctx context.Context, seriesId jf.ItemID, options ...j
 		result.HttpResponse = resp.Response
 	}
 	if err != nil {
-		return
+		return result, err
 	}
 
 	var answer jf.BaseItemDtoQueryResult
 	result.Answer = &answer
-	if err = resp.Unmarshal(result.Answer); err != nil {
-		return
+	if err := resp.Unmarshal(result.Answer); err != nil {
+		return result, err
 	}
 	result.BaseItemDtoQueryResult = result.Answer
 
-	return
+	return result, nil
 }

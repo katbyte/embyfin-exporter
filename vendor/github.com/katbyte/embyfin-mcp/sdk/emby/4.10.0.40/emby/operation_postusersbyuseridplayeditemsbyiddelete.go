@@ -28,7 +28,7 @@ func (r PostUsersByUserIdPlayedItemsByIdDeleteResponse) Answered() bool { return
 // error when the server answered none.
 func (r PostUsersByUserIdPlayedItemsByIdDeleteResponse) Record() (UserItemDataDto, error) {
 	if r.Answer == nil {
-		return UserItemDataDto{}, errors.New("PostUsersByUserIdPlayedItemsByIdDelete answered no UserItemDataDto")
+		return UserItemDataDto{}, errors.New("no UserItemDataDto answered by PostUsersByUserIdPlayedItemsByIdDelete")
 	}
 
 	return *r.Answer, nil

@@ -15,8 +15,7 @@ import (
 // PostItemsByIdRefresh calls POST /Items/{Id}/Refresh. Refreshes metadata for an item.
 func (c Client) PostItemsByIdRefresh(ctx context.Context, id emby.ItemID, input emby.BaseRefreshRequest, options ...emby.PostItemsByIdRefreshOptions) (result emby.PostItemsByIdRefreshResponse, err error) {
 	if len(options) > 1 {
-		err = fmt.Errorf("PostItemsByIdRefresh takes one options struct at most, not %d", len(options))
-		return
+		return result, fmt.Errorf("at most one options struct for PostItemsByIdRefresh, not %d", len(options))
 	}
 	var option emby.PostItemsByIdRefreshOptions
 	if len(options) == 1 {
@@ -32,16 +31,16 @@ func (c Client) PostItemsByIdRefresh(ctx context.Context, id emby.ItemID, input 
 		HTTPMethod:    http.MethodPost,
 		Operation:     "PostItemsByIdRefresh",
 		OptionsObject: option,
-		Path:          fmt.Sprintf("/Items/%s/Refresh", url.PathEscape(string(id))),
+		Path:          "/Items/" + url.PathEscape(string(id)) + "/Refresh",
 	}
 
 	req, err := c.Client.NewRequest(ctx, opts)
 	if err != nil {
-		return
+		return result, err
 	}
 
-	if err = req.Marshal(input); err != nil {
-		return
+	if err := req.Marshal(input); err != nil {
+		return result, err
 	}
 
 	var resp *client.Response
@@ -50,8 +49,8 @@ func (c Client) PostItemsByIdRefresh(ctx context.Context, id emby.ItemID, input 
 		result.HttpResponse = resp.Response
 	}
 	if err != nil {
-		return
+		return result, err
 	}
 
-	return
+	return result, nil
 }

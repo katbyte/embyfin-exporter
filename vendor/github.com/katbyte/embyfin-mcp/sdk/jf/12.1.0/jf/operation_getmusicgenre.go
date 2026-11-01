@@ -30,7 +30,7 @@ func (r GetMusicGenreResponse) Answered() bool { return r.Answer != nil }
 // error when the server answered none.
 func (r GetMusicGenreResponse) Record() (BaseItemDto, error) {
 	if r.Answer == nil {
-		return BaseItemDto{}, errors.New("GetMusicGenre answered no BaseItemDto")
+		return BaseItemDto{}, errors.New("no BaseItemDto answered by GetMusicGenre")
 	}
 
 	return *r.Answer, nil
@@ -44,8 +44,7 @@ type GetMusicGenreOptions struct {
 
 // ToHeaders returns the header parameters the options set.
 func (o GetMusicGenreOptions) ToHeaders() *client.Headers {
-	out := client.Headers{}
-	return &out
+	return &client.Headers{}
 }
 
 // ToQuery returns the query parameters the options set.

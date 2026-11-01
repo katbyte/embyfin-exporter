@@ -14,8 +14,7 @@ import (
 // GetItemCounts calls GET /Items/Counts. Get item counts.
 func (c Client) GetItemCounts(ctx context.Context, options ...jf.GetItemCountsOptions) (result jf.GetItemCountsResponse, err error) {
 	if len(options) > 1 {
-		err = fmt.Errorf("GetItemCounts takes one options struct at most, not %d", len(options))
-		return
+		return result, fmt.Errorf("at most one options struct for GetItemCounts, not %d", len(options))
 	}
 	var option jf.GetItemCountsOptions
 	if len(options) == 1 {
@@ -35,7 +34,7 @@ func (c Client) GetItemCounts(ctx context.Context, options ...jf.GetItemCountsOp
 
 	req, err := c.Client.NewRequest(ctx, opts)
 	if err != nil {
-		return
+		return result, err
 	}
 
 	var resp *client.Response
@@ -44,15 +43,15 @@ func (c Client) GetItemCounts(ctx context.Context, options ...jf.GetItemCountsOp
 		result.HttpResponse = resp.Response
 	}
 	if err != nil {
-		return
+		return result, err
 	}
 
 	var answer jf.ItemCounts
 	result.Answer = &answer
-	if err = resp.Unmarshal(result.Answer); err != nil {
-		return
+	if err := resp.Unmarshal(result.Answer); err != nil {
+		return result, err
 	}
 	result.ItemCounts = result.Answer
 
-	return
+	return result, nil
 }

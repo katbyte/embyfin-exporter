@@ -30,7 +30,7 @@ func (r PostUsersAuthenticateByNameResponse) Answered() bool { return r.Answer !
 // error when the server answered none.
 func (r PostUsersAuthenticateByNameResponse) Record() (AuthenticationAuthenticationResult, error) {
 	if r.Answer == nil {
-		return AuthenticationAuthenticationResult{}, errors.New("PostUsersAuthenticateByName answered no AuthenticationAuthenticationResult")
+		return AuthenticationAuthenticationResult{}, errors.New("no AuthenticationAuthenticationResult answered by PostUsersAuthenticateByName")
 	}
 
 	return *r.Answer, nil
@@ -56,6 +56,5 @@ func (o PostUsersAuthenticateByNameOptions) ToHeaders() *client.Headers {
 
 // ToQuery returns the query parameters the options set.
 func (o PostUsersAuthenticateByNameOptions) ToQuery() *client.QueryParams {
-	out := client.QueryParams{}
-	return &out
+	return &client.QueryParams{}
 }

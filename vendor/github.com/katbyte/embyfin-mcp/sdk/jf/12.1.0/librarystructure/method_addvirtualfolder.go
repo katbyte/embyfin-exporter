@@ -14,8 +14,7 @@ import (
 // AddVirtualFolder calls POST /Library/VirtualFolders. Adds a virtual folder.
 func (c Client) AddVirtualFolder(ctx context.Context, input jf.AddVirtualFolderDto, options ...jf.AddVirtualFolderOptions) (result jf.AddVirtualFolderResponse, err error) {
 	if len(options) > 1 {
-		err = fmt.Errorf("AddVirtualFolder takes one options struct at most, not %d", len(options))
-		return
+		return result, fmt.Errorf("at most one options struct for AddVirtualFolder, not %d", len(options))
 	}
 	var option jf.AddVirtualFolderOptions
 	if len(options) == 1 {
@@ -35,11 +34,11 @@ func (c Client) AddVirtualFolder(ctx context.Context, input jf.AddVirtualFolderD
 
 	req, err := c.Client.NewRequest(ctx, opts)
 	if err != nil {
-		return
+		return result, err
 	}
 
-	if err = req.Marshal(input); err != nil {
-		return
+	if err := req.Marshal(input); err != nil {
+		return result, err
 	}
 
 	var resp *client.Response
@@ -48,8 +47,8 @@ func (c Client) AddVirtualFolder(ctx context.Context, input jf.AddVirtualFolderD
 		result.HttpResponse = resp.Response
 	}
 	if err != nil {
-		return
+		return result, err
 	}
 
-	return
+	return result, nil
 }

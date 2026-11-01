@@ -15,8 +15,7 @@ import (
 // GetItemsByIdThemeMedia calls GET /Items/{Id}/ThemeMedia. Gets theme videos and songs for an item.
 func (c Client) GetItemsByIdThemeMedia(ctx context.Context, id emby.ItemID, options ...emby.GetItemsByIdThemeMediaOptions) (result emby.GetItemsByIdThemeMediaResponse, err error) {
 	if len(options) > 1 {
-		err = fmt.Errorf("GetItemsByIdThemeMedia takes one options struct at most, not %d", len(options))
-		return
+		return result, fmt.Errorf("at most one options struct for GetItemsByIdThemeMedia, not %d", len(options))
 	}
 	var option emby.GetItemsByIdThemeMediaOptions
 	if len(options) == 1 {
@@ -32,12 +31,12 @@ func (c Client) GetItemsByIdThemeMedia(ctx context.Context, id emby.ItemID, opti
 		HTTPMethod:    http.MethodGet,
 		Operation:     "GetItemsByIdThemeMedia",
 		OptionsObject: option,
-		Path:          fmt.Sprintf("/Items/%s/ThemeMedia", url.PathEscape(string(id))),
+		Path:          "/Items/" + url.PathEscape(string(id)) + "/ThemeMedia",
 	}
 
 	req, err := c.Client.NewRequest(ctx, opts)
 	if err != nil {
-		return
+		return result, err
 	}
 
 	var resp *client.Response
@@ -46,19 +45,19 @@ func (c Client) GetItemsByIdThemeMedia(ctx context.Context, id emby.ItemID, opti
 		result.HttpResponse = resp.Response
 	}
 	if err != nil {
-		return
+		return result, err
 	}
 
 	if resp.StatusCode == http.StatusNoContent {
-		return
+		return result, nil
 	}
 
 	var answer emby.AllThemeMediaResult
 	result.Answer = &answer
-	if err = resp.Unmarshal(result.Answer); err != nil {
-		return
+	if err := resp.Unmarshal(result.Answer); err != nil {
+		return result, err
 	}
 	result.AllThemeMediaResult = result.Answer
 
-	return
+	return result, nil
 }

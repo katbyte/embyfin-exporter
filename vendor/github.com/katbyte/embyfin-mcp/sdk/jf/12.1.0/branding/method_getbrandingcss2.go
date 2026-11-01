@@ -26,7 +26,7 @@ func (c Client) GetBrandingCss2(ctx context.Context) (result jf.GetBrandingCss2R
 
 	req, err := c.Client.NewRequest(ctx, opts)
 	if err != nil {
-		return
+		return result, err
 	}
 
 	var resp *client.Response
@@ -35,8 +35,8 @@ func (c Client) GetBrandingCss2(ctx context.Context) (result jf.GetBrandingCss2R
 		result.HttpResponse = resp.Response
 	}
 	if err != nil {
-		return
+		return result, err
 	}
 
-	return
+	return result, nil
 }

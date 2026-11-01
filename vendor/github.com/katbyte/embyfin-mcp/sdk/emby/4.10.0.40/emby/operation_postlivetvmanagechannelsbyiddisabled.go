@@ -28,7 +28,7 @@ func (r PostLiveTvManageChannelsByIdDisabledResponse) Answered() bool { return r
 // error when the server answered none.
 func (r PostLiveTvManageChannelsByIdDisabledResponse) Record() (QueryResultChannelManagementInfo, error) {
 	if r.Answer == nil {
-		return QueryResultChannelManagementInfo{}, errors.New("PostLiveTvManageChannelsByIdDisabled answered no QueryResultChannelManagementInfo")
+		return QueryResultChannelManagementInfo{}, errors.New("no QueryResultChannelManagementInfo answered by PostLiveTvManageChannelsByIdDisabled")
 	}
 
 	return *r.Answer, nil

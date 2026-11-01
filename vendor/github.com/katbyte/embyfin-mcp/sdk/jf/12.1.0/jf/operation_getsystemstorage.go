@@ -28,7 +28,7 @@ func (r GetSystemStorageResponse) Answered() bool { return r.Answer != nil }
 // error when the server answered none.
 func (r GetSystemStorageResponse) Record() (SystemStorageDto, error) {
 	if r.Answer == nil {
-		return SystemStorageDto{}, errors.New("GetSystemStorage answered no SystemStorageDto")
+		return SystemStorageDto{}, errors.New("no SystemStorageDto answered by GetSystemStorage")
 	}
 
 	return *r.Answer, nil

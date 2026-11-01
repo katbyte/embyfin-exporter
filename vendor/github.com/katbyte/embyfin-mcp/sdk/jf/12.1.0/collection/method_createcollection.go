@@ -14,8 +14,7 @@ import (
 // CreateCollection calls POST /Collections. Creates a new collection.
 func (c Client) CreateCollection(ctx context.Context, options ...jf.CreateCollectionOptions) (result jf.CreateCollectionResponse, err error) {
 	if len(options) > 1 {
-		err = fmt.Errorf("CreateCollection takes one options struct at most, not %d", len(options))
-		return
+		return result, fmt.Errorf("at most one options struct for CreateCollection, not %d", len(options))
 	}
 	var option jf.CreateCollectionOptions
 	if len(options) == 1 {
@@ -35,7 +34,7 @@ func (c Client) CreateCollection(ctx context.Context, options ...jf.CreateCollec
 
 	req, err := c.Client.NewRequest(ctx, opts)
 	if err != nil {
-		return
+		return result, err
 	}
 
 	var resp *client.Response
@@ -44,15 +43,15 @@ func (c Client) CreateCollection(ctx context.Context, options ...jf.CreateCollec
 		result.HttpResponse = resp.Response
 	}
 	if err != nil {
-		return
+		return result, err
 	}
 
 	var answer jf.CollectionCreationResult
 	result.Answer = &answer
-	if err = resp.Unmarshal(result.Answer); err != nil {
-		return
+	if err := resp.Unmarshal(result.Answer); err != nil {
+		return result, err
 	}
 	result.CollectionCreationResult = result.Answer
 
-	return
+	return result, nil
 }

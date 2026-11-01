@@ -15,8 +15,7 @@ import (
 // GetCollectionsByIdProviderItems calls GET /Collections/{Id}/ProviderItems. Gets a list of missing items.
 func (c Client) GetCollectionsByIdProviderItems(ctx context.Context, id emby.ItemID, options ...emby.GetCollectionsByIdProviderItemsOptions) (result emby.GetCollectionsByIdProviderItemsResponse, err error) {
 	if len(options) > 1 {
-		err = fmt.Errorf("GetCollectionsByIdProviderItems takes one options struct at most, not %d", len(options))
-		return
+		return result, fmt.Errorf("at most one options struct for GetCollectionsByIdProviderItems, not %d", len(options))
 	}
 	var option emby.GetCollectionsByIdProviderItemsOptions
 	if len(options) == 1 {
@@ -31,12 +30,12 @@ func (c Client) GetCollectionsByIdProviderItems(ctx context.Context, id emby.Ite
 		HTTPMethod:    http.MethodGet,
 		Operation:     "GetCollectionsByIdProviderItems",
 		OptionsObject: option,
-		Path:          fmt.Sprintf("/Collections/%s/ProviderItems", url.PathEscape(string(id))),
+		Path:          "/Collections/" + url.PathEscape(string(id)) + "/ProviderItems",
 	}
 
 	req, err := c.Client.NewRequest(ctx, opts)
 	if err != nil {
-		return
+		return result, err
 	}
 
 	var resp *client.Response
@@ -45,16 +44,16 @@ func (c Client) GetCollectionsByIdProviderItems(ctx context.Context, id emby.Ite
 		result.HttpResponse = resp.Response
 	}
 	if err != nil {
-		return
+		return result, err
 	}
 
 	if resp.StatusCode == http.StatusNoContent {
-		return
+		return result, nil
 	}
 
-	if err = resp.Unmarshal(&result.Answer); err != nil {
-		return
+	if err := resp.Unmarshal(&result.Answer); err != nil {
+		return result, err
 	}
 
-	return
+	return result, nil
 }

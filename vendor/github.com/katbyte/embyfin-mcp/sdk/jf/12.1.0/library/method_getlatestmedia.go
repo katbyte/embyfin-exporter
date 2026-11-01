@@ -14,8 +14,7 @@ import (
 // GetLatestMedia calls GET /Items/Latest. Gets latest media.
 func (c Client) GetLatestMedia(ctx context.Context, options ...jf.GetLatestMediaOptions) (result jf.GetLatestMediaResponse, err error) {
 	if len(options) > 1 {
-		err = fmt.Errorf("GetLatestMedia takes one options struct at most, not %d", len(options))
-		return
+		return result, fmt.Errorf("at most one options struct for GetLatestMedia, not %d", len(options))
 	}
 	var option jf.GetLatestMediaOptions
 	if len(options) == 1 {
@@ -34,7 +33,7 @@ func (c Client) GetLatestMedia(ctx context.Context, options ...jf.GetLatestMedia
 
 	req, err := c.Client.NewRequest(ctx, opts)
 	if err != nil {
-		return
+		return result, err
 	}
 
 	var resp *client.Response
@@ -43,12 +42,12 @@ func (c Client) GetLatestMedia(ctx context.Context, options ...jf.GetLatestMedia
 		result.HttpResponse = resp.Response
 	}
 	if err != nil {
-		return
+		return result, err
 	}
 
-	if err = resp.Unmarshal(&result.Answer); err != nil {
-		return
+	if err := resp.Unmarshal(&result.Answer); err != nil {
+		return result, err
 	}
 
-	return
+	return result, nil
 }

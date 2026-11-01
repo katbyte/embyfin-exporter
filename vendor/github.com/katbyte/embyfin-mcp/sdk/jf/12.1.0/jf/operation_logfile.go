@@ -28,7 +28,7 @@ func (r LogFileResponse) Answered() bool { return r.Answer != nil }
 // error when the server answered none.
 func (r LogFileResponse) Record() (ClientLogDocumentResponseDto, error) {
 	if r.Answer == nil {
-		return ClientLogDocumentResponseDto{}, errors.New("LogFile answered no ClientLogDocumentResponseDto")
+		return ClientLogDocumentResponseDto{}, errors.New("no ClientLogDocumentResponseDto answered by LogFile")
 	}
 
 	return *r.Answer, nil

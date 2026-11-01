@@ -4,7 +4,6 @@ package users
 
 import (
 	"context"
-	"fmt"
 	"net/http"
 	"net/url"
 
@@ -21,12 +20,12 @@ func (c Client) GetUsersByUserIdTypedSettingsByKey(ctx context.Context, userId e
 		},
 		HTTPMethod: http.MethodGet,
 		Operation:  "GetUsersByUserIdTypedSettingsByKey",
-		Path:       fmt.Sprintf("/Users/%s/TypedSettings/%s", url.PathEscape(string(userId)), url.PathEscape(key)),
+		Path:       "/Users/" + url.PathEscape(string(userId)) + "/TypedSettings/" + url.PathEscape(key),
 	}
 
 	req, err := c.Client.NewRequest(ctx, opts)
 	if err != nil {
-		return
+		return result, err
 	}
 
 	var resp *client.Response
@@ -35,16 +34,16 @@ func (c Client) GetUsersByUserIdTypedSettingsByKey(ctx context.Context, userId e
 		result.HttpResponse = resp.Response
 	}
 	if err != nil {
-		return
+		return result, err
 	}
 
 	if resp.StatusCode == http.StatusNoContent {
-		return
+		return result, nil
 	}
 
-	if err = resp.Unmarshal(&result.Answer); err != nil {
-		return
+	if err := resp.Unmarshal(&result.Answer); err != nil {
+		return result, err
 	}
 
-	return
+	return result, nil
 }

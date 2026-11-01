@@ -4,7 +4,6 @@ package mediasegment
 
 import (
 	"context"
-	"fmt"
 	"net/http"
 	"net/url"
 
@@ -27,12 +26,12 @@ func (c Client) GetItemSegments(ctx context.Context, itemId jf.ItemID, includeSe
 		HTTPMethod:    http.MethodGet,
 		Operation:     "GetItemSegments",
 		OptionsObject: option,
-		Path:          fmt.Sprintf("/MediaSegments/%s", url.PathEscape(string(itemId))),
+		Path:          "/MediaSegments/" + url.PathEscape(string(itemId)),
 	}
 
 	req, err := c.Client.NewRequest(ctx, opts)
 	if err != nil {
-		return
+		return result, err
 	}
 
 	var resp *client.Response
@@ -41,15 +40,15 @@ func (c Client) GetItemSegments(ctx context.Context, itemId jf.ItemID, includeSe
 		result.HttpResponse = resp.Response
 	}
 	if err != nil {
-		return
+		return result, err
 	}
 
 	var answer jf.MediaSegmentDtoQueryResult
 	result.Answer = &answer
-	if err = resp.Unmarshal(result.Answer); err != nil {
-		return
+	if err := resp.Unmarshal(result.Answer); err != nil {
+		return result, err
 	}
 	result.MediaSegmentDtoQueryResult = result.Answer
 
-	return
+	return result, nil
 }

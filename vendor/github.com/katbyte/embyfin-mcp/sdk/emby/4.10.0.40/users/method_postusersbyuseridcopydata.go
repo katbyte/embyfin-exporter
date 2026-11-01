@@ -4,7 +4,6 @@ package users
 
 import (
 	"context"
-	"fmt"
 	"net/http"
 	"net/url"
 
@@ -22,16 +21,16 @@ func (c Client) PostUsersByUserIdCopyData(ctx context.Context, userId emby.UserI
 		},
 		HTTPMethod: http.MethodPost,
 		Operation:  "PostUsersByUserIdCopyData",
-		Path:       fmt.Sprintf("/Users/%s/CopyData", url.PathEscape(string(userId))),
+		Path:       "/Users/" + url.PathEscape(string(userId)) + "/CopyData",
 	}
 
 	req, err := c.Client.NewRequest(ctx, opts)
 	if err != nil {
-		return
+		return result, err
 	}
 
-	if err = req.Marshal(input); err != nil {
-		return
+	if err := req.Marshal(input); err != nil {
+		return result, err
 	}
 
 	var resp *client.Response
@@ -40,8 +39,8 @@ func (c Client) PostUsersByUserIdCopyData(ctx context.Context, userId emby.UserI
 		result.HttpResponse = resp.Response
 	}
 	if err != nil {
-		return
+		return result, err
 	}
 
-	return
+	return result, nil
 }

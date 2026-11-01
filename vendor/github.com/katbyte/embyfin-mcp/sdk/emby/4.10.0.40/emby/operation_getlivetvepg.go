@@ -31,7 +31,7 @@ func (r GetLiveTvEPGResponse) Answered() bool { return r.Answer != nil }
 // error when the server answered none.
 func (r GetLiveTvEPGResponse) Record() (QueryResultApiEpgRow, error) {
 	if r.Answer == nil {
-		return QueryResultApiEpgRow{}, errors.New("GetLiveTvEPG answered no QueryResultApiEpgRow")
+		return QueryResultApiEpgRow{}, errors.New("no QueryResultApiEpgRow answered by GetLiveTvEPG")
 	}
 
 	return *r.Answer, nil
@@ -447,8 +447,7 @@ type GetLiveTvEPGOptions struct {
 
 // ToHeaders returns the header parameters the options set.
 func (o GetLiveTvEPGOptions) ToHeaders() *client.Headers {
-	out := client.Headers{}
-	return &out
+	return &client.Headers{}
 }
 
 // ToQuery returns the query parameters the options set.

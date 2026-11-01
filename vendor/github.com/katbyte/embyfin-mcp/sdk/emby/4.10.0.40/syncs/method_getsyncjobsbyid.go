@@ -4,7 +4,6 @@ package syncs
 
 import (
 	"context"
-	"fmt"
 	"net/http"
 	"net/url"
 
@@ -22,12 +21,12 @@ func (c Client) GetSyncJobsById(ctx context.Context, id string) (result emby.Get
 		},
 		HTTPMethod: http.MethodGet,
 		Operation:  "GetSyncJobsById",
-		Path:       fmt.Sprintf("/Sync/Jobs/%s", url.PathEscape(id)),
+		Path:       "/Sync/Jobs/" + url.PathEscape(id),
 	}
 
 	req, err := c.Client.NewRequest(ctx, opts)
 	if err != nil {
-		return
+		return result, err
 	}
 
 	var resp *client.Response
@@ -36,19 +35,19 @@ func (c Client) GetSyncJobsById(ctx context.Context, id string) (result emby.Get
 		result.HttpResponse = resp.Response
 	}
 	if err != nil {
-		return
+		return result, err
 	}
 
 	if resp.StatusCode == http.StatusNoContent {
-		return
+		return result, nil
 	}
 
 	var answer emby.SyncJob
 	result.Answer = &answer
-	if err = resp.Unmarshal(result.Answer); err != nil {
-		return
+	if err := resp.Unmarshal(result.Answer); err != nil {
+		return result, err
 	}
 	result.SyncJob = result.Answer
 
-	return
+	return result, nil
 }

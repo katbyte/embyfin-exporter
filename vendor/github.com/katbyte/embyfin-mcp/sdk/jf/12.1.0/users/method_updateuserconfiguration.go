@@ -15,8 +15,7 @@ import (
 func (c Client) UpdateUserConfiguration(ctx context.Context, input jf.UserConfiguration, userId ...jf.UserID) (result jf.UpdateUserConfigurationResponse, err error) {
 	var option jf.UpdateUserConfigurationOptions
 	if len(userId) > 1 {
-		err = fmt.Errorf("UpdateUserConfiguration takes one userId at most, not %d", len(userId))
-		return
+		return result, fmt.Errorf("at most one userId for UpdateUserConfiguration, not %d", len(userId))
 	}
 	if len(userId) == 1 {
 		option.UserId = userId[0]
@@ -35,11 +34,11 @@ func (c Client) UpdateUserConfiguration(ctx context.Context, input jf.UserConfig
 
 	req, err := c.Client.NewRequest(ctx, opts)
 	if err != nil {
-		return
+		return result, err
 	}
 
-	if err = req.Marshal(input); err != nil {
-		return
+	if err := req.Marshal(input); err != nil {
+		return result, err
 	}
 
 	var resp *client.Response
@@ -48,8 +47,8 @@ func (c Client) UpdateUserConfiguration(ctx context.Context, input jf.UserConfig
 		result.HttpResponse = resp.Response
 	}
 	if err != nil {
-		return
+		return result, err
 	}
 
-	return
+	return result, nil
 }

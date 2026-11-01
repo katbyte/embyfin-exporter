@@ -4,7 +4,6 @@ package persons
 
 import (
 	"context"
-	"fmt"
 	"net/http"
 	"net/url"
 
@@ -21,12 +20,12 @@ func (c Client) GetPersonsByIdCredits(ctx context.Context, id emby.ItemID) (resu
 		},
 		HTTPMethod: http.MethodGet,
 		Operation:  "GetPersonsByIdCredits",
-		Path:       fmt.Sprintf("/Persons/%s/Credits", url.PathEscape(string(id))),
+		Path:       "/Persons/" + url.PathEscape(string(id)) + "/Credits",
 	}
 
 	req, err := c.Client.NewRequest(ctx, opts)
 	if err != nil {
-		return
+		return result, err
 	}
 
 	var resp *client.Response
@@ -35,16 +34,16 @@ func (c Client) GetPersonsByIdCredits(ctx context.Context, id emby.ItemID) (resu
 		result.HttpResponse = resp.Response
 	}
 	if err != nil {
-		return
+		return result, err
 	}
 
 	if resp.StatusCode == http.StatusNoContent {
-		return
+		return result, nil
 	}
 
-	if err = resp.Unmarshal(&result.Answer); err != nil {
-		return
+	if err := resp.Unmarshal(&result.Answer); err != nil {
+		return result, err
 	}
 
-	return
+	return result, nil
 }

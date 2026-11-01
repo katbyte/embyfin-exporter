@@ -31,7 +31,7 @@ func (r GetGameGenresResponse) Answered() bool { return r.Answer != nil }
 // error when the server answered none.
 func (r GetGameGenresResponse) Record() (QueryResultBaseItemDto, error) {
 	if r.Answer == nil {
-		return QueryResultBaseItemDto{}, errors.New("GetGameGenres answered no QueryResultBaseItemDto")
+		return QueryResultBaseItemDto{}, errors.New("no QueryResultBaseItemDto answered by GetGameGenres")
 	}
 
 	return *r.Answer, nil
@@ -429,8 +429,7 @@ type GetGameGenresOptions struct {
 
 // ToHeaders returns the header parameters the options set.
 func (o GetGameGenresOptions) ToHeaders() *client.Headers {
-	out := client.Headers{}
-	return &out
+	return &client.Headers{}
 }
 
 // ToQuery returns the query parameters the options set.

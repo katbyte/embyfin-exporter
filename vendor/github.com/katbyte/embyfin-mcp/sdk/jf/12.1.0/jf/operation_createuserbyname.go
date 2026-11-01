@@ -28,7 +28,7 @@ func (r CreateUserByNameResponse) Answered() bool { return r.Answer != nil }
 // error when the server answered none.
 func (r CreateUserByNameResponse) Record() (UserDto, error) {
 	if r.Answer == nil {
-		return UserDto{}, errors.New("CreateUserByName answered no UserDto")
+		return UserDto{}, errors.New("no UserDto answered by CreateUserByName")
 	}
 
 	return *r.Answer, nil

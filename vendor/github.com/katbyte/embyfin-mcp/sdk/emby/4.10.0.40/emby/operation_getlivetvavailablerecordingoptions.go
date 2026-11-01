@@ -28,7 +28,7 @@ func (r GetLiveTvAvailableRecordingOptionsResponse) Answered() bool { return r.A
 // error when the server answered none.
 func (r GetLiveTvAvailableRecordingOptionsResponse) Record() (ApiAvailableRecordingOptions, error) {
 	if r.Answer == nil {
-		return ApiAvailableRecordingOptions{}, errors.New("GetLiveTvAvailableRecordingOptions answered no ApiAvailableRecordingOptions")
+		return ApiAvailableRecordingOptions{}, errors.New("no ApiAvailableRecordingOptions answered by GetLiveTvAvailableRecordingOptions")
 	}
 
 	return *r.Answer, nil

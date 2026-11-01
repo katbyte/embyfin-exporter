@@ -28,7 +28,7 @@ func (r GetUsersCopyDataOptionsResponse) Answered() bool { return r.Answer != ni
 // error when the server answered none.
 func (r GetUsersCopyDataOptionsResponse) Record() (LibraryFullUserCopyDataOptions, error) {
 	if r.Answer == nil {
-		return LibraryFullUserCopyDataOptions{}, errors.New("GetUsersCopyDataOptions answered no LibraryFullUserCopyDataOptions")
+		return LibraryFullUserCopyDataOptions{}, errors.New("no LibraryFullUserCopyDataOptions answered by GetUsersCopyDataOptions")
 	}
 
 	return *r.Answer, nil

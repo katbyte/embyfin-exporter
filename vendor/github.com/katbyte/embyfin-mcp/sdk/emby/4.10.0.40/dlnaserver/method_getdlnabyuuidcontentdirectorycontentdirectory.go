@@ -4,7 +4,6 @@ package dlnaserver
 
 import (
 	"context"
-	"fmt"
 	"net/http"
 	"net/url"
 
@@ -21,13 +20,13 @@ func (c Client) GetDlnaByUuIdContentdirectoryContentdirectory(ctx context.Contex
 		},
 		HTTPMethod:     http.MethodGet,
 		Operation:      "GetDlnaByUuIdContentdirectoryContentdirectory",
-		Path:           fmt.Sprintf("/Dlna/%s/contentdirectory/contentdirectory", url.PathEscape(uuId)),
+		Path:           "/Dlna/" + url.PathEscape(uuId) + "/contentdirectory/contentdirectory",
 		StreamResponse: true,
 	}
 
 	req, err := c.Client.NewRequest(ctx, opts)
 	if err != nil {
-		return
+		return result, err
 	}
 
 	var resp *client.Response
@@ -36,8 +35,8 @@ func (c Client) GetDlnaByUuIdContentdirectoryContentdirectory(ctx context.Contex
 		result.HttpResponse = resp.Response
 	}
 	if err != nil {
-		return
+		return result, err
 	}
 
-	return
+	return result, nil
 }

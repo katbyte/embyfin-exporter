@@ -4,7 +4,6 @@ package plugins
 
 import (
 	"context"
-	"fmt"
 	"net/http"
 	"net/url"
 
@@ -21,13 +20,13 @@ func (c Client) GetPluginsByIdThumb(ctx context.Context, id string) (result emby
 		},
 		HTTPMethod:     http.MethodGet,
 		Operation:      "GetPluginsByIdThumb",
-		Path:           fmt.Sprintf("/Plugins/%s/Thumb", url.PathEscape(id)),
+		Path:           "/Plugins/" + url.PathEscape(id) + "/Thumb",
 		StreamResponse: true,
 	}
 
 	req, err := c.Client.NewRequest(ctx, opts)
 	if err != nil {
-		return
+		return result, err
 	}
 
 	var resp *client.Response
@@ -36,8 +35,8 @@ func (c Client) GetPluginsByIdThumb(ctx context.Context, id string) (result emby
 		result.HttpResponse = resp.Response
 	}
 	if err != nil {
-		return
+		return result, err
 	}
 
-	return
+	return result, nil
 }

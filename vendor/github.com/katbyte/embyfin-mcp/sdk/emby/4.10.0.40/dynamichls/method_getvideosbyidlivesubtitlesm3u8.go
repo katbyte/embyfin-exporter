@@ -4,7 +4,6 @@ package dynamichls
 
 import (
 	"context"
-	"fmt"
 	"net/http"
 	"net/url"
 
@@ -22,13 +21,13 @@ func (c Client) GetVideosByIdLiveSubtitlesM3u8(ctx context.Context, id emby.Item
 		HTTPMethod:     http.MethodGet,
 		Operation:      "GetVideosByIdLiveSubtitlesM3u8",
 		OptionsObject:  options,
-		Path:           fmt.Sprintf("/Videos/%s/live_subtitles.m3u8", url.PathEscape(string(id))),
+		Path:           "/Videos/" + url.PathEscape(string(id)) + "/live_subtitles.m3u8",
 		StreamResponse: true,
 	}
 
 	req, err := c.Client.NewRequest(ctx, opts)
 	if err != nil {
-		return
+		return result, err
 	}
 
 	var resp *client.Response
@@ -37,8 +36,8 @@ func (c Client) GetVideosByIdLiveSubtitlesM3u8(ctx context.Context, id emby.Item
 		result.HttpResponse = resp.Response
 	}
 	if err != nil {
-		return
+		return result, err
 	}
 
-	return
+	return result, nil
 }

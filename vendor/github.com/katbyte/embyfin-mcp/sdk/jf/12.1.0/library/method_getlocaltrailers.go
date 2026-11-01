@@ -16,8 +16,7 @@ import (
 func (c Client) GetLocalTrailers(ctx context.Context, itemId jf.ItemID, userId ...jf.UserID) (result jf.GetLocalTrailersResponse, err error) {
 	var option jf.GetLocalTrailersOptions
 	if len(userId) > 1 {
-		err = fmt.Errorf("GetLocalTrailers takes one userId at most, not %d", len(userId))
-		return
+		return result, fmt.Errorf("at most one userId for GetLocalTrailers, not %d", len(userId))
 	}
 	if len(userId) == 1 {
 		option.UserId = userId[0]
@@ -30,12 +29,12 @@ func (c Client) GetLocalTrailers(ctx context.Context, itemId jf.ItemID, userId .
 		HTTPMethod:    http.MethodGet,
 		Operation:     "GetLocalTrailers",
 		OptionsObject: option,
-		Path:          fmt.Sprintf("/Items/%s/LocalTrailers", url.PathEscape(string(itemId))),
+		Path:          "/Items/" + url.PathEscape(string(itemId)) + "/LocalTrailers",
 	}
 
 	req, err := c.Client.NewRequest(ctx, opts)
 	if err != nil {
-		return
+		return result, err
 	}
 
 	var resp *client.Response
@@ -44,12 +43,12 @@ func (c Client) GetLocalTrailers(ctx context.Context, itemId jf.ItemID, userId .
 		result.HttpResponse = resp.Response
 	}
 	if err != nil {
-		return
+		return result, err
 	}
 
-	if err = resp.Unmarshal(&result.Answer); err != nil {
-		return
+	if err := resp.Unmarshal(&result.Answer); err != nil {
+		return result, err
 	}
 
-	return
+	return result, nil
 }

@@ -15,8 +15,7 @@ import (
 // GetStudioImage calls GET /Studios/{name}/Images/{imageType}. Get studio image by name.
 func (c Client) GetStudioImage(ctx context.Context, name string, imageType jf.ImageType, options ...jf.GetStudioImageOptions) (result jf.GetStudioImageResponse, err error) {
 	if len(options) > 1 {
-		err = fmt.Errorf("GetStudioImage takes one options struct at most, not %d", len(options))
-		return
+		return result, fmt.Errorf("at most one options struct for GetStudioImage, not %d", len(options))
 	}
 	var option jf.GetStudioImageOptions
 	if len(options) == 1 {
@@ -31,13 +30,13 @@ func (c Client) GetStudioImage(ctx context.Context, name string, imageType jf.Im
 		HTTPMethod:     http.MethodGet,
 		Operation:      "GetStudioImage",
 		OptionsObject:  option,
-		Path:           fmt.Sprintf("/Studios/%s/Images/%s", url.PathEscape(name), url.PathEscape(string(imageType))),
+		Path:           "/Studios/" + url.PathEscape(name) + "/Images/" + url.PathEscape(string(imageType)),
 		StreamResponse: true,
 	}
 
 	req, err := c.Client.NewRequest(ctx, opts)
 	if err != nil {
-		return
+		return result, err
 	}
 
 	var resp *client.Response
@@ -46,8 +45,8 @@ func (c Client) GetStudioImage(ctx context.Context, name string, imageType jf.Im
 		result.HttpResponse = resp.Response
 	}
 	if err != nil {
-		return
+		return result, err
 	}
 
-	return
+	return result, nil
 }

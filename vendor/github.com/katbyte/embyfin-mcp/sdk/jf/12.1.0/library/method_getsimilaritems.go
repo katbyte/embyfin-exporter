@@ -15,8 +15,7 @@ import (
 // GetSimilarItems calls GET /Items/{itemId}/Similar. Gets similar items.
 func (c Client) GetSimilarItems(ctx context.Context, itemId jf.ItemID, options ...jf.GetSimilarItemsOptions) (result jf.GetSimilarItemsResponse, err error) {
 	if len(options) > 1 {
-		err = fmt.Errorf("GetSimilarItems takes one options struct at most, not %d", len(options))
-		return
+		return result, fmt.Errorf("at most one options struct for GetSimilarItems, not %d", len(options))
 	}
 	var option jf.GetSimilarItemsOptions
 	if len(options) == 1 {
@@ -31,12 +30,12 @@ func (c Client) GetSimilarItems(ctx context.Context, itemId jf.ItemID, options .
 		HTTPMethod:    http.MethodGet,
 		Operation:     "GetSimilarItems",
 		OptionsObject: option,
-		Path:          fmt.Sprintf("/Items/%s/Similar", url.PathEscape(string(itemId))),
+		Path:          "/Items/" + url.PathEscape(string(itemId)) + "/Similar",
 	}
 
 	req, err := c.Client.NewRequest(ctx, opts)
 	if err != nil {
-		return
+		return result, err
 	}
 
 	var resp *client.Response
@@ -45,15 +44,15 @@ func (c Client) GetSimilarItems(ctx context.Context, itemId jf.ItemID, options .
 		result.HttpResponse = resp.Response
 	}
 	if err != nil {
-		return
+		return result, err
 	}
 
 	var answer jf.BaseItemDtoQueryResult
 	result.Answer = &answer
-	if err = resp.Unmarshal(result.Answer); err != nil {
-		return
+	if err := resp.Unmarshal(result.Answer); err != nil {
+		return result, err
 	}
 	result.BaseItemDtoQueryResult = result.Answer
 
-	return
+	return result, nil
 }

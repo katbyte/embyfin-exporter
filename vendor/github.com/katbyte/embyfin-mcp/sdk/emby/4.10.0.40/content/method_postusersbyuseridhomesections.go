@@ -4,7 +4,6 @@ package content
 
 import (
 	"context"
-	"fmt"
 	"net/http"
 	"net/url"
 
@@ -22,16 +21,16 @@ func (c Client) PostUsersByUserIdHomeSections(ctx context.Context, userId emby.U
 		},
 		HTTPMethod: http.MethodPost,
 		Operation:  "PostUsersByUserIdHomeSections",
-		Path:       fmt.Sprintf("/Users/%s/HomeSections", url.PathEscape(string(userId))),
+		Path:       "/Users/" + url.PathEscape(string(userId)) + "/HomeSections",
 	}
 
 	req, err := c.Client.NewRequest(ctx, opts)
 	if err != nil {
-		return
+		return result, err
 	}
 
-	if err = req.Marshal(input); err != nil {
-		return
+	if err := req.Marshal(input); err != nil {
+		return result, err
 	}
 
 	var resp *client.Response
@@ -40,8 +39,8 @@ func (c Client) PostUsersByUserIdHomeSections(ctx context.Context, userId emby.U
 		result.HttpResponse = resp.Response
 	}
 	if err != nil {
-		return
+		return result, err
 	}
 
-	return
+	return result, nil
 }

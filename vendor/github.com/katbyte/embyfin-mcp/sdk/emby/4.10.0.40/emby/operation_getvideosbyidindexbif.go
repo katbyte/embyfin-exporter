@@ -26,7 +26,7 @@ type GetVideosByIdIndexBifResponse struct {
 // answer, so a deferred Close is always safe. The body stays readable after
 // the result goes out of scope, and has no size or time limit of the client's:
 // the caller's context is the one bound on a slow read.
-func (r GetVideosByIdIndexBifResponse) Reader() (io.ReadCloser, string) {
+func (r GetVideosByIdIndexBifResponse) Reader() (body io.ReadCloser, contentType string) {
 	if r.HttpResponse == nil || r.HttpResponse.Body == nil {
 		return http.NoBody, ""
 	}
@@ -66,14 +66,14 @@ func (r GetVideosByIdIndexBifResponse) WriteTo(w io.Writer) (int64, error) {
 	return client.Copy(w, r.HttpResponse.Body)
 }
 
-// Bytes reads the file whole, up to max bytes, and closes the body: a file
-// over max is a client.TooLargeError rather than cut short without a word.
-func (r GetVideosByIdIndexBifResponse) Bytes(max int64) ([]byte, error) {
+// Bytes reads the file whole, up to limit bytes, and closes the body: a file
+// over the limit is a client.TooLargeError rather than cut short without a word.
+func (r GetVideosByIdIndexBifResponse) Bytes(limit int64) ([]byte, error) {
 	if r.HttpResponse == nil || r.HttpResponse.Body == nil {
 		return nil, errors.New("no answer to read")
 	}
 
-	return client.ReadAtMost(r.HttpResponse.Body, max)
+	return client.ReadAtMost(r.HttpResponse.Body, limit)
 }
 
 // GetVideosByIdIndexBifOptions holds the query and header parameters of GetVideosByIdIndexBif.
@@ -83,8 +83,7 @@ type GetVideosByIdIndexBifOptions struct {
 
 // ToHeaders returns the header parameters the options set.
 func (o GetVideosByIdIndexBifOptions) ToHeaders() *client.Headers {
-	out := client.Headers{}
-	return &out
+	return &client.Headers{}
 }
 
 // ToQuery returns the query parameters the options set.

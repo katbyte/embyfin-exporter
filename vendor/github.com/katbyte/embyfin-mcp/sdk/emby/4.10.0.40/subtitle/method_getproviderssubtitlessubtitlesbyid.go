@@ -4,7 +4,6 @@ package subtitle
 
 import (
 	"context"
-	"fmt"
 	"net/http"
 	"net/url"
 
@@ -21,13 +20,13 @@ func (c Client) GetProvidersSubtitlesSubtitlesById(ctx context.Context, id strin
 		},
 		HTTPMethod:     http.MethodGet,
 		Operation:      "GetProvidersSubtitlesSubtitlesById",
-		Path:           fmt.Sprintf("/Providers/Subtitles/Subtitles/%s", url.PathEscape(id)),
+		Path:           "/Providers/Subtitles/Subtitles/" + url.PathEscape(id),
 		StreamResponse: true,
 	}
 
 	req, err := c.Client.NewRequest(ctx, opts)
 	if err != nil {
-		return
+		return result, err
 	}
 
 	var resp *client.Response
@@ -36,8 +35,8 @@ func (c Client) GetProvidersSubtitlesSubtitlesById(ctx context.Context, id strin
 		result.HttpResponse = resp.Response
 	}
 	if err != nil {
-		return
+		return result, err
 	}
 
-	return
+	return result, nil
 }

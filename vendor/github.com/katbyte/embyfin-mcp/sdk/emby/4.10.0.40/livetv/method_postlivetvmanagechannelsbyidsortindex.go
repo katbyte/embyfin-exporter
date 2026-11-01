@@ -4,7 +4,6 @@ package livetv
 
 import (
 	"context"
-	"fmt"
 	"net/http"
 	"net/url"
 
@@ -23,16 +22,16 @@ func (c Client) PostLiveTvManageChannelsByIdSortIndex(ctx context.Context, id st
 		},
 		HTTPMethod: http.MethodPost,
 		Operation:  "PostLiveTvManageChannelsByIdSortIndex",
-		Path:       fmt.Sprintf("/LiveTv/Manage/Channels/%s/SortIndex", url.PathEscape(id)),
+		Path:       "/LiveTv/Manage/Channels/" + url.PathEscape(id) + "/SortIndex",
 	}
 
 	req, err := c.Client.NewRequest(ctx, opts)
 	if err != nil {
-		return
+		return result, err
 	}
 
-	if err = req.Marshal(input); err != nil {
-		return
+	if err := req.Marshal(input); err != nil {
+		return result, err
 	}
 
 	var resp *client.Response
@@ -41,19 +40,19 @@ func (c Client) PostLiveTvManageChannelsByIdSortIndex(ctx context.Context, id st
 		result.HttpResponse = resp.Response
 	}
 	if err != nil {
-		return
+		return result, err
 	}
 
 	if resp.StatusCode == http.StatusNoContent {
-		return
+		return result, nil
 	}
 
 	var answer emby.QueryResultChannelManagementInfo
 	result.Answer = &answer
-	if err = resp.Unmarshal(result.Answer); err != nil {
-		return
+	if err := resp.Unmarshal(result.Answer); err != nil {
+		return result, err
 	}
 	result.QueryResultChannelManagementInfo = result.Answer
 
-	return
+	return result, nil
 }

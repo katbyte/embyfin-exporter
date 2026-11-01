@@ -8,16 +8,16 @@ type TranscodingInfo struct {
 	AudioChannels int    `json:"AudioChannels,omitempty"`
 	AudioCodec    string `json:"AudioCodec,omitempty"`
 
-	// Deprecated, please use ProcessStatistics instead
+	// Deprecated: please use ProcessStatistics instead
 	AverageCpuUsage      float64 `json:"AverageCpuUsage,omitempty"`
 	Bitrate              int     `json:"Bitrate,omitempty"`
 	CompletionPercentage float64 `json:"CompletionPercentage,omitempty"`
 	Container            string  `json:"Container,omitempty"`
 
-	// Deprecated, please use ProcessStatistics instead
+	// Deprecated: please use ProcessStatistics instead
 	CpuHistory []TupleDoubleDouble `json:"CpuHistory,omitzero"`
 
-	// Deprecated, please use ProcessStatistics instead
+	// Deprecated: please use ProcessStatistics instead
 	CurrentCpuUsage               float64                             `json:"CurrentCpuUsage,omitempty"`
 	CurrentThrottle               int                                 `json:"CurrentThrottle,omitempty"`
 	Framerate                     float32                             `json:"Framerate,omitempty"`

@@ -28,7 +28,7 @@ func (r GetEncodingPublicToneMapOptionsResponse) Answered() bool { return r.Answ
 // error when the server answered none.
 func (r GetEncodingPublicToneMapOptionsResponse) Record() (EditObjectContainer, error) {
 	if r.Answer == nil {
-		return EditObjectContainer{}, errors.New("GetEncodingPublicToneMapOptions answered no EditObjectContainer")
+		return EditObjectContainer{}, errors.New("no EditObjectContainer answered by GetEncodingPublicToneMapOptions")
 	}
 
 	return *r.Answer, nil

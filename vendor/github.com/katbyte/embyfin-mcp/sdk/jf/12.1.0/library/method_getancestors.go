@@ -16,8 +16,7 @@ import (
 func (c Client) GetAncestors(ctx context.Context, itemId jf.ItemID, userId ...jf.UserID) (result jf.GetAncestorsResponse, err error) {
 	var option jf.GetAncestorsOptions
 	if len(userId) > 1 {
-		err = fmt.Errorf("GetAncestors takes one userId at most, not %d", len(userId))
-		return
+		return result, fmt.Errorf("at most one userId for GetAncestors, not %d", len(userId))
 	}
 	if len(userId) == 1 {
 		option.UserId = userId[0]
@@ -30,12 +29,12 @@ func (c Client) GetAncestors(ctx context.Context, itemId jf.ItemID, userId ...jf
 		HTTPMethod:    http.MethodGet,
 		Operation:     "GetAncestors",
 		OptionsObject: option,
-		Path:          fmt.Sprintf("/Items/%s/Ancestors", url.PathEscape(string(itemId))),
+		Path:          "/Items/" + url.PathEscape(string(itemId)) + "/Ancestors",
 	}
 
 	req, err := c.Client.NewRequest(ctx, opts)
 	if err != nil {
-		return
+		return result, err
 	}
 
 	var resp *client.Response
@@ -44,12 +43,12 @@ func (c Client) GetAncestors(ctx context.Context, itemId jf.ItemID, userId ...jf
 		result.HttpResponse = resp.Response
 	}
 	if err != nil {
-		return
+		return result, err
 	}
 
-	if err = resp.Unmarshal(&result.Answer); err != nil {
-		return
+	if err := resp.Unmarshal(&result.Answer); err != nil {
+		return result, err
 	}
 
-	return
+	return result, nil
 }

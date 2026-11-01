@@ -14,8 +14,7 @@ import (
 // GetUserViews calls GET /UserViews. Get user views.
 func (c Client) GetUserViews(ctx context.Context, options ...jf.GetUserViewsOptions) (result jf.GetUserViewsResponse, err error) {
 	if len(options) > 1 {
-		err = fmt.Errorf("GetUserViews takes one options struct at most, not %d", len(options))
-		return
+		return result, fmt.Errorf("at most one options struct for GetUserViews, not %d", len(options))
 	}
 	var option jf.GetUserViewsOptions
 	if len(options) == 1 {
@@ -35,7 +34,7 @@ func (c Client) GetUserViews(ctx context.Context, options ...jf.GetUserViewsOpti
 
 	req, err := c.Client.NewRequest(ctx, opts)
 	if err != nil {
-		return
+		return result, err
 	}
 
 	var resp *client.Response
@@ -44,15 +43,15 @@ func (c Client) GetUserViews(ctx context.Context, options ...jf.GetUserViewsOpti
 		result.HttpResponse = resp.Response
 	}
 	if err != nil {
-		return
+		return result, err
 	}
 
 	var answer jf.BaseItemDtoQueryResult
 	result.Answer = &answer
-	if err = resp.Unmarshal(result.Answer); err != nil {
-		return
+	if err := resp.Unmarshal(result.Answer); err != nil {
+		return result, err
 	}
 	result.BaseItemDtoQueryResult = result.Answer
 
-	return
+	return result, nil
 }

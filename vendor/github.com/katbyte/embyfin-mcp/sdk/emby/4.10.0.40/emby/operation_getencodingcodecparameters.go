@@ -30,7 +30,7 @@ func (r GetEncodingCodecParametersResponse) Answered() bool { return r.Answer !=
 // error when the server answered none.
 func (r GetEncodingCodecParametersResponse) Record() (EditObjectContainer, error) {
 	if r.Answer == nil {
-		return EditObjectContainer{}, errors.New("GetEncodingCodecParameters answered no EditObjectContainer")
+		return EditObjectContainer{}, errors.New("no EditObjectContainer answered by GetEncodingCodecParameters")
 	}
 
 	return *r.Answer, nil
@@ -47,8 +47,7 @@ type GetEncodingCodecParametersOptions struct {
 
 // ToHeaders returns the header parameters the options set.
 func (o GetEncodingCodecParametersOptions) ToHeaders() *client.Headers {
-	out := client.Headers{}
-	return &out
+	return &client.Headers{}
 }
 
 // ToQuery returns the query parameters the options set.

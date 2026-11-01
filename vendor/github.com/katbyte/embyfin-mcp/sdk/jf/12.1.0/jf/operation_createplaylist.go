@@ -28,7 +28,7 @@ func (r CreatePlaylistResponse) Answered() bool { return r.Answer != nil }
 // error when the server answered none.
 func (r CreatePlaylistResponse) Record() (PlaylistCreationResult, error) {
 	if r.Answer == nil {
-		return PlaylistCreationResult{}, errors.New("CreatePlaylist answered no PlaylistCreationResult")
+		return PlaylistCreationResult{}, errors.New("no PlaylistCreationResult answered by CreatePlaylist")
 	}
 
 	return *r.Answer, nil

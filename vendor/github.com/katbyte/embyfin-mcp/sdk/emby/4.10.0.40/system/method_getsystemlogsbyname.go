@@ -16,8 +16,7 @@ import (
 func (c Client) GetSystemLogsByName(ctx context.Context, name string, sanitize ...bool) (result emby.GetSystemLogsByNameResponse, err error) {
 	var option emby.GetSystemLogsByNameOptions
 	if len(sanitize) > 1 {
-		err = fmt.Errorf("GetSystemLogsByName takes one sanitize at most, not %d", len(sanitize))
-		return
+		return result, fmt.Errorf("at most one sanitize for GetSystemLogsByName, not %d", len(sanitize))
 	}
 	if len(sanitize) == 1 {
 		option.Sanitize = &sanitize[0]
@@ -31,13 +30,13 @@ func (c Client) GetSystemLogsByName(ctx context.Context, name string, sanitize .
 		HTTPMethod:     http.MethodGet,
 		Operation:      "GetSystemLogsByName",
 		OptionsObject:  option,
-		Path:           fmt.Sprintf("/System/Logs/%s", url.PathEscape(name)),
+		Path:           "/System/Logs/" + url.PathEscape(name),
 		StreamResponse: true,
 	}
 
 	req, err := c.Client.NewRequest(ctx, opts)
 	if err != nil {
-		return
+		return result, err
 	}
 
 	var resp *client.Response
@@ -46,8 +45,8 @@ func (c Client) GetSystemLogsByName(ctx context.Context, name string, sanitize .
 		result.HttpResponse = resp.Response
 	}
 	if err != nil {
-		return
+		return result, err
 	}
 
-	return
+	return result, nil
 }

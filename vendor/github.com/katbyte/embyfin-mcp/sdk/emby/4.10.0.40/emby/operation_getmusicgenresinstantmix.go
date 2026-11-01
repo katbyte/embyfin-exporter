@@ -31,7 +31,7 @@ func (r GetMusicGenresInstantMixResponse) Answered() bool { return r.Answer != n
 // error when the server answered none.
 func (r GetMusicGenresInstantMixResponse) Record() (QueryResultBaseItemDto, error) {
 	if r.Answer == nil {
-		return QueryResultBaseItemDto{}, errors.New("GetMusicGenresInstantMix answered no QueryResultBaseItemDto")
+		return QueryResultBaseItemDto{}, errors.New("no QueryResultBaseItemDto answered by GetMusicGenresInstantMix")
 	}
 
 	return *r.Answer, nil
@@ -432,8 +432,7 @@ type GetMusicGenresInstantMixOptions struct {
 
 // ToHeaders returns the header parameters the options set.
 func (o GetMusicGenresInstantMixOptions) ToHeaders() *client.Headers {
-	out := client.Headers{}
-	return &out
+	return &client.Headers{}
 }
 
 // ToQuery returns the query parameters the options set.

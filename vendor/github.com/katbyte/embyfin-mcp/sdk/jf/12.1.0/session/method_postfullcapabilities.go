@@ -15,8 +15,7 @@ import (
 func (c Client) PostFullCapabilities(ctx context.Context, input jf.ClientCapabilitiesDto, id ...string) (result jf.PostFullCapabilitiesResponse, err error) {
 	var option jf.PostFullCapabilitiesOptions
 	if len(id) > 1 {
-		err = fmt.Errorf("PostFullCapabilities takes one id at most, not %d", len(id))
-		return
+		return result, fmt.Errorf("at most one id for PostFullCapabilities, not %d", len(id))
 	}
 	if len(id) == 1 {
 		option.Id = id[0]
@@ -35,11 +34,11 @@ func (c Client) PostFullCapabilities(ctx context.Context, input jf.ClientCapabil
 
 	req, err := c.Client.NewRequest(ctx, opts)
 	if err != nil {
-		return
+		return result, err
 	}
 
-	if err = req.Marshal(input); err != nil {
-		return
+	if err := req.Marshal(input); err != nil {
+		return result, err
 	}
 
 	var resp *client.Response
@@ -48,8 +47,8 @@ func (c Client) PostFullCapabilities(ctx context.Context, input jf.ClientCapabil
 		result.HttpResponse = resp.Response
 	}
 	if err != nil {
-		return
+		return result, err
 	}
 
-	return
+	return result, nil
 }

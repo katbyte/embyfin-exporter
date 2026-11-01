@@ -16,8 +16,7 @@ import (
 func (c Client) GetAdditionalPart(ctx context.Context, itemId jf.ItemID, userId ...jf.UserID) (result jf.GetAdditionalPartResponse, err error) {
 	var option jf.GetAdditionalPartOptions
 	if len(userId) > 1 {
-		err = fmt.Errorf("GetAdditionalPart takes one userId at most, not %d", len(userId))
-		return
+		return result, fmt.Errorf("at most one userId for GetAdditionalPart, not %d", len(userId))
 	}
 	if len(userId) == 1 {
 		option.UserId = userId[0]
@@ -31,12 +30,12 @@ func (c Client) GetAdditionalPart(ctx context.Context, itemId jf.ItemID, userId 
 		HTTPMethod:    http.MethodGet,
 		Operation:     "GetAdditionalPart",
 		OptionsObject: option,
-		Path:          fmt.Sprintf("/Videos/%s/AdditionalParts", url.PathEscape(string(itemId))),
+		Path:          "/Videos/" + url.PathEscape(string(itemId)) + "/AdditionalParts",
 	}
 
 	req, err := c.Client.NewRequest(ctx, opts)
 	if err != nil {
-		return
+		return result, err
 	}
 
 	var resp *client.Response
@@ -45,15 +44,15 @@ func (c Client) GetAdditionalPart(ctx context.Context, itemId jf.ItemID, userId 
 		result.HttpResponse = resp.Response
 	}
 	if err != nil {
-		return
+		return result, err
 	}
 
 	var answer jf.BaseItemDtoQueryResult
 	result.Answer = &answer
-	if err = resp.Unmarshal(result.Answer); err != nil {
-		return
+	if err := resp.Unmarshal(result.Answer); err != nil {
+		return result, err
 	}
 	result.BaseItemDtoQueryResult = result.Answer
 
-	return
+	return result, nil
 }

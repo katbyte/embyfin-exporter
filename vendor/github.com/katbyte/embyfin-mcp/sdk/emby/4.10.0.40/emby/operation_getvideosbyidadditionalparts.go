@@ -31,7 +31,7 @@ func (r GetVideosByIdAdditionalPartsResponse) Answered() bool { return r.Answer 
 // error when the server answered none.
 func (r GetVideosByIdAdditionalPartsResponse) Record() (QueryResultBaseItemDto, error) {
 	if r.Answer == nil {
-		return QueryResultBaseItemDto{}, errors.New("GetVideosByIdAdditionalParts answered no QueryResultBaseItemDto")
+		return QueryResultBaseItemDto{}, errors.New("no QueryResultBaseItemDto answered by GetVideosByIdAdditionalParts")
 	}
 
 	return *r.Answer, nil
@@ -65,8 +65,7 @@ type GetVideosByIdAdditionalPartsOptions struct {
 
 // ToHeaders returns the header parameters the options set.
 func (o GetVideosByIdAdditionalPartsOptions) ToHeaders() *client.Headers {
-	out := client.Headers{}
-	return &out
+	return &client.Headers{}
 }
 
 // ToQuery returns the query parameters the options set.

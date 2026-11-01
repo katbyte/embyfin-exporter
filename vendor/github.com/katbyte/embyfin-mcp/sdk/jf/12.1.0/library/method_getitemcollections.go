@@ -16,8 +16,7 @@ import (
 // GetItemCollections calls GET /Items/{itemId}/Collections. Gets the collections that include the specified item.
 func (c Client) GetItemCollections(ctx context.Context, itemId jf.ItemID, options ...jf.GetItemCollectionsOptions) (result jf.GetItemCollectionsResponse, err error) {
 	if len(options) > 1 {
-		err = fmt.Errorf("GetItemCollections takes one options struct at most, not %d", len(options))
-		return
+		return result, fmt.Errorf("at most one options struct for GetItemCollections, not %d", len(options))
 	}
 	var option jf.GetItemCollectionsOptions
 	if len(options) == 1 {
@@ -32,12 +31,12 @@ func (c Client) GetItemCollections(ctx context.Context, itemId jf.ItemID, option
 		HTTPMethod:    http.MethodGet,
 		Operation:     "GetItemCollections",
 		OptionsObject: option,
-		Path:          fmt.Sprintf("/Items/%s/Collections", url.PathEscape(string(itemId))),
+		Path:          "/Items/" + url.PathEscape(string(itemId)) + "/Collections",
 	}
 
 	req, err := c.Client.NewRequest(ctx, opts)
 	if err != nil {
-		return
+		return result, err
 	}
 
 	var resp *client.Response
@@ -46,17 +45,17 @@ func (c Client) GetItemCollections(ctx context.Context, itemId jf.ItemID, option
 		result.HttpResponse = resp.Response
 	}
 	if err != nil {
-		return
+		return result, err
 	}
 
 	var answer jf.BaseItemDtoQueryResult
 	result.Answer = &answer
-	if err = resp.Unmarshal(result.Answer); err != nil {
-		return
+	if err := resp.Unmarshal(result.Answer); err != nil {
+		return result, err
 	}
 	result.BaseItemDtoQueryResult = result.Answer
 
-	return
+	return result, nil
 }
 
 // GetItemCollectionsComplete calls GetItemCollections page by page from options.StartIndex until every
@@ -64,8 +63,7 @@ func (c Client) GetItemCollections(ctx context.Context, itemId jf.ItemID, option
 // unset.
 func (c Client) GetItemCollectionsComplete(ctx context.Context, itemId jf.ItemID, options ...jf.GetItemCollectionsOptions) (result jf.GetItemCollectionsCompleteResult, err error) {
 	if len(options) > 1 {
-		err = fmt.Errorf("GetItemCollectionsComplete takes one options struct at most, not %d", len(options))
-		return
+		return result, fmt.Errorf("at most one options struct for GetItemCollectionsComplete, not %d", len(options))
 	}
 	var option jf.GetItemCollectionsOptions
 	if len(options) == 1 {
@@ -78,7 +76,7 @@ func (c Client) GetItemCollectionsComplete(ctx context.Context, itemId jf.ItemID
 	}
 	option.Limit = &limit
 	start := 0
-	if option.StartIndex != nil {
+	if option.StartIndex != nil && *option.StartIndex > 0 {
 		start = *option.StartIndex
 	}
 	for {
@@ -86,11 +84,10 @@ func (c Client) GetItemCollectionsComplete(ctx context.Context, itemId jf.ItemID
 		page, err = c.GetItemCollections(ctx, itemId, option)
 		result.LatestHttpResponse = page.HttpResponse
 		if err != nil {
-			err = fmt.Errorf("loading results: %w", err)
-			return
+			return result, fmt.Errorf("loading results: %w", err)
 		}
 		if page.Answer == nil || len(page.Answer.Items) == 0 {
-			return
+			return result, nil
 		}
 		result.Items = append(result.Items, page.Answer.Items...)
 		start += len(page.Answer.Items)
@@ -98,7 +95,7 @@ func (c Client) GetItemCollectionsComplete(ctx context.Context, itemId jf.ItemID
 		// a short page is the last; so is reaching the total, when the server
 		// reports one (a list may report 0 whatever it holds)
 		if len(page.Answer.Items) < limit || page.Answer.TotalRecordCount > 0 && start >= page.Answer.TotalRecordCount {
-			return
+			return result, nil
 		}
 	}
 }
@@ -120,7 +117,7 @@ func (c Client) GetItemCollectionsEach(ctx context.Context, itemId jf.ItemID, op
 	return func(yield func(jf.BaseItemDto, error) bool) {
 		var zero jf.BaseItemDto
 		if len(options) > 1 {
-			yield(zero, fmt.Errorf("GetItemCollectionsEach takes one options struct at most, not %d", len(options)))
+			yield(zero, fmt.Errorf("at most one options struct for GetItemCollectionsEach, not %d", len(options)))
 			return
 		}
 		var option jf.GetItemCollectionsOptions
@@ -134,7 +131,7 @@ func (c Client) GetItemCollectionsEach(ctx context.Context, itemId jf.ItemID, op
 		}
 		option.Limit = &limit
 		start := 0
-		if option.StartIndex != nil {
+		if option.StartIndex != nil && *option.StartIndex > 0 {
 			start = *option.StartIndex
 		}
 		for {
@@ -146,8 +143,8 @@ func (c Client) GetItemCollectionsEach(ctx context.Context, itemId jf.ItemID, op
 			if page.Answer == nil || len(page.Answer.Items) == 0 {
 				return
 			}
-			for _, item := range page.Answer.Items {
-				if !yield(item, nil) {
+			for i := range page.Answer.Items {
+				if !yield(page.Answer.Items[i], nil) {
 					return
 				}
 			}

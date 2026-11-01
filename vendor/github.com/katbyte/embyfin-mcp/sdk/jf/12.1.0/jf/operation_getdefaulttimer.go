@@ -30,7 +30,7 @@ func (r GetDefaultTimerResponse) Answered() bool { return r.Answer != nil }
 // error when the server answered none.
 func (r GetDefaultTimerResponse) Record() (SeriesTimerInfoDto, error) {
 	if r.Answer == nil {
-		return SeriesTimerInfoDto{}, errors.New("GetDefaultTimer answered no SeriesTimerInfoDto")
+		return SeriesTimerInfoDto{}, errors.New("no SeriesTimerInfoDto answered by GetDefaultTimer")
 	}
 
 	return *r.Answer, nil
@@ -44,8 +44,7 @@ type GetDefaultTimerOptions struct {
 
 // ToHeaders returns the header parameters the options set.
 func (o GetDefaultTimerOptions) ToHeaders() *client.Headers {
-	out := client.Headers{}
-	return &out
+	return &client.Headers{}
 }
 
 // ToQuery returns the query parameters the options set.

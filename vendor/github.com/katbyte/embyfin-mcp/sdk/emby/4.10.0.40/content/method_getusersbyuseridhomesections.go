@@ -4,7 +4,6 @@ package content
 
 import (
 	"context"
-	"fmt"
 	"net/http"
 	"net/url"
 
@@ -21,12 +20,12 @@ func (c Client) GetUsersByUserIdHomeSections(ctx context.Context, userId emby.Us
 		},
 		HTTPMethod: http.MethodGet,
 		Operation:  "GetUsersByUserIdHomeSections",
-		Path:       fmt.Sprintf("/Users/%s/HomeSections", url.PathEscape(string(userId))),
+		Path:       "/Users/" + url.PathEscape(string(userId)) + "/HomeSections",
 	}
 
 	req, err := c.Client.NewRequest(ctx, opts)
 	if err != nil {
-		return
+		return result, err
 	}
 
 	var resp *client.Response
@@ -35,16 +34,16 @@ func (c Client) GetUsersByUserIdHomeSections(ctx context.Context, userId emby.Us
 		result.HttpResponse = resp.Response
 	}
 	if err != nil {
-		return
+		return result, err
 	}
 
 	if resp.StatusCode == http.StatusNoContent {
-		return
+		return result, nil
 	}
 
-	if err = resp.Unmarshal(&result.Answer); err != nil {
-		return
+	if err := resp.Unmarshal(&result.Answer); err != nil {
+		return result, err
 	}
 
-	return
+	return result, nil
 }

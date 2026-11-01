@@ -18,8 +18,7 @@ import (
 func (c Client) GetArtistByName(ctx context.Context, name string, userId ...jf.UserID) (result jf.GetArtistByNameResponse, err error) {
 	var option jf.GetArtistByNameOptions
 	if len(userId) > 1 {
-		err = fmt.Errorf("GetArtistByName takes one userId at most, not %d", len(userId))
-		return
+		return result, fmt.Errorf("at most one userId for GetArtistByName, not %d", len(userId))
 	}
 	if len(userId) == 1 {
 		option.UserId = userId[0]
@@ -33,12 +32,12 @@ func (c Client) GetArtistByName(ctx context.Context, name string, userId ...jf.U
 		HTTPMethod:    http.MethodGet,
 		Operation:     "GetArtistByName",
 		OptionsObject: option,
-		Path:          fmt.Sprintf("/Artists/%s", url.PathEscape(name)),
+		Path:          "/Artists/" + url.PathEscape(name),
 	}
 
 	req, err := c.Client.NewRequest(ctx, opts)
 	if err != nil {
-		return
+		return result, err
 	}
 
 	var resp *client.Response
@@ -47,15 +46,15 @@ func (c Client) GetArtistByName(ctx context.Context, name string, userId ...jf.U
 		result.HttpResponse = resp.Response
 	}
 	if err != nil {
-		return
+		return result, err
 	}
 
 	var answer jf.BaseItemDto
 	result.Answer = &answer
-	if err = resp.Unmarshal(result.Answer); err != nil {
-		return
+	if err := resp.Unmarshal(result.Answer); err != nil {
+		return result, err
 	}
 	result.BaseItemDto = result.Answer
 
-	return
+	return result, nil
 }

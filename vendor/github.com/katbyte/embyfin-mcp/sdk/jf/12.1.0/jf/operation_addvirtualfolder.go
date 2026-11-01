@@ -31,8 +31,7 @@ type AddVirtualFolderOptions struct {
 
 // ToHeaders returns the header parameters the options set.
 func (o AddVirtualFolderOptions) ToHeaders() *client.Headers {
-	out := client.Headers{}
-	return &out
+	return &client.Headers{}
 }
 
 // ToQuery returns the query parameters the options set.

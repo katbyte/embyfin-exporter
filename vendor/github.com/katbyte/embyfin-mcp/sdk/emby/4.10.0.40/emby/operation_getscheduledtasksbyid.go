@@ -28,7 +28,7 @@ func (r GetScheduledTasksByIdResponse) Answered() bool { return r.Answer != nil 
 // error when the server answered none.
 func (r GetScheduledTasksByIdResponse) Record() (TaskInfo, error) {
 	if r.Answer == nil {
-		return TaskInfo{}, errors.New("GetScheduledTasksById answered no TaskInfo")
+		return TaskInfo{}, errors.New("no TaskInfo answered by GetScheduledTasksById")
 	}
 
 	return *r.Answer, nil

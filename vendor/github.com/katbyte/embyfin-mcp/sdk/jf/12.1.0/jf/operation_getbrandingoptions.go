@@ -28,7 +28,7 @@ func (r GetBrandingOptionsResponse) Answered() bool { return r.Answer != nil }
 // error when the server answered none.
 func (r GetBrandingOptionsResponse) Record() (BrandingOptionsDto, error) {
 	if r.Answer == nil {
-		return BrandingOptionsDto{}, errors.New("GetBrandingOptions answered no BrandingOptionsDto")
+		return BrandingOptionsDto{}, errors.New("no BrandingOptionsDto answered by GetBrandingOptions")
 	}
 
 	return *r.Answer, nil

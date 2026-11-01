@@ -15,8 +15,7 @@ import (
 // GetLiveTvPrograms calls GET /LiveTv/Programs. Gets available live tv epgs.
 func (c Client) GetLiveTvPrograms(ctx context.Context, options ...jf.GetLiveTvProgramsOptions) (result jf.GetLiveTvProgramsResponse, err error) {
 	if len(options) > 1 {
-		err = fmt.Errorf("GetLiveTvPrograms takes one options struct at most, not %d", len(options))
-		return
+		return result, fmt.Errorf("at most one options struct for GetLiveTvPrograms, not %d", len(options))
 	}
 	var option jf.GetLiveTvProgramsOptions
 	if len(options) == 1 {
@@ -36,7 +35,7 @@ func (c Client) GetLiveTvPrograms(ctx context.Context, options ...jf.GetLiveTvPr
 
 	req, err := c.Client.NewRequest(ctx, opts)
 	if err != nil {
-		return
+		return result, err
 	}
 
 	var resp *client.Response
@@ -45,17 +44,17 @@ func (c Client) GetLiveTvPrograms(ctx context.Context, options ...jf.GetLiveTvPr
 		result.HttpResponse = resp.Response
 	}
 	if err != nil {
-		return
+		return result, err
 	}
 
 	var answer jf.BaseItemDtoQueryResult
 	result.Answer = &answer
-	if err = resp.Unmarshal(result.Answer); err != nil {
-		return
+	if err := resp.Unmarshal(result.Answer); err != nil {
+		return result, err
 	}
 	result.BaseItemDtoQueryResult = result.Answer
 
-	return
+	return result, nil
 }
 
 // GetLiveTvProgramsComplete calls GetLiveTvPrograms page by page from options.StartIndex until every
@@ -63,8 +62,7 @@ func (c Client) GetLiveTvPrograms(ctx context.Context, options ...jf.GetLiveTvPr
 // unset.
 func (c Client) GetLiveTvProgramsComplete(ctx context.Context, options ...jf.GetLiveTvProgramsOptions) (result jf.GetLiveTvProgramsCompleteResult, err error) {
 	if len(options) > 1 {
-		err = fmt.Errorf("GetLiveTvProgramsComplete takes one options struct at most, not %d", len(options))
-		return
+		return result, fmt.Errorf("at most one options struct for GetLiveTvProgramsComplete, not %d", len(options))
 	}
 	var option jf.GetLiveTvProgramsOptions
 	if len(options) == 1 {
@@ -77,7 +75,7 @@ func (c Client) GetLiveTvProgramsComplete(ctx context.Context, options ...jf.Get
 	}
 	option.Limit = &limit
 	start := 0
-	if option.StartIndex != nil {
+	if option.StartIndex != nil && *option.StartIndex > 0 {
 		start = *option.StartIndex
 	}
 	for {
@@ -85,11 +83,10 @@ func (c Client) GetLiveTvProgramsComplete(ctx context.Context, options ...jf.Get
 		page, err = c.GetLiveTvPrograms(ctx, option)
 		result.LatestHttpResponse = page.HttpResponse
 		if err != nil {
-			err = fmt.Errorf("loading results: %w", err)
-			return
+			return result, fmt.Errorf("loading results: %w", err)
 		}
 		if page.Answer == nil || len(page.Answer.Items) == 0 {
-			return
+			return result, nil
 		}
 		result.Items = append(result.Items, page.Answer.Items...)
 		start += len(page.Answer.Items)
@@ -97,7 +94,7 @@ func (c Client) GetLiveTvProgramsComplete(ctx context.Context, options ...jf.Get
 		// a short page is the last; so is reaching the total, when the server
 		// reports one (a list may report 0 whatever it holds)
 		if len(page.Answer.Items) < limit || page.Answer.TotalRecordCount > 0 && start >= page.Answer.TotalRecordCount {
-			return
+			return result, nil
 		}
 	}
 }
@@ -119,7 +116,7 @@ func (c Client) GetLiveTvProgramsEach(ctx context.Context, options ...jf.GetLive
 	return func(yield func(jf.BaseItemDto, error) bool) {
 		var zero jf.BaseItemDto
 		if len(options) > 1 {
-			yield(zero, fmt.Errorf("GetLiveTvProgramsEach takes one options struct at most, not %d", len(options)))
+			yield(zero, fmt.Errorf("at most one options struct for GetLiveTvProgramsEach, not %d", len(options)))
 			return
 		}
 		var option jf.GetLiveTvProgramsOptions
@@ -133,7 +130,7 @@ func (c Client) GetLiveTvProgramsEach(ctx context.Context, options ...jf.GetLive
 		}
 		option.Limit = &limit
 		start := 0
-		if option.StartIndex != nil {
+		if option.StartIndex != nil && *option.StartIndex > 0 {
 			start = *option.StartIndex
 		}
 		for {
@@ -145,8 +142,8 @@ func (c Client) GetLiveTvProgramsEach(ctx context.Context, options ...jf.GetLive
 			if page.Answer == nil || len(page.Answer.Items) == 0 {
 				return
 			}
-			for _, item := range page.Answer.Items {
-				if !yield(item, nil) {
+			for i := range page.Answer.Items {
+				if !yield(page.Answer.Items[i], nil) {
 					return
 				}
 			}

@@ -4,7 +4,6 @@ package displaypreferences
 
 import (
 	"context"
-	"fmt"
 	"io"
 	"net/http"
 	"net/url"
@@ -25,16 +24,16 @@ func (c Client) PostUserSettingsByUserIdPartial(ctx context.Context, userId emby
 		},
 		HTTPMethod: http.MethodPost,
 		Operation:  "PostUserSettingsByUserIdPartial",
-		Path:       fmt.Sprintf("/UserSettings/%s/Partial", url.PathEscape(string(userId))),
+		Path:       "/UserSettings/" + url.PathEscape(string(userId)) + "/Partial",
 	}
 
 	req, err := c.Client.NewRequest(ctx, opts)
 	if err != nil {
-		return
+		return result, err
 	}
 
-	if err = req.SetBody(input, contentType); err != nil {
-		return
+	if err := req.SetBody(input, contentType); err != nil {
+		return result, err
 	}
 
 	var resp *client.Response
@@ -43,8 +42,8 @@ func (c Client) PostUserSettingsByUserIdPartial(ctx context.Context, userId emby
 		result.HttpResponse = resp.Response
 	}
 	if err != nil {
-		return
+		return result, err
 	}
 
-	return
+	return result, nil
 }

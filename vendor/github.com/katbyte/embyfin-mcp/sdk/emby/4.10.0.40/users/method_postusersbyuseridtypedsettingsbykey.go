@@ -4,7 +4,6 @@ package users
 
 import (
 	"context"
-	"fmt"
 	"io"
 	"net/http"
 	"net/url"
@@ -25,16 +24,16 @@ func (c Client) PostUsersByUserIdTypedSettingsByKey(ctx context.Context, userId 
 		},
 		HTTPMethod: http.MethodPost,
 		Operation:  "PostUsersByUserIdTypedSettingsByKey",
-		Path:       fmt.Sprintf("/Users/%s/TypedSettings/%s", url.PathEscape(string(userId)), url.PathEscape(key)),
+		Path:       "/Users/" + url.PathEscape(string(userId)) + "/TypedSettings/" + url.PathEscape(key),
 	}
 
 	req, err := c.Client.NewRequest(ctx, opts)
 	if err != nil {
-		return
+		return result, err
 	}
 
-	if err = req.SetBody(input, contentType); err != nil {
-		return
+	if err := req.SetBody(input, contentType); err != nil {
+		return result, err
 	}
 
 	var resp *client.Response
@@ -43,8 +42,8 @@ func (c Client) PostUsersByUserIdTypedSettingsByKey(ctx context.Context, userId 
 		result.HttpResponse = resp.Response
 	}
 	if err != nil {
-		return
+		return result, err
 	}
 
-	return
+	return result, nil
 }

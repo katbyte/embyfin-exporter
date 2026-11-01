@@ -15,8 +15,7 @@ import (
 // GetAudioByIdUniversal calls GET /Audio/{Id}/universal. Gets an audio stream.
 func (c Client) GetAudioByIdUniversal(ctx context.Context, id emby.ItemID, options ...emby.GetAudioByIdUniversalOptions) (result emby.GetAudioByIdUniversalResponse, err error) {
 	if len(options) > 1 {
-		err = fmt.Errorf("GetAudioByIdUniversal takes one options struct at most, not %d", len(options))
-		return
+		return result, fmt.Errorf("at most one options struct for GetAudioByIdUniversal, not %d", len(options))
 	}
 	var option emby.GetAudioByIdUniversalOptions
 	if len(options) == 1 {
@@ -31,13 +30,13 @@ func (c Client) GetAudioByIdUniversal(ctx context.Context, id emby.ItemID, optio
 		HTTPMethod:     http.MethodGet,
 		Operation:      "GetAudioByIdUniversal",
 		OptionsObject:  option,
-		Path:           fmt.Sprintf("/Audio/%s/universal", url.PathEscape(string(id))),
+		Path:           "/Audio/" + url.PathEscape(string(id)) + "/universal",
 		StreamResponse: true,
 	}
 
 	req, err := c.Client.NewRequest(ctx, opts)
 	if err != nil {
-		return
+		return result, err
 	}
 
 	var resp *client.Response
@@ -46,8 +45,8 @@ func (c Client) GetAudioByIdUniversal(ctx context.Context, id emby.ItemID, optio
 		result.HttpResponse = resp.Response
 	}
 	if err != nil {
-		return
+		return result, err
 	}
 
-	return
+	return result, nil
 }

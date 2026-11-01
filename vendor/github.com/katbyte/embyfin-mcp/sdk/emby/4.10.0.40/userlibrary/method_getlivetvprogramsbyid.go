@@ -4,7 +4,6 @@ package userlibrary
 
 import (
 	"context"
-	"fmt"
 	"net/http"
 	"net/url"
 
@@ -22,12 +21,12 @@ func (c Client) GetLiveTvProgramsById(ctx context.Context, id emby.ItemID) (resu
 		},
 		HTTPMethod: http.MethodGet,
 		Operation:  "GetLiveTvProgramsById",
-		Path:       fmt.Sprintf("/LiveTv/Programs/%s", url.PathEscape(string(id))),
+		Path:       "/LiveTv/Programs/" + url.PathEscape(string(id)),
 	}
 
 	req, err := c.Client.NewRequest(ctx, opts)
 	if err != nil {
-		return
+		return result, err
 	}
 
 	var resp *client.Response
@@ -36,19 +35,19 @@ func (c Client) GetLiveTvProgramsById(ctx context.Context, id emby.ItemID) (resu
 		result.HttpResponse = resp.Response
 	}
 	if err != nil {
-		return
+		return result, err
 	}
 
 	if resp.StatusCode == http.StatusNoContent {
-		return
+		return result, nil
 	}
 
 	var answer emby.BaseItemDto
 	result.Answer = &answer
-	if err = resp.Unmarshal(result.Answer); err != nil {
-		return
+	if err := resp.Unmarshal(result.Answer); err != nil {
+		return result, err
 	}
 	result.BaseItemDto = result.Answer
 
-	return
+	return result, nil
 }

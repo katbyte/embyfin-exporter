@@ -14,8 +14,7 @@ import (
 // GetQueryFilters calls GET /Items/Filters2. Gets query filters.
 func (c Client) GetQueryFilters(ctx context.Context, options ...jf.GetQueryFiltersOptions) (result jf.GetQueryFiltersResponse, err error) {
 	if len(options) > 1 {
-		err = fmt.Errorf("GetQueryFilters takes one options struct at most, not %d", len(options))
-		return
+		return result, fmt.Errorf("at most one options struct for GetQueryFilters, not %d", len(options))
 	}
 	var option jf.GetQueryFiltersOptions
 	if len(options) == 1 {
@@ -35,7 +34,7 @@ func (c Client) GetQueryFilters(ctx context.Context, options ...jf.GetQueryFilte
 
 	req, err := c.Client.NewRequest(ctx, opts)
 	if err != nil {
-		return
+		return result, err
 	}
 
 	var resp *client.Response
@@ -44,15 +43,15 @@ func (c Client) GetQueryFilters(ctx context.Context, options ...jf.GetQueryFilte
 		result.HttpResponse = resp.Response
 	}
 	if err != nil {
-		return
+		return result, err
 	}
 
 	var answer jf.QueryFilters
 	result.Answer = &answer
-	if err = resp.Unmarshal(result.Answer); err != nil {
-		return
+	if err := resp.Unmarshal(result.Answer); err != nil {
+		return result, err
 	}
 	result.QueryFilters = result.Answer
 
-	return
+	return result, nil
 }

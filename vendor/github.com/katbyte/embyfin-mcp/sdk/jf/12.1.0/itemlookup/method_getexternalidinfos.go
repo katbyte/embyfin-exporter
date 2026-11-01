@@ -4,7 +4,6 @@ package itemlookup
 
 import (
 	"context"
-	"fmt"
 	"net/http"
 	"net/url"
 
@@ -20,12 +19,12 @@ func (c Client) GetExternalIdInfos(ctx context.Context, itemId jf.ItemID) (resul
 		},
 		HTTPMethod: http.MethodGet,
 		Operation:  "GetExternalIdInfos",
-		Path:       fmt.Sprintf("/Items/%s/ExternalIdInfos", url.PathEscape(string(itemId))),
+		Path:       "/Items/" + url.PathEscape(string(itemId)) + "/ExternalIdInfos",
 	}
 
 	req, err := c.Client.NewRequest(ctx, opts)
 	if err != nil {
-		return
+		return result, err
 	}
 
 	var resp *client.Response
@@ -34,12 +33,12 @@ func (c Client) GetExternalIdInfos(ctx context.Context, itemId jf.ItemID) (resul
 		result.HttpResponse = resp.Response
 	}
 	if err != nil {
-		return
+		return result, err
 	}
 
-	if err = resp.Unmarshal(&result.Answer); err != nil {
-		return
+	if err := resp.Unmarshal(&result.Answer); err != nil {
+		return result, err
 	}
 
-	return
+	return result, nil
 }

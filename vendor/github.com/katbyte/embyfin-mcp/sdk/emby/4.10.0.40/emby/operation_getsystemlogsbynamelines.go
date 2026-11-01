@@ -28,7 +28,7 @@ func (r GetSystemLogsByNameLinesResponse) Answered() bool { return r.Answer != n
 // error when the server answered none.
 func (r GetSystemLogsByNameLinesResponse) Record() (QueryResultString, error) {
 	if r.Answer == nil {
-		return QueryResultString{}, errors.New("GetSystemLogsByNameLines answered no QueryResultString")
+		return QueryResultString{}, errors.New("no QueryResultString answered by GetSystemLogsByNameLines")
 	}
 
 	return *r.Answer, nil

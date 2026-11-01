@@ -16,8 +16,7 @@ import (
 // GetUsersByUserIdSectionsBySectionIdItems calls GET /Users/{UserId}/Sections/{SectionId}/Items. Requires authentication as user.
 func (c Client) GetUsersByUserIdSectionsBySectionIdItems(ctx context.Context, userId emby.UserID, sectionId string, options ...emby.GetUsersByUserIdSectionsBySectionIdItemsOptions) (result emby.GetUsersByUserIdSectionsBySectionIdItemsResponse, err error) {
 	if len(options) > 1 {
-		err = fmt.Errorf("GetUsersByUserIdSectionsBySectionIdItems takes one options struct at most, not %d", len(options))
-		return
+		return result, fmt.Errorf("at most one options struct for GetUsersByUserIdSectionsBySectionIdItems, not %d", len(options))
 	}
 	var option emby.GetUsersByUserIdSectionsBySectionIdItemsOptions
 	if len(options) == 1 {
@@ -33,12 +32,12 @@ func (c Client) GetUsersByUserIdSectionsBySectionIdItems(ctx context.Context, us
 		HTTPMethod:    http.MethodGet,
 		Operation:     "GetUsersByUserIdSectionsBySectionIdItems",
 		OptionsObject: option,
-		Path:          fmt.Sprintf("/Users/%s/Sections/%s/Items", url.PathEscape(string(userId)), url.PathEscape(sectionId)),
+		Path:          "/Users/" + url.PathEscape(string(userId)) + "/Sections/" + url.PathEscape(sectionId) + "/Items",
 	}
 
 	req, err := c.Client.NewRequest(ctx, opts)
 	if err != nil {
-		return
+		return result, err
 	}
 
 	var resp *client.Response
@@ -47,21 +46,21 @@ func (c Client) GetUsersByUserIdSectionsBySectionIdItems(ctx context.Context, us
 		result.HttpResponse = resp.Response
 	}
 	if err != nil {
-		return
+		return result, err
 	}
 
 	if resp.StatusCode == http.StatusNoContent {
-		return
+		return result, nil
 	}
 
 	var answer emby.QueryResultBaseItemDto
 	result.Answer = &answer
-	if err = resp.Unmarshal(result.Answer); err != nil {
-		return
+	if err := resp.Unmarshal(result.Answer); err != nil {
+		return result, err
 	}
 	result.QueryResultBaseItemDto = result.Answer
 
-	return
+	return result, nil
 }
 
 // GetUsersByUserIdSectionsBySectionIdItemsComplete calls GetUsersByUserIdSectionsBySectionIdItems page by page from options.StartIndex until every
@@ -69,8 +68,7 @@ func (c Client) GetUsersByUserIdSectionsBySectionIdItems(ctx context.Context, us
 // unset.
 func (c Client) GetUsersByUserIdSectionsBySectionIdItemsComplete(ctx context.Context, userId emby.UserID, sectionId string, options ...emby.GetUsersByUserIdSectionsBySectionIdItemsOptions) (result emby.GetUsersByUserIdSectionsBySectionIdItemsCompleteResult, err error) {
 	if len(options) > 1 {
-		err = fmt.Errorf("GetUsersByUserIdSectionsBySectionIdItemsComplete takes one options struct at most, not %d", len(options))
-		return
+		return result, fmt.Errorf("at most one options struct for GetUsersByUserIdSectionsBySectionIdItemsComplete, not %d", len(options))
 	}
 	var option emby.GetUsersByUserIdSectionsBySectionIdItemsOptions
 	if len(options) == 1 {
@@ -83,7 +81,7 @@ func (c Client) GetUsersByUserIdSectionsBySectionIdItemsComplete(ctx context.Con
 	}
 	option.Limit = &limit
 	start := 0
-	if option.StartIndex != nil {
+	if option.StartIndex != nil && *option.StartIndex > 0 {
 		start = *option.StartIndex
 	}
 	for {
@@ -91,11 +89,10 @@ func (c Client) GetUsersByUserIdSectionsBySectionIdItemsComplete(ctx context.Con
 		page, err = c.GetUsersByUserIdSectionsBySectionIdItems(ctx, userId, sectionId, option)
 		result.LatestHttpResponse = page.HttpResponse
 		if err != nil {
-			err = fmt.Errorf("loading results: %w", err)
-			return
+			return result, fmt.Errorf("loading results: %w", err)
 		}
 		if page.Answer == nil || len(page.Answer.Items) == 0 {
-			return
+			return result, nil
 		}
 		result.Items = append(result.Items, page.Answer.Items...)
 		start += len(page.Answer.Items)
@@ -103,7 +100,7 @@ func (c Client) GetUsersByUserIdSectionsBySectionIdItemsComplete(ctx context.Con
 		// a short page is the last; so is reaching the total, when the server
 		// reports one (a list may report 0 whatever it holds)
 		if len(page.Answer.Items) < limit || page.Answer.TotalRecordCount > 0 && start >= page.Answer.TotalRecordCount {
-			return
+			return result, nil
 		}
 	}
 }
@@ -125,7 +122,7 @@ func (c Client) GetUsersByUserIdSectionsBySectionIdItemsEach(ctx context.Context
 	return func(yield func(emby.BaseItemDto, error) bool) {
 		var zero emby.BaseItemDto
 		if len(options) > 1 {
-			yield(zero, fmt.Errorf("GetUsersByUserIdSectionsBySectionIdItemsEach takes one options struct at most, not %d", len(options)))
+			yield(zero, fmt.Errorf("at most one options struct for GetUsersByUserIdSectionsBySectionIdItemsEach, not %d", len(options)))
 			return
 		}
 		var option emby.GetUsersByUserIdSectionsBySectionIdItemsOptions
@@ -139,7 +136,7 @@ func (c Client) GetUsersByUserIdSectionsBySectionIdItemsEach(ctx context.Context
 		}
 		option.Limit = &limit
 		start := 0
-		if option.StartIndex != nil {
+		if option.StartIndex != nil && *option.StartIndex > 0 {
 			start = *option.StartIndex
 		}
 		for {
@@ -151,8 +148,8 @@ func (c Client) GetUsersByUserIdSectionsBySectionIdItemsEach(ctx context.Context
 			if page.Answer == nil || len(page.Answer.Items) == 0 {
 				return
 			}
-			for _, item := range page.Answer.Items {
-				if !yield(item, nil) {
+			for i := range page.Answer.Items {
+				if !yield(page.Answer.Items[i], nil) {
 					return
 				}
 			}

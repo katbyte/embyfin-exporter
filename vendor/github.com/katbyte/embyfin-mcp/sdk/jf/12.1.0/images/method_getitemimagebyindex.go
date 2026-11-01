@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"net/http"
 	"net/url"
+	"strconv"
 
 	"github.com/katbyte/embyfin-mcp/sdk/jf/12.1.0/jf"
 	"github.com/katbyte/pandorest/client"
@@ -15,8 +16,7 @@ import (
 // GetItemImageByIndex calls GET /Items/{itemId}/Images/{imageType}/{imageIndex}. Gets the item's image.
 func (c Client) GetItemImageByIndex(ctx context.Context, itemId jf.ItemID, imageType jf.ImageType, imageIndex int, options ...jf.GetItemImageByIndexOptions) (result jf.GetItemImageByIndexResponse, err error) {
 	if len(options) > 1 {
-		err = fmt.Errorf("GetItemImageByIndex takes one options struct at most, not %d", len(options))
-		return
+		return result, fmt.Errorf("at most one options struct for GetItemImageByIndex, not %d", len(options))
 	}
 	var option jf.GetItemImageByIndexOptions
 	if len(options) == 1 {
@@ -31,13 +31,13 @@ func (c Client) GetItemImageByIndex(ctx context.Context, itemId jf.ItemID, image
 		HTTPMethod:     http.MethodGet,
 		Operation:      "GetItemImageByIndex",
 		OptionsObject:  option,
-		Path:           fmt.Sprintf("/Items/%s/Images/%s/%d", url.PathEscape(string(itemId)), url.PathEscape(string(imageType)), imageIndex),
+		Path:           "/Items/" + url.PathEscape(string(itemId)) + "/Images/" + url.PathEscape(string(imageType)) + "/" + strconv.Itoa(imageIndex),
 		StreamResponse: true,
 	}
 
 	req, err := c.Client.NewRequest(ctx, opts)
 	if err != nil {
-		return
+		return result, err
 	}
 
 	var resp *client.Response
@@ -46,8 +46,8 @@ func (c Client) GetItemImageByIndex(ctx context.Context, itemId jf.ItemID, image
 		result.HttpResponse = resp.Response
 	}
 	if err != nil {
-		return
+		return result, err
 	}
 
-	return
+	return result, nil
 }

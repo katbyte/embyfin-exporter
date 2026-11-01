@@ -30,7 +30,7 @@ func (r GetIntrosResponse) Answered() bool { return r.Answer != nil }
 // error when the server answered none.
 func (r GetIntrosResponse) Record() (BaseItemDtoQueryResult, error) {
 	if r.Answer == nil {
-		return BaseItemDtoQueryResult{}, errors.New("GetIntros answered no BaseItemDtoQueryResult")
+		return BaseItemDtoQueryResult{}, errors.New("no BaseItemDtoQueryResult answered by GetIntros")
 	}
 
 	return *r.Answer, nil
@@ -44,8 +44,7 @@ type GetIntrosOptions struct {
 
 // ToHeaders returns the header parameters the options set.
 func (o GetIntrosOptions) ToHeaders() *client.Headers {
-	out := client.Headers{}
-	return &out
+	return &client.Headers{}
 }
 
 // ToQuery returns the query parameters the options set.

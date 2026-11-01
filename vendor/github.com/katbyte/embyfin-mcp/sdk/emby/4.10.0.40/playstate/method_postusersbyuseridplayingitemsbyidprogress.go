@@ -4,7 +4,6 @@ package playstate
 
 import (
 	"context"
-	"fmt"
 	"net/http"
 	"net/url"
 
@@ -23,16 +22,16 @@ func (c Client) PostUsersByUserIdPlayingItemsByIdProgress(ctx context.Context, u
 		HTTPMethod:    http.MethodPost,
 		Operation:     "PostUsersByUserIdPlayingItemsByIdProgress",
 		OptionsObject: options,
-		Path:          fmt.Sprintf("/Users/%s/PlayingItems/%s/Progress", url.PathEscape(string(userId)), url.PathEscape(string(id))),
+		Path:          "/Users/" + url.PathEscape(string(userId)) + "/PlayingItems/" + url.PathEscape(string(id)) + "/Progress",
 	}
 
 	req, err := c.Client.NewRequest(ctx, opts)
 	if err != nil {
-		return
+		return result, err
 	}
 
-	if err = req.Marshal(input); err != nil {
-		return
+	if err := req.Marshal(input); err != nil {
+		return result, err
 	}
 
 	var resp *client.Response
@@ -41,8 +40,8 @@ func (c Client) PostUsersByUserIdPlayingItemsByIdProgress(ctx context.Context, u
 		result.HttpResponse = resp.Response
 	}
 	if err != nil {
-		return
+		return result, err
 	}
 
-	return
+	return result, nil
 }

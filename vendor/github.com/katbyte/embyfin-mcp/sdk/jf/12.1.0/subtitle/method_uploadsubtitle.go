@@ -4,7 +4,6 @@ package subtitle
 
 import (
 	"context"
-	"fmt"
 	"net/http"
 	"net/url"
 
@@ -21,16 +20,16 @@ func (c Client) UploadSubtitle(ctx context.Context, itemId jf.ItemID, input jf.U
 		},
 		HTTPMethod: http.MethodPost,
 		Operation:  "UploadSubtitle",
-		Path:       fmt.Sprintf("/Videos/%s/Subtitles", url.PathEscape(string(itemId))),
+		Path:       "/Videos/" + url.PathEscape(string(itemId)) + "/Subtitles",
 	}
 
 	req, err := c.Client.NewRequest(ctx, opts)
 	if err != nil {
-		return
+		return result, err
 	}
 
-	if err = req.Marshal(input); err != nil {
-		return
+	if err := req.Marshal(input); err != nil {
+		return result, err
 	}
 
 	var resp *client.Response
@@ -39,8 +38,8 @@ func (c Client) UploadSubtitle(ctx context.Context, itemId jf.ItemID, input jf.U
 		result.HttpResponse = resp.Response
 	}
 	if err != nil {
-		return
+		return result, err
 	}
 
-	return
+	return result, nil
 }

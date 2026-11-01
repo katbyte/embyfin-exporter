@@ -28,7 +28,7 @@ func (r PostUsersNewResponse) Answered() bool { return r.Answer != nil }
 // error when the server answered none.
 func (r PostUsersNewResponse) Record() (UserDto, error) {
 	if r.Answer == nil {
-		return UserDto{}, errors.New("PostUsersNew answered no UserDto")
+		return UserDto{}, errors.New("no UserDto answered by PostUsersNew")
 	}
 
 	return *r.Answer, nil

@@ -4,7 +4,6 @@ package collection
 
 import (
 	"context"
-	"fmt"
 	"net/http"
 	"net/url"
 
@@ -25,12 +24,12 @@ func (c Client) PostCollectionsByIdItemsDelete(ctx context.Context, id emby.Item
 		HTTPMethod:    http.MethodPost,
 		Operation:     "PostCollectionsByIdItemsDelete",
 		OptionsObject: option,
-		Path:          fmt.Sprintf("/Collections/%s/Items/Delete", url.PathEscape(string(id))),
+		Path:          "/Collections/" + url.PathEscape(string(id)) + "/Items/Delete",
 	}
 
 	req, err := c.Client.NewRequest(ctx, opts)
 	if err != nil {
-		return
+		return result, err
 	}
 
 	var resp *client.Response
@@ -39,8 +38,8 @@ func (c Client) PostCollectionsByIdItemsDelete(ctx context.Context, id emby.Item
 		result.HttpResponse = resp.Response
 	}
 	if err != nil {
-		return
+		return result, err
 	}
 
-	return
+	return result, nil
 }

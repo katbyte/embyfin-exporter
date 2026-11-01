@@ -30,7 +30,7 @@ func (r GetConnectExchangeResponse) Answered() bool { return r.Answer != nil }
 // error when the server answered none.
 func (r GetConnectExchangeResponse) Record() (ConnectConnectAuthenticationExchangeResult, error) {
 	if r.Answer == nil {
-		return ConnectConnectAuthenticationExchangeResult{}, errors.New("GetConnectExchange answered no ConnectConnectAuthenticationExchangeResult")
+		return ConnectConnectAuthenticationExchangeResult{}, errors.New("no ConnectConnectAuthenticationExchangeResult answered by GetConnectExchange")
 	}
 
 	return *r.Answer, nil
@@ -44,8 +44,7 @@ type GetConnectExchangeOptions struct {
 
 // ToHeaders returns the header parameters the options set.
 func (o GetConnectExchangeOptions) ToHeaders() *client.Headers {
-	out := client.Headers{}
-	return &out
+	return &client.Headers{}
 }
 
 // ToQuery returns the query parameters the options set.

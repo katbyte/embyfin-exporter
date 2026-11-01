@@ -14,8 +14,7 @@ import (
 // GetLibrariesAvailableOptions calls GET /Libraries/AvailableOptions. Requires authentication as user.
 func (c Client) GetLibrariesAvailableOptions(ctx context.Context, options ...emby.GetLibrariesAvailableOptionsOptions) (result emby.GetLibrariesAvailableOptionsResponse, err error) {
 	if len(options) > 1 {
-		err = fmt.Errorf("GetLibrariesAvailableOptions takes one options struct at most, not %d", len(options))
-		return
+		return result, fmt.Errorf("at most one options struct for GetLibrariesAvailableOptions, not %d", len(options))
 	}
 	var option emby.GetLibrariesAvailableOptionsOptions
 	if len(options) == 1 {
@@ -36,7 +35,7 @@ func (c Client) GetLibrariesAvailableOptions(ctx context.Context, options ...emb
 
 	req, err := c.Client.NewRequest(ctx, opts)
 	if err != nil {
-		return
+		return result, err
 	}
 
 	var resp *client.Response
@@ -45,19 +44,19 @@ func (c Client) GetLibrariesAvailableOptions(ctx context.Context, options ...emb
 		result.HttpResponse = resp.Response
 	}
 	if err != nil {
-		return
+		return result, err
 	}
 
 	if resp.StatusCode == http.StatusNoContent {
-		return
+		return result, nil
 	}
 
 	var answer emby.LibraryOptionsResult
 	result.Answer = &answer
-	if err = resp.Unmarshal(result.Answer); err != nil {
-		return
+	if err := resp.Unmarshal(result.Answer); err != nil {
+		return result, err
 	}
 	result.LibraryOptionsResult = result.Answer
 
-	return
+	return result, nil
 }

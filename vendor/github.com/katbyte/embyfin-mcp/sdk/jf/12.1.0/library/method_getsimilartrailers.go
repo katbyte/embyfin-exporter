@@ -15,8 +15,7 @@ import (
 // GetSimilarTrailers calls GET /Trailers/{itemId}/Similar. Gets similar items.
 func (c Client) GetSimilarTrailers(ctx context.Context, itemId jf.ItemID, options ...jf.GetSimilarTrailersOptions) (result jf.GetSimilarTrailersResponse, err error) {
 	if len(options) > 1 {
-		err = fmt.Errorf("GetSimilarTrailers takes one options struct at most, not %d", len(options))
-		return
+		return result, fmt.Errorf("at most one options struct for GetSimilarTrailers, not %d", len(options))
 	}
 	var option jf.GetSimilarTrailersOptions
 	if len(options) == 1 {
@@ -31,12 +30,12 @@ func (c Client) GetSimilarTrailers(ctx context.Context, itemId jf.ItemID, option
 		HTTPMethod:    http.MethodGet,
 		Operation:     "GetSimilarTrailers",
 		OptionsObject: option,
-		Path:          fmt.Sprintf("/Trailers/%s/Similar", url.PathEscape(string(itemId))),
+		Path:          "/Trailers/" + url.PathEscape(string(itemId)) + "/Similar",
 	}
 
 	req, err := c.Client.NewRequest(ctx, opts)
 	if err != nil {
-		return
+		return result, err
 	}
 
 	var resp *client.Response
@@ -45,15 +44,15 @@ func (c Client) GetSimilarTrailers(ctx context.Context, itemId jf.ItemID, option
 		result.HttpResponse = resp.Response
 	}
 	if err != nil {
-		return
+		return result, err
 	}
 
 	var answer jf.BaseItemDtoQueryResult
 	result.Answer = &answer
-	if err = resp.Unmarshal(result.Answer); err != nil {
-		return
+	if err := resp.Unmarshal(result.Answer); err != nil {
+		return result, err
 	}
 	result.BaseItemDtoQueryResult = result.Answer
 
-	return
+	return result, nil
 }

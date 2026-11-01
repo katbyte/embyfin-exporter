@@ -4,7 +4,6 @@ package users
 
 import (
 	"context"
-	"fmt"
 	"io"
 	"net/http"
 	"net/url"
@@ -25,16 +24,16 @@ func (c Client) PostUsersByIdConfigurationPartial(ctx context.Context, id emby.U
 		},
 		HTTPMethod: http.MethodPost,
 		Operation:  "PostUsersByIdConfigurationPartial",
-		Path:       fmt.Sprintf("/Users/%s/Configuration/Partial", url.PathEscape(string(id))),
+		Path:       "/Users/" + url.PathEscape(string(id)) + "/Configuration/Partial",
 	}
 
 	req, err := c.Client.NewRequest(ctx, opts)
 	if err != nil {
-		return
+		return result, err
 	}
 
-	if err = req.SetBody(input, contentType); err != nil {
-		return
+	if err := req.SetBody(input, contentType); err != nil {
+		return result, err
 	}
 
 	var resp *client.Response
@@ -43,8 +42,8 @@ func (c Client) PostUsersByIdConfigurationPartial(ctx context.Context, id emby.U
 		result.HttpResponse = resp.Response
 	}
 	if err != nil {
-		return
+		return result, err
 	}
 
-	return
+	return result, nil
 }

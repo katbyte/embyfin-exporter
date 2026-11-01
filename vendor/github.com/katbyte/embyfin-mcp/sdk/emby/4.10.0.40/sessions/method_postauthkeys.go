@@ -28,7 +28,7 @@ func (c Client) PostAuthKeys(ctx context.Context, app string) (result emby.PostA
 
 	req, err := c.Client.NewRequest(ctx, opts)
 	if err != nil {
-		return
+		return result, err
 	}
 
 	var resp *client.Response
@@ -37,8 +37,8 @@ func (c Client) PostAuthKeys(ctx context.Context, app string) (result emby.PostA
 		result.HttpResponse = resp.Response
 	}
 	if err != nil {
-		return
+		return result, err
 	}
 
-	return
+	return result, nil
 }

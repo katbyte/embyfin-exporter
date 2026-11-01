@@ -30,7 +30,7 @@ func (c Client) PostSyncItemsCancel(ctx context.Context, itemIds ...emby.ItemID)
 
 	req, err := c.Client.NewRequest(ctx, opts)
 	if err != nil {
-		return
+		return result, err
 	}
 
 	var resp *client.Response
@@ -39,8 +39,8 @@ func (c Client) PostSyncItemsCancel(ctx context.Context, itemIds ...emby.ItemID)
 		result.HttpResponse = resp.Response
 	}
 	if err != nil {
-		return
+		return result, err
 	}
 
-	return
+	return result, nil
 }

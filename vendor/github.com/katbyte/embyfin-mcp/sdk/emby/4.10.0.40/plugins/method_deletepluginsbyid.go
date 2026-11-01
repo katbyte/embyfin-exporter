@@ -4,7 +4,6 @@ package plugins
 
 import (
 	"context"
-	"fmt"
 	"net/http"
 	"net/url"
 
@@ -21,12 +20,12 @@ func (c Client) DeletePluginsById(ctx context.Context, id string) (result emby.D
 		},
 		HTTPMethod: http.MethodDelete,
 		Operation:  "DeletePluginsById",
-		Path:       fmt.Sprintf("/Plugins/%s", url.PathEscape(id)),
+		Path:       "/Plugins/" + url.PathEscape(id),
 	}
 
 	req, err := c.Client.NewRequest(ctx, opts)
 	if err != nil {
-		return
+		return result, err
 	}
 
 	var resp *client.Response
@@ -35,8 +34,8 @@ func (c Client) DeletePluginsById(ctx context.Context, id string) (result emby.D
 		result.HttpResponse = resp.Response
 	}
 	if err != nil {
-		return
+		return result, err
 	}
 
-	return
+	return result, nil
 }

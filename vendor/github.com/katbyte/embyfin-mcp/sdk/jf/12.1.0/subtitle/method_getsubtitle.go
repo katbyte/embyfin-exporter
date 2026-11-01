@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"net/http"
 	"net/url"
+	"strconv"
 
 	"github.com/katbyte/embyfin-mcp/sdk/jf/12.1.0/jf"
 	"github.com/katbyte/pandorest/client"
@@ -15,8 +16,7 @@ import (
 // GetSubtitle calls GET /Videos/{routeItemId}/{routeMediaSourceId}/Subtitles/{routeIndex}/Stream.{routeFormat}. Gets subtitles in a specified format.
 func (c Client) GetSubtitle(ctx context.Context, routeItemId jf.ItemID, routeMediaSourceId jf.MediaSourceID, routeIndex int, routeFormat string, options ...jf.GetSubtitleOptions) (result jf.GetSubtitleResponse, err error) {
 	if len(options) > 1 {
-		err = fmt.Errorf("GetSubtitle takes one options struct at most, not %d", len(options))
-		return
+		return result, fmt.Errorf("at most one options struct for GetSubtitle, not %d", len(options))
 	}
 	var option jf.GetSubtitleOptions
 	if len(options) == 1 {
@@ -31,13 +31,13 @@ func (c Client) GetSubtitle(ctx context.Context, routeItemId jf.ItemID, routeMed
 		HTTPMethod:     http.MethodGet,
 		Operation:      "GetSubtitle",
 		OptionsObject:  option,
-		Path:           fmt.Sprintf("/Videos/%s/%s/Subtitles/%d/Stream.%s", url.PathEscape(string(routeItemId)), url.PathEscape(string(routeMediaSourceId)), routeIndex, url.PathEscape(routeFormat)),
+		Path:           "/Videos/" + url.PathEscape(string(routeItemId)) + "/" + url.PathEscape(string(routeMediaSourceId)) + "/Subtitles/" + strconv.Itoa(routeIndex) + "/Stream." + url.PathEscape(routeFormat),
 		StreamResponse: true,
 	}
 
 	req, err := c.Client.NewRequest(ctx, opts)
 	if err != nil {
-		return
+		return result, err
 	}
 
 	var resp *client.Response
@@ -46,8 +46,8 @@ func (c Client) GetSubtitle(ctx context.Context, routeItemId jf.ItemID, routeMed
 		result.HttpResponse = resp.Response
 	}
 	if err != nil {
-		return
+		return result, err
 	}
 
-	return
+	return result, nil
 }

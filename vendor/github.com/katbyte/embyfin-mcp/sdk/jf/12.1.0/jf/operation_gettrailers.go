@@ -31,7 +31,7 @@ func (r GetTrailersResponse) Answered() bool { return r.Answer != nil }
 // error when the server answered none.
 func (r GetTrailersResponse) Record() (BaseItemDtoQueryResult, error) {
 	if r.Answer == nil {
-		return BaseItemDtoQueryResult{}, errors.New("GetTrailers answered no BaseItemDtoQueryResult")
+		return BaseItemDtoQueryResult{}, errors.New("no BaseItemDtoQueryResult answered by GetTrailers")
 	}
 
 	return *r.Answer, nil
@@ -300,8 +300,7 @@ type GetTrailersOptions struct {
 
 // ToHeaders returns the header parameters the options set.
 func (o GetTrailersOptions) ToHeaders() *client.Headers {
-	out := client.Headers{}
-	return &out
+	return &client.Headers{}
 }
 
 // ToQuery returns the query parameters the options set.

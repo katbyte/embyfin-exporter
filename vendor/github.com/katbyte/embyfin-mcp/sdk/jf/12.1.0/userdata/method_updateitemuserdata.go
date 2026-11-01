@@ -16,8 +16,7 @@ import (
 func (c Client) UpdateItemUserData(ctx context.Context, itemId jf.ItemID, input jf.UpdateUserItemDataDto, userId ...jf.UserID) (result jf.UpdateItemUserDataResponse, err error) {
 	var option jf.UpdateItemUserDataOptions
 	if len(userId) > 1 {
-		err = fmt.Errorf("UpdateItemUserData takes one userId at most, not %d", len(userId))
-		return
+		return result, fmt.Errorf("at most one userId for UpdateItemUserData, not %d", len(userId))
 	}
 	if len(userId) == 1 {
 		option.UserId = userId[0]
@@ -32,16 +31,16 @@ func (c Client) UpdateItemUserData(ctx context.Context, itemId jf.ItemID, input 
 		HTTPMethod:    http.MethodPost,
 		Operation:     "UpdateItemUserData",
 		OptionsObject: option,
-		Path:          fmt.Sprintf("/UserItems/%s/UserData", url.PathEscape(string(itemId))),
+		Path:          "/UserItems/" + url.PathEscape(string(itemId)) + "/UserData",
 	}
 
 	req, err := c.Client.NewRequest(ctx, opts)
 	if err != nil {
-		return
+		return result, err
 	}
 
-	if err = req.Marshal(input); err != nil {
-		return
+	if err := req.Marshal(input); err != nil {
+		return result, err
 	}
 
 	var resp *client.Response
@@ -50,15 +49,15 @@ func (c Client) UpdateItemUserData(ctx context.Context, itemId jf.ItemID, input 
 		result.HttpResponse = resp.Response
 	}
 	if err != nil {
-		return
+		return result, err
 	}
 
 	var answer jf.UserItemDataDto
 	result.Answer = &answer
-	if err = resp.Unmarshal(result.Answer); err != nil {
-		return
+	if err := resp.Unmarshal(result.Answer); err != nil {
+		return result, err
 	}
 	result.UserItemDataDto = result.Answer
 
-	return
+	return result, nil
 }

@@ -31,7 +31,7 @@ func (r GetItemsByIdThemeVideosResponse) Answered() bool { return r.Answer != ni
 // error when the server answered none.
 func (r GetItemsByIdThemeVideosResponse) Record() (ThemeMediaResult, error) {
 	if r.Answer == nil {
-		return ThemeMediaResult{}, errors.New("GetItemsByIdThemeVideos answered no ThemeMediaResult")
+		return ThemeMediaResult{}, errors.New("no ThemeMediaResult answered by GetItemsByIdThemeVideos")
 	}
 
 	return *r.Answer, nil
@@ -432,8 +432,7 @@ type GetItemsByIdThemeVideosOptions struct {
 
 // ToHeaders returns the header parameters the options set.
 func (o GetItemsByIdThemeVideosOptions) ToHeaders() *client.Headers {
-	out := client.Headers{}
-	return &out
+	return &client.Headers{}
 }
 
 // ToQuery returns the query parameters the options set.

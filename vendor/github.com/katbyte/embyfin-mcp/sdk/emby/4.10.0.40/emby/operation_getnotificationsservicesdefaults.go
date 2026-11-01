@@ -30,7 +30,7 @@ func (r GetNotificationsServicesDefaultsResponse) Answered() bool { return r.Ans
 // error when the server answered none.
 func (r GetNotificationsServicesDefaultsResponse) Record() (UserNotificationInfo, error) {
 	if r.Answer == nil {
-		return UserNotificationInfo{}, errors.New("GetNotificationsServicesDefaults answered no UserNotificationInfo")
+		return UserNotificationInfo{}, errors.New("no UserNotificationInfo answered by GetNotificationsServicesDefaults")
 	}
 
 	return *r.Answer, nil
@@ -47,8 +47,7 @@ type GetNotificationsServicesDefaultsOptions struct {
 
 // ToHeaders returns the header parameters the options set.
 func (o GetNotificationsServicesDefaultsOptions) ToHeaders() *client.Headers {
-	out := client.Headers{}
-	return &out
+	return &client.Headers{}
 }
 
 // ToQuery returns the query parameters the options set.

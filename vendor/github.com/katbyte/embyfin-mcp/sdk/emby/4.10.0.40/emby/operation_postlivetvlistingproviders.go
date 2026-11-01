@@ -28,7 +28,7 @@ func (r PostLiveTvListingProvidersResponse) Answered() bool { return r.Answer !=
 // error when the server answered none.
 func (r PostLiveTvListingProvidersResponse) Record() (LiveTvListingsProviderInfo, error) {
 	if r.Answer == nil {
-		return LiveTvListingsProviderInfo{}, errors.New("PostLiveTvListingProviders answered no LiveTvListingsProviderInfo")
+		return LiveTvListingsProviderInfo{}, errors.New("no LiveTvListingsProviderInfo answered by PostLiveTvListingProviders")
 	}
 
 	return *r.Answer, nil

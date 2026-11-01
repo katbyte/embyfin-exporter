@@ -16,8 +16,7 @@ import (
 func (c Client) GetItem(ctx context.Context, itemId jf.ItemID, userId ...jf.UserID) (result jf.GetItemResponse, err error) {
 	var option jf.GetItemOptions
 	if len(userId) > 1 {
-		err = fmt.Errorf("GetItem takes one userId at most, not %d", len(userId))
-		return
+		return result, fmt.Errorf("at most one userId for GetItem, not %d", len(userId))
 	}
 	if len(userId) == 1 {
 		option.UserId = userId[0]
@@ -31,12 +30,12 @@ func (c Client) GetItem(ctx context.Context, itemId jf.ItemID, userId ...jf.User
 		HTTPMethod:    http.MethodGet,
 		Operation:     "GetItem",
 		OptionsObject: option,
-		Path:          fmt.Sprintf("/Items/%s", url.PathEscape(string(itemId))),
+		Path:          "/Items/" + url.PathEscape(string(itemId)),
 	}
 
 	req, err := c.Client.NewRequest(ctx, opts)
 	if err != nil {
-		return
+		return result, err
 	}
 
 	var resp *client.Response
@@ -45,15 +44,15 @@ func (c Client) GetItem(ctx context.Context, itemId jf.ItemID, userId ...jf.User
 		result.HttpResponse = resp.Response
 	}
 	if err != nil {
-		return
+		return result, err
 	}
 
 	var answer jf.BaseItemDto
 	result.Answer = &answer
-	if err = resp.Unmarshal(result.Answer); err != nil {
-		return
+	if err := resp.Unmarshal(result.Answer); err != nil {
+		return result, err
 	}
 	result.BaseItemDto = result.Answer
 
-	return
+	return result, nil
 }

@@ -28,7 +28,7 @@ func (r DeleteUsersByUserIdFavoriteItemsByIdResponse) Answered() bool { return r
 // error when the server answered none.
 func (r DeleteUsersByUserIdFavoriteItemsByIdResponse) Record() (UserItemDataDto, error) {
 	if r.Answer == nil {
-		return UserItemDataDto{}, errors.New("DeleteUsersByUserIdFavoriteItemsById answered no UserItemDataDto")
+		return UserItemDataDto{}, errors.New("no UserItemDataDto answered by DeleteUsersByUserIdFavoriteItemsById")
 	}
 
 	return *r.Answer, nil

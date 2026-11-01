@@ -28,7 +28,7 @@ func (r AddTunerHostResponse) Answered() bool { return r.Answer != nil }
 // error when the server answered none.
 func (r AddTunerHostResponse) Record() (TunerHostInfo, error) {
 	if r.Answer == nil {
-		return TunerHostInfo{}, errors.New("AddTunerHost answered no TunerHostInfo")
+		return TunerHostInfo{}, errors.New("no TunerHostInfo answered by AddTunerHost")
 	}
 
 	return *r.Answer, nil

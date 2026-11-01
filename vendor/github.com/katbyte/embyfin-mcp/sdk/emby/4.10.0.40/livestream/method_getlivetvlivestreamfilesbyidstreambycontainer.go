@@ -4,7 +4,6 @@ package livestream
 
 import (
 	"context"
-	"fmt"
 	"net/http"
 	"net/url"
 
@@ -13,7 +12,7 @@ import (
 )
 
 // GetLiveTvLiveStreamFilesByIdStreamByContainer calls GET /LiveTv/LiveStreamFiles/{Id}/stream.{Container}. Gets a live tv channel.
-func (c Client) GetLiveTvLiveStreamFilesByIdStreamByContainer(ctx context.Context, id string, container string) (result emby.GetLiveTvLiveStreamFilesByIdStreamByContainerResponse, err error) {
+func (c Client) GetLiveTvLiveStreamFilesByIdStreamByContainer(ctx context.Context, id, container string) (result emby.GetLiveTvLiveStreamFilesByIdStreamByContainerResponse, err error) {
 	opts := client.RequestOptions{
 		Accept: "video/*",
 		ExpectedStatusCodes: []int{
@@ -21,13 +20,13 @@ func (c Client) GetLiveTvLiveStreamFilesByIdStreamByContainer(ctx context.Contex
 		},
 		HTTPMethod:     http.MethodGet,
 		Operation:      "GetLiveTvLiveStreamFilesByIdStreamByContainer",
-		Path:           fmt.Sprintf("/LiveTv/LiveStreamFiles/%s/stream.%s", url.PathEscape(id), url.PathEscape(container)),
+		Path:           "/LiveTv/LiveStreamFiles/" + url.PathEscape(id) + "/stream." + url.PathEscape(container),
 		StreamResponse: true,
 	}
 
 	req, err := c.Client.NewRequest(ctx, opts)
 	if err != nil {
-		return
+		return result, err
 	}
 
 	var resp *client.Response
@@ -36,8 +35,8 @@ func (c Client) GetLiveTvLiveStreamFilesByIdStreamByContainer(ctx context.Contex
 		result.HttpResponse = resp.Response
 	}
 	if err != nil {
-		return
+		return result, err
 	}
 
-	return
+	return result, nil
 }

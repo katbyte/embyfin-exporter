@@ -28,7 +28,7 @@ func (r GetLiveTvTunerHostsDefaultByTypeResponse) Answered() bool { return r.Ans
 // error when the server answered none.
 func (r GetLiveTvTunerHostsDefaultByTypeResponse) Record() (LiveTvTunerHostInfo, error) {
 	if r.Answer == nil {
-		return LiveTvTunerHostInfo{}, errors.New("GetLiveTvTunerHostsDefaultByType answered no LiveTvTunerHostInfo")
+		return LiveTvTunerHostInfo{}, errors.New("no LiveTvTunerHostInfo answered by GetLiveTvTunerHostsDefaultByType")
 	}
 
 	return *r.Answer, nil

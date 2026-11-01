@@ -15,8 +15,7 @@ import (
 // GetVideoStreamByContainer calls GET /Videos/{itemId}/stream.{container}. Gets a video stream.
 func (c Client) GetVideoStreamByContainer(ctx context.Context, itemId jf.ItemID, container string, options ...jf.GetVideoStreamByContainerOptions) (result jf.GetVideoStreamByContainerResponse, err error) {
 	if len(options) > 1 {
-		err = fmt.Errorf("GetVideoStreamByContainer takes one options struct at most, not %d", len(options))
-		return
+		return result, fmt.Errorf("at most one options struct for GetVideoStreamByContainer, not %d", len(options))
 	}
 	var option jf.GetVideoStreamByContainerOptions
 	if len(options) == 1 {
@@ -31,13 +30,13 @@ func (c Client) GetVideoStreamByContainer(ctx context.Context, itemId jf.ItemID,
 		HTTPMethod:     http.MethodGet,
 		Operation:      "GetVideoStreamByContainer",
 		OptionsObject:  option,
-		Path:           fmt.Sprintf("/Videos/%s/stream.%s", url.PathEscape(string(itemId)), url.PathEscape(container)),
+		Path:           "/Videos/" + url.PathEscape(string(itemId)) + "/stream." + url.PathEscape(container),
 		StreamResponse: true,
 	}
 
 	req, err := c.Client.NewRequest(ctx, opts)
 	if err != nil {
-		return
+		return result, err
 	}
 
 	var resp *client.Response
@@ -46,8 +45,8 @@ func (c Client) GetVideoStreamByContainer(ctx context.Context, itemId jf.ItemID,
 		result.HttpResponse = resp.Response
 	}
 	if err != nil {
-		return
+		return result, err
 	}
 
-	return
+	return result, nil
 }

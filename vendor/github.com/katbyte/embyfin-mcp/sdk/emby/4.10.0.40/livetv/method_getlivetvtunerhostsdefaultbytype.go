@@ -4,7 +4,6 @@ package livetv
 
 import (
 	"context"
-	"fmt"
 	"net/http"
 	"net/url"
 
@@ -22,12 +21,12 @@ func (c Client) GetLiveTvTunerHostsDefaultByType(ctx context.Context, typeParam 
 		},
 		HTTPMethod: http.MethodGet,
 		Operation:  "GetLiveTvTunerHostsDefaultByType",
-		Path:       fmt.Sprintf("/LiveTv/TunerHosts/Default/%s", url.PathEscape(typeParam)),
+		Path:       "/LiveTv/TunerHosts/Default/" + url.PathEscape(typeParam),
 	}
 
 	req, err := c.Client.NewRequest(ctx, opts)
 	if err != nil {
-		return
+		return result, err
 	}
 
 	var resp *client.Response
@@ -36,19 +35,19 @@ func (c Client) GetLiveTvTunerHostsDefaultByType(ctx context.Context, typeParam 
 		result.HttpResponse = resp.Response
 	}
 	if err != nil {
-		return
+		return result, err
 	}
 
 	if resp.StatusCode == http.StatusNoContent {
-		return
+		return result, nil
 	}
 
 	var answer emby.LiveTvTunerHostInfo
 	result.Answer = &answer
-	if err = resp.Unmarshal(result.Answer); err != nil {
-		return
+	if err := resp.Unmarshal(result.Answer); err != nil {
+		return result, err
 	}
 	result.LiveTvTunerHostInfo = result.Answer
 
-	return
+	return result, nil
 }

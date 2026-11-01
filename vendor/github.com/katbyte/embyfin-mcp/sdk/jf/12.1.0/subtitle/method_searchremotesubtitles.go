@@ -16,8 +16,7 @@ import (
 func (c Client) SearchRemoteSubtitles(ctx context.Context, itemId jf.ItemID, language string, isPerfectMatch ...bool) (result jf.SearchRemoteSubtitlesResponse, err error) {
 	var option jf.SearchRemoteSubtitlesOptions
 	if len(isPerfectMatch) > 1 {
-		err = fmt.Errorf("SearchRemoteSubtitles takes one isPerfectMatch at most, not %d", len(isPerfectMatch))
-		return
+		return result, fmt.Errorf("at most one isPerfectMatch for SearchRemoteSubtitles, not %d", len(isPerfectMatch))
 	}
 	if len(isPerfectMatch) == 1 {
 		option.IsPerfectMatch = &isPerfectMatch[0]
@@ -30,12 +29,12 @@ func (c Client) SearchRemoteSubtitles(ctx context.Context, itemId jf.ItemID, lan
 		HTTPMethod:    http.MethodGet,
 		Operation:     "SearchRemoteSubtitles",
 		OptionsObject: option,
-		Path:          fmt.Sprintf("/Items/%s/RemoteSearch/Subtitles/%s", url.PathEscape(string(itemId)), url.PathEscape(language)),
+		Path:          "/Items/" + url.PathEscape(string(itemId)) + "/RemoteSearch/Subtitles/" + url.PathEscape(language),
 	}
 
 	req, err := c.Client.NewRequest(ctx, opts)
 	if err != nil {
-		return
+		return result, err
 	}
 
 	var resp *client.Response
@@ -44,12 +43,12 @@ func (c Client) SearchRemoteSubtitles(ctx context.Context, itemId jf.ItemID, lan
 		result.HttpResponse = resp.Response
 	}
 	if err != nil {
-		return
+		return result, err
 	}
 
-	if err = resp.Unmarshal(&result.Answer); err != nil {
-		return
+	if err := resp.Unmarshal(&result.Answer); err != nil {
+		return result, err
 	}
 
-	return
+	return result, nil
 }

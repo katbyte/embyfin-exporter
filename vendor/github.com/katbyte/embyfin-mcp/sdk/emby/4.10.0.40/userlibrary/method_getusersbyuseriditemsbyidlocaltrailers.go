@@ -15,8 +15,7 @@ import (
 // GetUsersByUserIdItemsByIdLocalTrailers calls GET /Users/{UserId}/Items/{Id}/LocalTrailers. Gets local trailers for an item.
 func (c Client) GetUsersByUserIdItemsByIdLocalTrailers(ctx context.Context, userId emby.UserID, id emby.ItemID, options ...emby.GetUsersByUserIdItemsByIdLocalTrailersOptions) (result emby.GetUsersByUserIdItemsByIdLocalTrailersResponse, err error) {
 	if len(options) > 1 {
-		err = fmt.Errorf("GetUsersByUserIdItemsByIdLocalTrailers takes one options struct at most, not %d", len(options))
-		return
+		return result, fmt.Errorf("at most one options struct for GetUsersByUserIdItemsByIdLocalTrailers, not %d", len(options))
 	}
 	var option emby.GetUsersByUserIdItemsByIdLocalTrailersOptions
 	if len(options) == 1 {
@@ -31,12 +30,12 @@ func (c Client) GetUsersByUserIdItemsByIdLocalTrailers(ctx context.Context, user
 		HTTPMethod:    http.MethodGet,
 		Operation:     "GetUsersByUserIdItemsByIdLocalTrailers",
 		OptionsObject: option,
-		Path:          fmt.Sprintf("/Users/%s/Items/%s/LocalTrailers", url.PathEscape(string(userId)), url.PathEscape(string(id))),
+		Path:          "/Users/" + url.PathEscape(string(userId)) + "/Items/" + url.PathEscape(string(id)) + "/LocalTrailers",
 	}
 
 	req, err := c.Client.NewRequest(ctx, opts)
 	if err != nil {
-		return
+		return result, err
 	}
 
 	var resp *client.Response
@@ -45,16 +44,16 @@ func (c Client) GetUsersByUserIdItemsByIdLocalTrailers(ctx context.Context, user
 		result.HttpResponse = resp.Response
 	}
 	if err != nil {
-		return
+		return result, err
 	}
 
 	if resp.StatusCode == http.StatusNoContent {
-		return
+		return result, nil
 	}
 
-	if err = resp.Unmarshal(&result.Answer); err != nil {
-		return
+	if err := resp.Unmarshal(&result.Answer); err != nil {
+		return result, err
 	}
 
-	return
+	return result, nil
 }

@@ -15,8 +15,7 @@ import (
 // GetShowsUpcoming calls GET /Shows/Upcoming. Gets a list of upcoming episodes.
 func (c Client) GetShowsUpcoming(ctx context.Context, options ...emby.GetShowsUpcomingOptions) (result emby.GetShowsUpcomingResponse, err error) {
 	if len(options) > 1 {
-		err = fmt.Errorf("GetShowsUpcoming takes one options struct at most, not %d", len(options))
-		return
+		return result, fmt.Errorf("at most one options struct for GetShowsUpcoming, not %d", len(options))
 	}
 	var option emby.GetShowsUpcomingOptions
 	if len(options) == 1 {
@@ -37,7 +36,7 @@ func (c Client) GetShowsUpcoming(ctx context.Context, options ...emby.GetShowsUp
 
 	req, err := c.Client.NewRequest(ctx, opts)
 	if err != nil {
-		return
+		return result, err
 	}
 
 	var resp *client.Response
@@ -46,21 +45,21 @@ func (c Client) GetShowsUpcoming(ctx context.Context, options ...emby.GetShowsUp
 		result.HttpResponse = resp.Response
 	}
 	if err != nil {
-		return
+		return result, err
 	}
 
 	if resp.StatusCode == http.StatusNoContent {
-		return
+		return result, nil
 	}
 
 	var answer emby.QueryResultBaseItemDto
 	result.Answer = &answer
-	if err = resp.Unmarshal(result.Answer); err != nil {
-		return
+	if err := resp.Unmarshal(result.Answer); err != nil {
+		return result, err
 	}
 	result.QueryResultBaseItemDto = result.Answer
 
-	return
+	return result, nil
 }
 
 // GetShowsUpcomingComplete calls GetShowsUpcoming page by page from options.StartIndex until every
@@ -68,8 +67,7 @@ func (c Client) GetShowsUpcoming(ctx context.Context, options ...emby.GetShowsUp
 // unset.
 func (c Client) GetShowsUpcomingComplete(ctx context.Context, options ...emby.GetShowsUpcomingOptions) (result emby.GetShowsUpcomingCompleteResult, err error) {
 	if len(options) > 1 {
-		err = fmt.Errorf("GetShowsUpcomingComplete takes one options struct at most, not %d", len(options))
-		return
+		return result, fmt.Errorf("at most one options struct for GetShowsUpcomingComplete, not %d", len(options))
 	}
 	var option emby.GetShowsUpcomingOptions
 	if len(options) == 1 {
@@ -82,7 +80,7 @@ func (c Client) GetShowsUpcomingComplete(ctx context.Context, options ...emby.Ge
 	}
 	option.Limit = &limit
 	start := 0
-	if option.StartIndex != nil {
+	if option.StartIndex != nil && *option.StartIndex > 0 {
 		start = *option.StartIndex
 	}
 	for {
@@ -90,11 +88,10 @@ func (c Client) GetShowsUpcomingComplete(ctx context.Context, options ...emby.Ge
 		page, err = c.GetShowsUpcoming(ctx, option)
 		result.LatestHttpResponse = page.HttpResponse
 		if err != nil {
-			err = fmt.Errorf("loading results: %w", err)
-			return
+			return result, fmt.Errorf("loading results: %w", err)
 		}
 		if page.Answer == nil || len(page.Answer.Items) == 0 {
-			return
+			return result, nil
 		}
 		result.Items = append(result.Items, page.Answer.Items...)
 		start += len(page.Answer.Items)
@@ -102,7 +99,7 @@ func (c Client) GetShowsUpcomingComplete(ctx context.Context, options ...emby.Ge
 		// a short page is the last; so is reaching the total, when the server
 		// reports one (a list may report 0 whatever it holds)
 		if len(page.Answer.Items) < limit || page.Answer.TotalRecordCount > 0 && start >= page.Answer.TotalRecordCount {
-			return
+			return result, nil
 		}
 	}
 }
@@ -124,7 +121,7 @@ func (c Client) GetShowsUpcomingEach(ctx context.Context, options ...emby.GetSho
 	return func(yield func(emby.BaseItemDto, error) bool) {
 		var zero emby.BaseItemDto
 		if len(options) > 1 {
-			yield(zero, fmt.Errorf("GetShowsUpcomingEach takes one options struct at most, not %d", len(options)))
+			yield(zero, fmt.Errorf("at most one options struct for GetShowsUpcomingEach, not %d", len(options)))
 			return
 		}
 		var option emby.GetShowsUpcomingOptions
@@ -138,7 +135,7 @@ func (c Client) GetShowsUpcomingEach(ctx context.Context, options ...emby.GetSho
 		}
 		option.Limit = &limit
 		start := 0
-		if option.StartIndex != nil {
+		if option.StartIndex != nil && *option.StartIndex > 0 {
 			start = *option.StartIndex
 		}
 		for {
@@ -150,8 +147,8 @@ func (c Client) GetShowsUpcomingEach(ctx context.Context, options ...emby.GetSho
 			if page.Answer == nil || len(page.Answer.Items) == 0 {
 				return
 			}
-			for _, item := range page.Answer.Items {
-				if !yield(item, nil) {
+			for i := range page.Answer.Items {
+				if !yield(page.Answer.Items[i], nil) {
 					return
 				}
 			}

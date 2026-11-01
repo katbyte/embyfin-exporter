@@ -30,7 +30,7 @@ func (r GetPlaybackInfoResponse) Answered() bool { return r.Answer != nil }
 // error when the server answered none.
 func (r GetPlaybackInfoResponse) Record() (PlaybackInfoResponse, error) {
 	if r.Answer == nil {
-		return PlaybackInfoResponse{}, errors.New("GetPlaybackInfo answered no PlaybackInfoResponse")
+		return PlaybackInfoResponse{}, errors.New("no PlaybackInfoResponse answered by GetPlaybackInfo")
 	}
 
 	return *r.Answer, nil
@@ -44,8 +44,7 @@ type GetPlaybackInfoOptions struct {
 
 // ToHeaders returns the header parameters the options set.
 func (o GetPlaybackInfoOptions) ToHeaders() *client.Headers {
-	out := client.Headers{}
-	return &out
+	return &client.Headers{}
 }
 
 // ToQuery returns the query parameters the options set.

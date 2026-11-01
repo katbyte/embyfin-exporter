@@ -31,7 +31,7 @@ func (r GetAudioBooksNextUpResponse) Answered() bool { return r.Answer != nil }
 // error when the server answered none.
 func (r GetAudioBooksNextUpResponse) Record() (QueryResultBaseItemDto, error) {
 	if r.Answer == nil {
-		return QueryResultBaseItemDto{}, errors.New("GetAudioBooksNextUp answered no QueryResultBaseItemDto")
+		return QueryResultBaseItemDto{}, errors.New("no QueryResultBaseItemDto answered by GetAudioBooksNextUp")
 	}
 
 	return *r.Answer, nil
@@ -77,8 +77,7 @@ type GetAudioBooksNextUpOptions struct {
 
 // ToHeaders returns the header parameters the options set.
 func (o GetAudioBooksNextUpOptions) ToHeaders() *client.Headers {
-	out := client.Headers{}
-	return &out
+	return &client.Headers{}
 }
 
 // ToQuery returns the query parameters the options set.

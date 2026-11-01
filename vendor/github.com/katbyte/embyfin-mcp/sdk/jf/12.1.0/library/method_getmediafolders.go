@@ -15,8 +15,7 @@ import (
 func (c Client) GetMediaFolders(ctx context.Context, isHidden ...bool) (result jf.GetMediaFoldersResponse, err error) {
 	var option jf.GetMediaFoldersOptions
 	if len(isHidden) > 1 {
-		err = fmt.Errorf("GetMediaFolders takes one isHidden at most, not %d", len(isHidden))
-		return
+		return result, fmt.Errorf("at most one isHidden for GetMediaFolders, not %d", len(isHidden))
 	}
 	if len(isHidden) == 1 {
 		option.IsHidden = &isHidden[0]
@@ -35,7 +34,7 @@ func (c Client) GetMediaFolders(ctx context.Context, isHidden ...bool) (result j
 
 	req, err := c.Client.NewRequest(ctx, opts)
 	if err != nil {
-		return
+		return result, err
 	}
 
 	var resp *client.Response
@@ -44,15 +43,15 @@ func (c Client) GetMediaFolders(ctx context.Context, isHidden ...bool) (result j
 		result.HttpResponse = resp.Response
 	}
 	if err != nil {
-		return
+		return result, err
 	}
 
 	var answer jf.BaseItemDtoQueryResult
 	result.Answer = &answer
-	if err = resp.Unmarshal(result.Answer); err != nil {
-		return
+	if err := resp.Unmarshal(result.Answer); err != nil {
+		return result, err
 	}
 	result.BaseItemDtoQueryResult = result.Answer
 
-	return
+	return result, nil
 }

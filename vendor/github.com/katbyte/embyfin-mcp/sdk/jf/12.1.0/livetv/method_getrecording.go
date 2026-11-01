@@ -16,8 +16,7 @@ import (
 func (c Client) GetRecording(ctx context.Context, recordingId string, userId ...jf.UserID) (result jf.GetRecordingResponse, err error) {
 	var option jf.GetRecordingOptions
 	if len(userId) > 1 {
-		err = fmt.Errorf("GetRecording takes one userId at most, not %d", len(userId))
-		return
+		return result, fmt.Errorf("at most one userId for GetRecording, not %d", len(userId))
 	}
 	if len(userId) == 1 {
 		option.UserId = userId[0]
@@ -31,12 +30,12 @@ func (c Client) GetRecording(ctx context.Context, recordingId string, userId ...
 		HTTPMethod:    http.MethodGet,
 		Operation:     "GetRecording",
 		OptionsObject: option,
-		Path:          fmt.Sprintf("/LiveTv/Recordings/%s", url.PathEscape(recordingId)),
+		Path:          "/LiveTv/Recordings/" + url.PathEscape(recordingId),
 	}
 
 	req, err := c.Client.NewRequest(ctx, opts)
 	if err != nil {
-		return
+		return result, err
 	}
 
 	var resp *client.Response
@@ -45,15 +44,15 @@ func (c Client) GetRecording(ctx context.Context, recordingId string, userId ...
 		result.HttpResponse = resp.Response
 	}
 	if err != nil {
-		return
+		return result, err
 	}
 
 	var answer jf.BaseItemDto
 	result.Answer = &answer
-	if err = resp.Unmarshal(result.Answer); err != nil {
-		return
+	if err := resp.Unmarshal(result.Answer); err != nil {
+		return result, err
 	}
 	result.BaseItemDto = result.Answer
 
-	return
+	return result, nil
 }

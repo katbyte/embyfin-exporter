@@ -16,8 +16,7 @@ import (
 func (c Client) ApplySearchCriteria(ctx context.Context, itemId jf.ItemID, input jf.RemoteSearchResult, replaceAllImages ...bool) (result jf.ApplySearchCriteriaResponse, err error) {
 	var option jf.ApplySearchCriteriaOptions
 	if len(replaceAllImages) > 1 {
-		err = fmt.Errorf("ApplySearchCriteria takes one replaceAllImages at most, not %d", len(replaceAllImages))
-		return
+		return result, fmt.Errorf("at most one replaceAllImages for ApplySearchCriteria, not %d", len(replaceAllImages))
 	}
 	if len(replaceAllImages) == 1 {
 		option.ReplaceAllImages = &replaceAllImages[0]
@@ -31,16 +30,16 @@ func (c Client) ApplySearchCriteria(ctx context.Context, itemId jf.ItemID, input
 		HTTPMethod:    http.MethodPost,
 		Operation:     "ApplySearchCriteria",
 		OptionsObject: option,
-		Path:          fmt.Sprintf("/Items/RemoteSearch/Apply/%s", url.PathEscape(string(itemId))),
+		Path:          "/Items/RemoteSearch/Apply/" + url.PathEscape(string(itemId)),
 	}
 
 	req, err := c.Client.NewRequest(ctx, opts)
 	if err != nil {
-		return
+		return result, err
 	}
 
-	if err = req.Marshal(input); err != nil {
-		return
+	if err := req.Marshal(input); err != nil {
+		return result, err
 	}
 
 	var resp *client.Response
@@ -49,8 +48,8 @@ func (c Client) ApplySearchCriteria(ctx context.Context, itemId jf.ItemID, input
 		result.HttpResponse = resp.Response
 	}
 	if err != nil {
-		return
+		return result, err
 	}
 
-	return
+	return result, nil
 }

@@ -33,7 +33,7 @@
 // when nothing was answered, and Record() hands it back by value with an
 // error when none came. HttpResponse is set whenever the server answered,
 // including alongside an error. An operation that answers a file has no
-// Answer: WriteTo(w) copies the file out and closes the body, Bytes(max)
+// Answer: WriteTo(w) copies the file out and closes the body, Bytes(limit)
 // reads it whole up to a size, Reader() hands the body over with its content
 // type, ContentLength() and Filename() say what the server said of it, and
 // the body is also still in HttpResponse.Body. A status the operation does
@@ -79,6 +79,7 @@
 //   - emby-codec-display-text
 //   - emby-property-condition-value
 //   - emby-undeclared-query
+//   - emby-tone-map-options-editor
 //   - emby-tone-map-options
 //   - emby-saved-since-text
 //   - emby-joined-lists

@@ -14,8 +14,7 @@ import (
 // GetSessions calls GET /Sessions. Gets a list of sessions.
 func (c Client) GetSessions(ctx context.Context, options ...jf.GetSessionsOptions) (result jf.GetSessionsResponse, err error) {
 	if len(options) > 1 {
-		err = fmt.Errorf("GetSessions takes one options struct at most, not %d", len(options))
-		return
+		return result, fmt.Errorf("at most one options struct for GetSessions, not %d", len(options))
 	}
 	var option jf.GetSessionsOptions
 	if len(options) == 1 {
@@ -34,7 +33,7 @@ func (c Client) GetSessions(ctx context.Context, options ...jf.GetSessionsOption
 
 	req, err := c.Client.NewRequest(ctx, opts)
 	if err != nil {
-		return
+		return result, err
 	}
 
 	var resp *client.Response
@@ -43,12 +42,12 @@ func (c Client) GetSessions(ctx context.Context, options ...jf.GetSessionsOption
 		result.HttpResponse = resp.Response
 	}
 	if err != nil {
-		return
+		return result, err
 	}
 
-	if err = resp.Unmarshal(&result.Answer); err != nil {
-		return
+	if err := resp.Unmarshal(&result.Answer); err != nil {
+		return result, err
 	}
 
-	return
+	return result, nil
 }

@@ -28,7 +28,7 @@ func (r GetProgramsResponse) Answered() bool { return r.Answer != nil }
 // error when the server answered none.
 func (r GetProgramsResponse) Record() (BaseItemDtoQueryResult, error) {
 	if r.Answer == nil {
-		return BaseItemDtoQueryResult{}, errors.New("GetPrograms answered no BaseItemDtoQueryResult")
+		return BaseItemDtoQueryResult{}, errors.New("no BaseItemDtoQueryResult answered by GetPrograms")
 	}
 
 	return *r.Answer, nil

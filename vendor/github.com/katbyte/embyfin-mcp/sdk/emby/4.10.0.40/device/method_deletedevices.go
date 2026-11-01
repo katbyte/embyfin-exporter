@@ -28,7 +28,7 @@ func (c Client) DeleteDevices(ctx context.Context, id string) (result emby.Delet
 
 	req, err := c.Client.NewRequest(ctx, opts)
 	if err != nil {
-		return
+		return result, err
 	}
 
 	var resp *client.Response
@@ -37,8 +37,8 @@ func (c Client) DeleteDevices(ctx context.Context, id string) (result emby.Delet
 		result.HttpResponse = resp.Response
 	}
 	if err != nil {
-		return
+		return result, err
 	}
 
-	return
+	return result, nil
 }

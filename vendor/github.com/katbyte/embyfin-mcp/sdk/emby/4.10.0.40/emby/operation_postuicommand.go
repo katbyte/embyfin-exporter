@@ -28,7 +28,7 @@ func (r PostUICommandResponse) Answered() bool { return r.Answer != nil }
 // error when the server answered none.
 func (r PostUICommandResponse) Record() (UIViewInfo, error) {
 	if r.Answer == nil {
-		return UIViewInfo{}, errors.New("PostUICommand answered no UIViewInfo")
+		return UIViewInfo{}, errors.New("no UIViewInfo answered by PostUICommand")
 	}
 
 	return *r.Answer, nil

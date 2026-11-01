@@ -4,7 +4,6 @@ package subtitle
 
 import (
 	"context"
-	"fmt"
 	"net/http"
 	"net/url"
 
@@ -21,13 +20,13 @@ func (c Client) GetFallbackFont(ctx context.Context, name string) (result jf.Get
 		},
 		HTTPMethod:     http.MethodGet,
 		Operation:      "GetFallbackFont",
-		Path:           fmt.Sprintf("/FallbackFont/Fonts/%s", url.PathEscape(name)),
+		Path:           "/FallbackFont/Fonts/" + url.PathEscape(name),
 		StreamResponse: true,
 	}
 
 	req, err := c.Client.NewRequest(ctx, opts)
 	if err != nil {
-		return
+		return result, err
 	}
 
 	var resp *client.Response
@@ -36,8 +35,8 @@ func (c Client) GetFallbackFont(ctx context.Context, name string) (result jf.Get
 		result.HttpResponse = resp.Response
 	}
 	if err != nil {
-		return
+		return result, err
 	}
 
-	return
+	return result, nil
 }

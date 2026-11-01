@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"net/http"
 	"net/url"
+	"strconv"
 
 	"github.com/katbyte/embyfin-mcp/sdk/jf/12.1.0/jf"
 	"github.com/katbyte/pandorest/client"
@@ -15,8 +16,7 @@ import (
 // GetSubtitleWithTicks calls GET /Videos/{routeItemId}/{routeMediaSourceId}/Subtitles/{routeIndex}/{routeStartPositionTicks}/Stream.{routeFormat}. Gets subtitles in a specified format.
 func (c Client) GetSubtitleWithTicks(ctx context.Context, routeItemId jf.ItemID, routeMediaSourceId jf.MediaSourceID, routeIndex int, routeStartPositionTicks int64, routeFormat string, options ...jf.GetSubtitleWithTicksOptions) (result jf.GetSubtitleWithTicksResponse, err error) {
 	if len(options) > 1 {
-		err = fmt.Errorf("GetSubtitleWithTicks takes one options struct at most, not %d", len(options))
-		return
+		return result, fmt.Errorf("at most one options struct for GetSubtitleWithTicks, not %d", len(options))
 	}
 	var option jf.GetSubtitleWithTicksOptions
 	if len(options) == 1 {
@@ -31,13 +31,13 @@ func (c Client) GetSubtitleWithTicks(ctx context.Context, routeItemId jf.ItemID,
 		HTTPMethod:     http.MethodGet,
 		Operation:      "GetSubtitleWithTicks",
 		OptionsObject:  option,
-		Path:           fmt.Sprintf("/Videos/%s/%s/Subtitles/%d/%d/Stream.%s", url.PathEscape(string(routeItemId)), url.PathEscape(string(routeMediaSourceId)), routeIndex, routeStartPositionTicks, url.PathEscape(routeFormat)),
+		Path:           "/Videos/" + url.PathEscape(string(routeItemId)) + "/" + url.PathEscape(string(routeMediaSourceId)) + "/Subtitles/" + strconv.Itoa(routeIndex) + "/" + strconv.FormatInt(routeStartPositionTicks, 10) + "/Stream." + url.PathEscape(routeFormat),
 		StreamResponse: true,
 	}
 
 	req, err := c.Client.NewRequest(ctx, opts)
 	if err != nil {
-		return
+		return result, err
 	}
 
 	var resp *client.Response
@@ -46,8 +46,8 @@ func (c Client) GetSubtitleWithTicks(ctx context.Context, routeItemId jf.ItemID,
 		result.HttpResponse = resp.Response
 	}
 	if err != nil {
-		return
+		return result, err
 	}
 
-	return
+	return result, nil
 }

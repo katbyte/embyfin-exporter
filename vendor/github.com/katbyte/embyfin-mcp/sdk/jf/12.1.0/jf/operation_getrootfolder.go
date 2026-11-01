@@ -30,7 +30,7 @@ func (r GetRootFolderResponse) Answered() bool { return r.Answer != nil }
 // error when the server answered none.
 func (r GetRootFolderResponse) Record() (BaseItemDto, error) {
 	if r.Answer == nil {
-		return BaseItemDto{}, errors.New("GetRootFolder answered no BaseItemDto")
+		return BaseItemDto{}, errors.New("no BaseItemDto answered by GetRootFolder")
 	}
 
 	return *r.Answer, nil
@@ -44,8 +44,7 @@ type GetRootFolderOptions struct {
 
 // ToHeaders returns the header parameters the options set.
 func (o GetRootFolderOptions) ToHeaders() *client.Headers {
-	out := client.Headers{}
-	return &out
+	return &client.Headers{}
 }
 
 // ToQuery returns the query parameters the options set.

@@ -28,7 +28,7 @@ func (r GetEncodingSubtitleOptionsResponse) Answered() bool { return r.Answer !=
 // error when the server answered none.
 func (r GetEncodingSubtitleOptionsResponse) Record() (EditObjectContainer, error) {
 	if r.Answer == nil {
-		return EditObjectContainer{}, errors.New("GetEncodingSubtitleOptions answered no EditObjectContainer")
+		return EditObjectContainer{}, errors.New("no EditObjectContainer answered by GetEncodingSubtitleOptions")
 	}
 
 	return *r.Answer, nil

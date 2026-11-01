@@ -16,8 +16,7 @@ import (
 func (c Client) PostSessionsByIdPlayingByCommand(ctx context.Context, id emby.SessionID, command emby.PlaystateCommand, input emby.PlaystateRequest, seekPositionTicks ...int64) (result emby.PostSessionsByIdPlayingByCommandResponse, err error) {
 	var option emby.PostSessionsByIdPlayingByCommandOptions
 	if len(seekPositionTicks) > 1 {
-		err = fmt.Errorf("PostSessionsByIdPlayingByCommand takes one seekPositionTicks at most, not %d", len(seekPositionTicks))
-		return
+		return result, fmt.Errorf("at most one seekPositionTicks for PostSessionsByIdPlayingByCommand, not %d", len(seekPositionTicks))
 	}
 	if len(seekPositionTicks) == 1 {
 		option.SeekPositionTicks = &seekPositionTicks[0]
@@ -32,16 +31,16 @@ func (c Client) PostSessionsByIdPlayingByCommand(ctx context.Context, id emby.Se
 		HTTPMethod:    http.MethodPost,
 		Operation:     "PostSessionsByIdPlayingByCommand",
 		OptionsObject: option,
-		Path:          fmt.Sprintf("/Sessions/%s/Playing/%s", url.PathEscape(string(id)), url.PathEscape(string(command))),
+		Path:          "/Sessions/" + url.PathEscape(string(id)) + "/Playing/" + url.PathEscape(string(command)),
 	}
 
 	req, err := c.Client.NewRequest(ctx, opts)
 	if err != nil {
-		return
+		return result, err
 	}
 
-	if err = req.Marshal(input); err != nil {
-		return
+	if err := req.Marshal(input); err != nil {
+		return result, err
 	}
 
 	var resp *client.Response
@@ -50,8 +49,8 @@ func (c Client) PostSessionsByIdPlayingByCommand(ctx context.Context, id emby.Se
 		result.HttpResponse = resp.Response
 	}
 	if err != nil {
-		return
+		return result, err
 	}
 
-	return
+	return result, nil
 }

@@ -7,16 +7,16 @@ import (
 	"fmt"
 	"net/http"
 	"net/url"
+	"strconv"
 
 	"github.com/katbyte/embyfin-mcp/sdk/emby/4.10.0.40/emby"
 	"github.com/katbyte/pandorest/client"
 )
 
 // GetItemsByIdImagesByTypeByIndexByTagByFormatByMaxWidthByMaxHeightByPercentPlayedByUnPlayedCount calls GET /Items/{Id}/Images/{Type}/{Index}/{Tag}/{Format}/{MaxWidth}/{MaxHeight}/{PercentPlayed}/{UnPlayedCount}. Requires authentication as user.
-func (c Client) GetItemsByIdImagesByTypeByIndexByTagByFormatByMaxWidthByMaxHeightByPercentPlayedByUnPlayedCount(ctx context.Context, id emby.ItemID, typeParam emby.ImageType, index int, tag string, format string, maxWidth int, maxHeight int, percentPlayed int, unPlayedCount int, options ...emby.GetItemsByIdImagesByTypeByIndexByTagByFormatByMaxWidthByMaxHeightByPercentPlayedByUnPlayedCountOptions) (result emby.GetItemsByIdImagesByTypeByIndexByTagByFormatByMaxWidthByMaxHeightByPercentPlayedByUnPlayedCountResponse, err error) {
+func (c Client) GetItemsByIdImagesByTypeByIndexByTagByFormatByMaxWidthByMaxHeightByPercentPlayedByUnPlayedCount(ctx context.Context, id emby.ItemID, typeParam emby.ImageType, index int, tag, format string, maxWidth, maxHeight, percentPlayed, unPlayedCount int, options ...emby.GetItemsByIdImagesByTypeByIndexByTagByFormatByMaxWidthByMaxHeightByPercentPlayedByUnPlayedCountOptions) (result emby.GetItemsByIdImagesByTypeByIndexByTagByFormatByMaxWidthByMaxHeightByPercentPlayedByUnPlayedCountResponse, err error) {
 	if len(options) > 1 {
-		err = fmt.Errorf("GetItemsByIdImagesByTypeByIndexByTagByFormatByMaxWidthByMaxHeightByPercentPlayedByUnPlayedCount takes one options struct at most, not %d", len(options))
-		return
+		return result, fmt.Errorf("at most one options struct for GetItemsByIdImagesByTypeByIndexByTagByFormatByMaxWidthByMaxHeightByPercentPlayedByUnPlayedCount, not %d", len(options))
 	}
 	var option emby.GetItemsByIdImagesByTypeByIndexByTagByFormatByMaxWidthByMaxHeightByPercentPlayedByUnPlayedCountOptions
 	if len(options) == 1 {
@@ -31,13 +31,13 @@ func (c Client) GetItemsByIdImagesByTypeByIndexByTagByFormatByMaxWidthByMaxHeigh
 		HTTPMethod:     http.MethodGet,
 		Operation:      "GetItemsByIdImagesByTypeByIndexByTagByFormatByMaxWidthByMaxHeightByPercentPlayedByUnPlayedCount",
 		OptionsObject:  option,
-		Path:           fmt.Sprintf("/Items/%s/Images/%s/%d/%s/%s/%d/%d/%d/%d", url.PathEscape(string(id)), url.PathEscape(string(typeParam)), index, url.PathEscape(tag), url.PathEscape(format), maxWidth, maxHeight, percentPlayed, unPlayedCount),
+		Path:           "/Items/" + url.PathEscape(string(id)) + "/Images/" + url.PathEscape(string(typeParam)) + "/" + strconv.Itoa(index) + "/" + url.PathEscape(tag) + "/" + url.PathEscape(format) + "/" + strconv.Itoa(maxWidth) + "/" + strconv.Itoa(maxHeight) + "/" + strconv.Itoa(percentPlayed) + "/" + strconv.Itoa(unPlayedCount),
 		StreamResponse: true,
 	}
 
 	req, err := c.Client.NewRequest(ctx, opts)
 	if err != nil {
-		return
+		return result, err
 	}
 
 	var resp *client.Response
@@ -46,8 +46,8 @@ func (c Client) GetItemsByIdImagesByTypeByIndexByTagByFormatByMaxWidthByMaxHeigh
 		result.HttpResponse = resp.Response
 	}
 	if err != nil {
-		return
+		return result, err
 	}
 
-	return
+	return result, nil
 }

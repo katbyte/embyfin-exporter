@@ -4,7 +4,6 @@ package users
 
 import (
 	"context"
-	"fmt"
 	"net/http"
 	"net/url"
 
@@ -21,12 +20,12 @@ func (c Client) DeleteUsersById(ctx context.Context, id emby.UserID) (result emb
 		},
 		HTTPMethod: http.MethodDelete,
 		Operation:  "DeleteUsersById",
-		Path:       fmt.Sprintf("/Users/%s", url.PathEscape(string(id))),
+		Path:       "/Users/" + url.PathEscape(string(id)),
 	}
 
 	req, err := c.Client.NewRequest(ctx, opts)
 	if err != nil {
-		return
+		return result, err
 	}
 
 	var resp *client.Response
@@ -35,8 +34,8 @@ func (c Client) DeleteUsersById(ctx context.Context, id emby.UserID) (result emb
 		result.HttpResponse = resp.Response
 	}
 	if err != nil {
-		return
+		return result, err
 	}
 
-	return
+	return result, nil
 }

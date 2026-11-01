@@ -4,7 +4,6 @@ package playstate
 
 import (
 	"context"
-	"fmt"
 	"net/http"
 	"net/url"
 
@@ -22,12 +21,12 @@ func (c Client) PostUsersByUserIdPlayingItemsByIdDelete(ctx context.Context, use
 		HTTPMethod:    http.MethodPost,
 		Operation:     "PostUsersByUserIdPlayingItemsByIdDelete",
 		OptionsObject: options,
-		Path:          fmt.Sprintf("/Users/%s/PlayingItems/%s/Delete", url.PathEscape(string(userId)), url.PathEscape(string(id))),
+		Path:          "/Users/" + url.PathEscape(string(userId)) + "/PlayingItems/" + url.PathEscape(string(id)) + "/Delete",
 	}
 
 	req, err := c.Client.NewRequest(ctx, opts)
 	if err != nil {
-		return
+		return result, err
 	}
 
 	var resp *client.Response
@@ -36,8 +35,8 @@ func (c Client) PostUsersByUserIdPlayingItemsByIdDelete(ctx context.Context, use
 		result.HttpResponse = resp.Response
 	}
 	if err != nil {
-		return
+		return result, err
 	}
 
-	return
+	return result, nil
 }

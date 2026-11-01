@@ -4,7 +4,6 @@ package dynamichls
 
 import (
 	"context"
-	"fmt"
 	"net/http"
 	"net/url"
 
@@ -13,7 +12,7 @@ import (
 )
 
 // GetAudioByIdHls1ByPlaylistIdBySegmentIdBySegmentContainer calls GET /Audio/{Id}/hls1/{PlaylistId}/{SegmentId}.{SegmentContainer}. Requires authentication as user.
-func (c Client) GetAudioByIdHls1ByPlaylistIdBySegmentIdBySegmentContainer(ctx context.Context, id emby.ItemID, playlistId string, segmentId string, segmentContainer string) (result emby.GetAudioByIdHls1ByPlaylistIdBySegmentIdBySegmentContainerResponse, err error) {
+func (c Client) GetAudioByIdHls1ByPlaylistIdBySegmentIdBySegmentContainer(ctx context.Context, id emby.ItemID, playlistId, segmentId, segmentContainer string) (result emby.GetAudioByIdHls1ByPlaylistIdBySegmentIdBySegmentContainerResponse, err error) {
 	opts := client.RequestOptions{
 		Accept: "application/octet-stream",
 		ExpectedStatusCodes: []int{
@@ -21,13 +20,13 @@ func (c Client) GetAudioByIdHls1ByPlaylistIdBySegmentIdBySegmentContainer(ctx co
 		},
 		HTTPMethod:     http.MethodGet,
 		Operation:      "GetAudioByIdHls1ByPlaylistIdBySegmentIdBySegmentContainer",
-		Path:           fmt.Sprintf("/Audio/%s/hls1/%s/%s.%s", url.PathEscape(string(id)), url.PathEscape(playlistId), url.PathEscape(segmentId), url.PathEscape(segmentContainer)),
+		Path:           "/Audio/" + url.PathEscape(string(id)) + "/hls1/" + url.PathEscape(playlistId) + "/" + url.PathEscape(segmentId) + "." + url.PathEscape(segmentContainer),
 		StreamResponse: true,
 	}
 
 	req, err := c.Client.NewRequest(ctx, opts)
 	if err != nil {
-		return
+		return result, err
 	}
 
 	var resp *client.Response
@@ -36,8 +35,8 @@ func (c Client) GetAudioByIdHls1ByPlaylistIdBySegmentIdBySegmentContainer(ctx co
 		result.HttpResponse = resp.Response
 	}
 	if err != nil {
-		return
+		return result, err
 	}
 
-	return
+	return result, nil
 }

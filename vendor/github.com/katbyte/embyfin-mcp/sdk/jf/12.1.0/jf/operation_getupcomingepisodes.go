@@ -31,7 +31,7 @@ func (r GetUpcomingEpisodesResponse) Answered() bool { return r.Answer != nil }
 // error when the server answered none.
 func (r GetUpcomingEpisodesResponse) Record() (BaseItemDtoQueryResult, error) {
 	if r.Answer == nil {
-		return BaseItemDtoQueryResult{}, errors.New("GetUpcomingEpisodes answered no BaseItemDtoQueryResult")
+		return BaseItemDtoQueryResult{}, errors.New("no BaseItemDtoQueryResult answered by GetUpcomingEpisodes")
 	}
 
 	return *r.Answer, nil
@@ -69,8 +69,7 @@ type GetUpcomingEpisodesOptions struct {
 
 // ToHeaders returns the header parameters the options set.
 func (o GetUpcomingEpisodesOptions) ToHeaders() *client.Headers {
-	out := client.Headers{}
-	return &out
+	return &client.Headers{}
 }
 
 // ToQuery returns the query parameters the options set.

@@ -26,11 +26,11 @@ func (c Client) PostUsersForgotPassword(ctx context.Context, input emby.ForgotPa
 
 	req, err := c.Client.NewRequest(ctx, opts)
 	if err != nil {
-		return
+		return result, err
 	}
 
-	if err = req.Marshal(input); err != nil {
-		return
+	if err := req.Marshal(input); err != nil {
+		return result, err
 	}
 
 	var resp *client.Response
@@ -39,19 +39,19 @@ func (c Client) PostUsersForgotPassword(ctx context.Context, input emby.ForgotPa
 		result.HttpResponse = resp.Response
 	}
 	if err != nil {
-		return
+		return result, err
 	}
 
 	if resp.StatusCode == http.StatusNoContent {
-		return
+		return result, nil
 	}
 
 	var answer emby.ForgotPasswordResult
 	result.Answer = &answer
-	if err = resp.Unmarshal(result.Answer); err != nil {
-		return
+	if err := resp.Unmarshal(result.Answer); err != nil {
+		return result, err
 	}
 	result.ForgotPasswordResult = result.Answer
 
-	return
+	return result, nil
 }

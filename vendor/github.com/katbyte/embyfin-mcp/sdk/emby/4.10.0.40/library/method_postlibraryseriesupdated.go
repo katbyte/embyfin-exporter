@@ -24,7 +24,7 @@ func (c Client) PostLibrarySeriesUpdated(ctx context.Context) (result emby.PostL
 
 	req, err := c.Client.NewRequest(ctx, opts)
 	if err != nil {
-		return
+		return result, err
 	}
 
 	var resp *client.Response
@@ -33,8 +33,8 @@ func (c Client) PostLibrarySeriesUpdated(ctx context.Context) (result emby.PostL
 		result.HttpResponse = resp.Response
 	}
 	if err != nil {
-		return
+		return result, err
 	}
 
-	return
+	return result, nil
 }

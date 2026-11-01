@@ -31,7 +31,7 @@ func (r GetTagsResponse) Answered() bool { return r.Answer != nil }
 // error when the server answered none.
 func (r GetTagsResponse) Record() (QueryResultUserLibraryTagItem, error) {
 	if r.Answer == nil {
-		return QueryResultUserLibraryTagItem{}, errors.New("GetTags answered no QueryResultUserLibraryTagItem")
+		return QueryResultUserLibraryTagItem{}, errors.New("no QueryResultUserLibraryTagItem answered by GetTags")
 	}
 
 	return *r.Answer, nil
@@ -429,8 +429,7 @@ type GetTagsOptions struct {
 
 // ToHeaders returns the header parameters the options set.
 func (o GetTagsOptions) ToHeaders() *client.Headers {
-	out := client.Headers{}
-	return &out
+	return &client.Headers{}
 }
 
 // ToQuery returns the query parameters the options set.

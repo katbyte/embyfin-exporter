@@ -15,8 +15,7 @@ import (
 // GetItemImage calls GET /Items/{itemId}/Images/{imageType}. Gets the item's image.
 func (c Client) GetItemImage(ctx context.Context, itemId jf.ItemID, imageType jf.ImageType, options ...jf.GetItemImageOptions) (result jf.GetItemImageResponse, err error) {
 	if len(options) > 1 {
-		err = fmt.Errorf("GetItemImage takes one options struct at most, not %d", len(options))
-		return
+		return result, fmt.Errorf("at most one options struct for GetItemImage, not %d", len(options))
 	}
 	var option jf.GetItemImageOptions
 	if len(options) == 1 {
@@ -31,13 +30,13 @@ func (c Client) GetItemImage(ctx context.Context, itemId jf.ItemID, imageType jf
 		HTTPMethod:     http.MethodGet,
 		Operation:      "GetItemImage",
 		OptionsObject:  option,
-		Path:           fmt.Sprintf("/Items/%s/Images/%s", url.PathEscape(string(itemId)), url.PathEscape(string(imageType))),
+		Path:           "/Items/" + url.PathEscape(string(itemId)) + "/Images/" + url.PathEscape(string(imageType)),
 		StreamResponse: true,
 	}
 
 	req, err := c.Client.NewRequest(ctx, opts)
 	if err != nil {
-		return
+		return result, err
 	}
 
 	var resp *client.Response
@@ -46,8 +45,8 @@ func (c Client) GetItemImage(ctx context.Context, itemId jf.ItemID, imageType jf
 		result.HttpResponse = resp.Response
 	}
 	if err != nil {
-		return
+		return result, err
 	}
 
-	return
+	return result, nil
 }

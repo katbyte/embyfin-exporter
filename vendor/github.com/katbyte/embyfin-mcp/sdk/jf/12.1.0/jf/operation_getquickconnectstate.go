@@ -30,7 +30,7 @@ func (r GetQuickConnectStateResponse) Answered() bool { return r.Answer != nil }
 // error when the server answered none.
 func (r GetQuickConnectStateResponse) Record() (QuickConnectResult, error) {
 	if r.Answer == nil {
-		return QuickConnectResult{}, errors.New("GetQuickConnectState answered no QuickConnectResult")
+		return QuickConnectResult{}, errors.New("no QuickConnectResult answered by GetQuickConnectState")
 	}
 
 	return *r.Answer, nil
@@ -44,8 +44,7 @@ type GetQuickConnectStateOptions struct {
 
 // ToHeaders returns the header parameters the options set.
 func (o GetQuickConnectStateOptions) ToHeaders() *client.Headers {
-	out := client.Headers{}
-	return &out
+	return &client.Headers{}
 }
 
 // ToQuery returns the query parameters the options set.

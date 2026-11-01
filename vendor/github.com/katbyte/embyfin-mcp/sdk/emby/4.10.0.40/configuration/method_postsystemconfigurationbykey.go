@@ -4,7 +4,6 @@ package configuration
 
 import (
 	"context"
-	"fmt"
 	"io"
 	"net/http"
 	"net/url"
@@ -25,16 +24,16 @@ func (c Client) PostSystemConfigurationByKey(ctx context.Context, key string, in
 		},
 		HTTPMethod: http.MethodPost,
 		Operation:  "PostSystemConfigurationByKey",
-		Path:       fmt.Sprintf("/System/Configuration/%s", url.PathEscape(key)),
+		Path:       "/System/Configuration/" + url.PathEscape(key),
 	}
 
 	req, err := c.Client.NewRequest(ctx, opts)
 	if err != nil {
-		return
+		return result, err
 	}
 
-	if err = req.SetBody(input, contentType); err != nil {
-		return
+	if err := req.SetBody(input, contentType); err != nil {
+		return result, err
 	}
 
 	var resp *client.Response
@@ -43,8 +42,8 @@ func (c Client) PostSystemConfigurationByKey(ctx context.Context, key string, in
 		result.HttpResponse = resp.Response
 	}
 	if err != nil {
-		return
+		return result, err
 	}
 
-	return
+	return result, nil
 }

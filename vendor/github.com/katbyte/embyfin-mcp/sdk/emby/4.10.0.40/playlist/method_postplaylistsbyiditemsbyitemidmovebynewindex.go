@@ -4,9 +4,9 @@ package playlist
 
 import (
 	"context"
-	"fmt"
 	"net/http"
 	"net/url"
+	"strconv"
 
 	"github.com/katbyte/embyfin-mcp/sdk/emby/4.10.0.40/emby"
 	"github.com/katbyte/pandorest/client"
@@ -21,12 +21,12 @@ func (c Client) PostPlaylistsByIdItemsByItemIdMoveByNewIndex(ctx context.Context
 		},
 		HTTPMethod: http.MethodPost,
 		Operation:  "PostPlaylistsByIdItemsByItemIdMoveByNewIndex",
-		Path:       fmt.Sprintf("/Playlists/%s/Items/%d/Move/%d", url.PathEscape(string(id)), itemId, newIndex),
+		Path:       "/Playlists/" + url.PathEscape(string(id)) + "/Items/" + strconv.FormatInt(itemId, 10) + "/Move/" + strconv.Itoa(newIndex),
 	}
 
 	req, err := c.Client.NewRequest(ctx, opts)
 	if err != nil {
-		return
+		return result, err
 	}
 
 	var resp *client.Response
@@ -35,8 +35,8 @@ func (c Client) PostPlaylistsByIdItemsByItemIdMoveByNewIndex(ctx context.Context
 		result.HttpResponse = resp.Response
 	}
 	if err != nil {
-		return
+		return result, err
 	}
 
-	return
+	return result, nil
 }

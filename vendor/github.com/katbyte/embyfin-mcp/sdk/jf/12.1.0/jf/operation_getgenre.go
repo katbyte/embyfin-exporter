@@ -30,7 +30,7 @@ func (r GetGenreResponse) Answered() bool { return r.Answer != nil }
 // error when the server answered none.
 func (r GetGenreResponse) Record() (BaseItemDto, error) {
 	if r.Answer == nil {
-		return BaseItemDto{}, errors.New("GetGenre answered no BaseItemDto")
+		return BaseItemDto{}, errors.New("no BaseItemDto answered by GetGenre")
 	}
 
 	return *r.Answer, nil
@@ -44,8 +44,7 @@ type GetGenreOptions struct {
 
 // ToHeaders returns the header parameters the options set.
 func (o GetGenreOptions) ToHeaders() *client.Headers {
-	out := client.Headers{}
-	return &out
+	return &client.Headers{}
 }
 
 // ToQuery returns the query parameters the options set.

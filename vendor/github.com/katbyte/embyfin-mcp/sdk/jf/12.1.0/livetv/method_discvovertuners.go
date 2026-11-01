@@ -15,8 +15,7 @@ import (
 func (c Client) DiscvoverTuners(ctx context.Context, newDevicesOnly ...bool) (result jf.DiscvoverTunersResponse, err error) {
 	var option jf.DiscvoverTunersOptions
 	if len(newDevicesOnly) > 1 {
-		err = fmt.Errorf("DiscvoverTuners takes one newDevicesOnly at most, not %d", len(newDevicesOnly))
-		return
+		return result, fmt.Errorf("at most one newDevicesOnly for DiscvoverTuners, not %d", len(newDevicesOnly))
 	}
 	if len(newDevicesOnly) == 1 {
 		option.NewDevicesOnly = &newDevicesOnly[0]
@@ -34,7 +33,7 @@ func (c Client) DiscvoverTuners(ctx context.Context, newDevicesOnly ...bool) (re
 
 	req, err := c.Client.NewRequest(ctx, opts)
 	if err != nil {
-		return
+		return result, err
 	}
 
 	var resp *client.Response
@@ -43,12 +42,12 @@ func (c Client) DiscvoverTuners(ctx context.Context, newDevicesOnly ...bool) (re
 		result.HttpResponse = resp.Response
 	}
 	if err != nil {
-		return
+		return result, err
 	}
 
-	if err = resp.Unmarshal(&result.Answer); err != nil {
-		return
+	if err := resp.Unmarshal(&result.Answer); err != nil {
+		return result, err
 	}
 
-	return
+	return result, nil
 }

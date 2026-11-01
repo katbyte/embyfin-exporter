@@ -18,8 +18,7 @@ import (
 func (c Client) GetMusicGenre(ctx context.Context, genreName string, userId ...jf.UserID) (result jf.GetMusicGenreResponse, err error) {
 	var option jf.GetMusicGenreOptions
 	if len(userId) > 1 {
-		err = fmt.Errorf("GetMusicGenre takes one userId at most, not %d", len(userId))
-		return
+		return result, fmt.Errorf("at most one userId for GetMusicGenre, not %d", len(userId))
 	}
 	if len(userId) == 1 {
 		option.UserId = userId[0]
@@ -33,12 +32,12 @@ func (c Client) GetMusicGenre(ctx context.Context, genreName string, userId ...j
 		HTTPMethod:    http.MethodGet,
 		Operation:     "GetMusicGenre",
 		OptionsObject: option,
-		Path:          fmt.Sprintf("/MusicGenres/%s", url.PathEscape(genreName)),
+		Path:          "/MusicGenres/" + url.PathEscape(genreName),
 	}
 
 	req, err := c.Client.NewRequest(ctx, opts)
 	if err != nil {
-		return
+		return result, err
 	}
 
 	var resp *client.Response
@@ -47,15 +46,15 @@ func (c Client) GetMusicGenre(ctx context.Context, genreName string, userId ...j
 		result.HttpResponse = resp.Response
 	}
 	if err != nil {
-		return
+		return result, err
 	}
 
 	var answer jf.BaseItemDto
 	result.Answer = &answer
-	if err = resp.Unmarshal(result.Answer); err != nil {
-		return
+	if err := resp.Unmarshal(result.Answer); err != nil {
+		return result, err
 	}
 	result.BaseItemDto = result.Answer
 
-	return
+	return result, nil
 }

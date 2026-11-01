@@ -4,7 +4,6 @@ package syncplay
 
 import (
 	"context"
-	"fmt"
 	"net/http"
 	"net/url"
 
@@ -21,12 +20,12 @@ func (c Client) SyncPlayGetGroup(ctx context.Context, id string) (result jf.Sync
 		},
 		HTTPMethod: http.MethodGet,
 		Operation:  "SyncPlayGetGroup",
-		Path:       fmt.Sprintf("/SyncPlay/%s", url.PathEscape(id)),
+		Path:       "/SyncPlay/" + url.PathEscape(id),
 	}
 
 	req, err := c.Client.NewRequest(ctx, opts)
 	if err != nil {
-		return
+		return result, err
 	}
 
 	var resp *client.Response
@@ -35,15 +34,15 @@ func (c Client) SyncPlayGetGroup(ctx context.Context, id string) (result jf.Sync
 		result.HttpResponse = resp.Response
 	}
 	if err != nil {
-		return
+		return result, err
 	}
 
 	var answer jf.GroupInfoDto
 	result.Answer = &answer
-	if err = resp.Unmarshal(result.Answer); err != nil {
-		return
+	if err := resp.Unmarshal(result.Answer); err != nil {
+		return result, err
 	}
 	result.GroupInfoDto = result.Answer
 
-	return
+	return result, nil
 }

@@ -15,8 +15,7 @@ import (
 // GetGenreImage calls GET /Genres/{name}/Images/{imageType}. Get genre image by name.
 func (c Client) GetGenreImage(ctx context.Context, name string, imageType jf.ImageType, options ...jf.GetGenreImageOptions) (result jf.GetGenreImageResponse, err error) {
 	if len(options) > 1 {
-		err = fmt.Errorf("GetGenreImage takes one options struct at most, not %d", len(options))
-		return
+		return result, fmt.Errorf("at most one options struct for GetGenreImage, not %d", len(options))
 	}
 	var option jf.GetGenreImageOptions
 	if len(options) == 1 {
@@ -31,13 +30,13 @@ func (c Client) GetGenreImage(ctx context.Context, name string, imageType jf.Ima
 		HTTPMethod:     http.MethodGet,
 		Operation:      "GetGenreImage",
 		OptionsObject:  option,
-		Path:           fmt.Sprintf("/Genres/%s/Images/%s", url.PathEscape(name), url.PathEscape(string(imageType))),
+		Path:           "/Genres/" + url.PathEscape(name) + "/Images/" + url.PathEscape(string(imageType)),
 		StreamResponse: true,
 	}
 
 	req, err := c.Client.NewRequest(ctx, opts)
 	if err != nil {
-		return
+		return result, err
 	}
 
 	var resp *client.Response
@@ -46,8 +45,8 @@ func (c Client) GetGenreImage(ctx context.Context, name string, imageType jf.Ima
 		result.HttpResponse = resp.Response
 	}
 	if err != nil {
-		return
+		return result, err
 	}
 
-	return
+	return result, nil
 }

@@ -15,8 +15,7 @@ import (
 func (c Client) GetChannelMappingOptions(ctx context.Context, providerId ...string) (result jf.GetChannelMappingOptionsResponse, err error) {
 	var option jf.GetChannelMappingOptionsOptions
 	if len(providerId) > 1 {
-		err = fmt.Errorf("GetChannelMappingOptions takes one providerId at most, not %d", len(providerId))
-		return
+		return result, fmt.Errorf("at most one providerId for GetChannelMappingOptions, not %d", len(providerId))
 	}
 	if len(providerId) == 1 {
 		option.ProviderId = providerId[0]
@@ -35,7 +34,7 @@ func (c Client) GetChannelMappingOptions(ctx context.Context, providerId ...stri
 
 	req, err := c.Client.NewRequest(ctx, opts)
 	if err != nil {
-		return
+		return result, err
 	}
 
 	var resp *client.Response
@@ -44,15 +43,15 @@ func (c Client) GetChannelMappingOptions(ctx context.Context, providerId ...stri
 		result.HttpResponse = resp.Response
 	}
 	if err != nil {
-		return
+		return result, err
 	}
 
 	var answer jf.ChannelMappingOptionsDto
 	result.Answer = &answer
-	if err = resp.Unmarshal(result.Answer); err != nil {
-		return
+	if err := resp.Unmarshal(result.Answer); err != nil {
+		return result, err
 	}
 	result.ChannelMappingOptionsDto = result.Answer
 
-	return
+	return result, nil
 }

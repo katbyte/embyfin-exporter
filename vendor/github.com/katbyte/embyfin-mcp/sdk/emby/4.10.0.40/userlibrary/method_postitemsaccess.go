@@ -25,11 +25,11 @@ func (c Client) PostItemsAccess(ctx context.Context, input emby.UserLibraryUpdat
 
 	req, err := c.Client.NewRequest(ctx, opts)
 	if err != nil {
-		return
+		return result, err
 	}
 
-	if err = req.Marshal(input); err != nil {
-		return
+	if err := req.Marshal(input); err != nil {
+		return result, err
 	}
 
 	var resp *client.Response
@@ -38,8 +38,8 @@ func (c Client) PostItemsAccess(ctx context.Context, input emby.UserLibraryUpdat
 		result.HttpResponse = resp.Response
 	}
 	if err != nil {
-		return
+		return result, err
 	}
 
-	return
+	return result, nil
 }

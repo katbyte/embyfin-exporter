@@ -15,8 +15,7 @@ import (
 // GetUsersByUserIdItemsByIdIntros calls GET /Users/{UserId}/Items/{Id}/Intros. Gets intros to play before the main media item plays.
 func (c Client) GetUsersByUserIdItemsByIdIntros(ctx context.Context, userId emby.UserID, id emby.ItemID, options ...emby.GetUsersByUserIdItemsByIdIntrosOptions) (result emby.GetUsersByUserIdItemsByIdIntrosResponse, err error) {
 	if len(options) > 1 {
-		err = fmt.Errorf("GetUsersByUserIdItemsByIdIntros takes one options struct at most, not %d", len(options))
-		return
+		return result, fmt.Errorf("at most one options struct for GetUsersByUserIdItemsByIdIntros, not %d", len(options))
 	}
 	var option emby.GetUsersByUserIdItemsByIdIntrosOptions
 	if len(options) == 1 {
@@ -32,12 +31,12 @@ func (c Client) GetUsersByUserIdItemsByIdIntros(ctx context.Context, userId emby
 		HTTPMethod:    http.MethodGet,
 		Operation:     "GetUsersByUserIdItemsByIdIntros",
 		OptionsObject: option,
-		Path:          fmt.Sprintf("/Users/%s/Items/%s/Intros", url.PathEscape(string(userId)), url.PathEscape(string(id))),
+		Path:          "/Users/" + url.PathEscape(string(userId)) + "/Items/" + url.PathEscape(string(id)) + "/Intros",
 	}
 
 	req, err := c.Client.NewRequest(ctx, opts)
 	if err != nil {
-		return
+		return result, err
 	}
 
 	var resp *client.Response
@@ -46,19 +45,19 @@ func (c Client) GetUsersByUserIdItemsByIdIntros(ctx context.Context, userId emby
 		result.HttpResponse = resp.Response
 	}
 	if err != nil {
-		return
+		return result, err
 	}
 
 	if resp.StatusCode == http.StatusNoContent {
-		return
+		return result, nil
 	}
 
 	var answer emby.QueryResultBaseItemDto
 	result.Answer = &answer
-	if err = resp.Unmarshal(result.Answer); err != nil {
-		return
+	if err := resp.Unmarshal(result.Answer); err != nil {
+		return result, err
 	}
 	result.QueryResultBaseItemDto = result.Answer
 
-	return
+	return result, nil
 }

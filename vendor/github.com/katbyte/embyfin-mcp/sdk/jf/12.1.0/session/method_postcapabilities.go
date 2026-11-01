@@ -14,8 +14,7 @@ import (
 // PostCapabilities calls POST /Sessions/Capabilities. Updates capabilities for a device.
 func (c Client) PostCapabilities(ctx context.Context, options ...jf.PostCapabilitiesOptions) (result jf.PostCapabilitiesResponse, err error) {
 	if len(options) > 1 {
-		err = fmt.Errorf("PostCapabilities takes one options struct at most, not %d", len(options))
-		return
+		return result, fmt.Errorf("at most one options struct for PostCapabilities, not %d", len(options))
 	}
 	var option jf.PostCapabilitiesOptions
 	if len(options) == 1 {
@@ -34,7 +33,7 @@ func (c Client) PostCapabilities(ctx context.Context, options ...jf.PostCapabili
 
 	req, err := c.Client.NewRequest(ctx, opts)
 	if err != nil {
-		return
+		return result, err
 	}
 
 	var resp *client.Response
@@ -43,8 +42,8 @@ func (c Client) PostCapabilities(ctx context.Context, options ...jf.PostCapabili
 		result.HttpResponse = resp.Response
 	}
 	if err != nil {
-		return
+		return result, err
 	}
 
-	return
+	return result, nil
 }

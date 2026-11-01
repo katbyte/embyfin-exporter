@@ -28,7 +28,7 @@ func (r GetMetadataEditorInfoResponse) Answered() bool { return r.Answer != nil 
 // error when the server answered none.
 func (r GetMetadataEditorInfoResponse) Record() (MetadataEditorInfo, error) {
 	if r.Answer == nil {
-		return MetadataEditorInfo{}, errors.New("GetMetadataEditorInfo answered no MetadataEditorInfo")
+		return MetadataEditorInfo{}, errors.New("no MetadataEditorInfo answered by GetMetadataEditorInfo")
 	}
 
 	return *r.Answer, nil
