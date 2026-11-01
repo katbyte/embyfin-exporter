@@ -31,7 +31,7 @@ func (r GetLibraryMediaFoldersResponse) Answered() bool { return r.Answer != nil
 // error when the server answered none.
 func (r GetLibraryMediaFoldersResponse) Record() (QueryResultBaseItemDto, error) {
 	if r.Answer == nil {
-		return QueryResultBaseItemDto{}, errors.New("GetLibraryMediaFolders answered no QueryResultBaseItemDto")
+		return QueryResultBaseItemDto{}, errors.New("no QueryResultBaseItemDto answered by GetLibraryMediaFolders")
 	}
 
 	return *r.Answer, nil
@@ -45,8 +45,7 @@ type GetLibraryMediaFoldersOptions struct {
 
 // ToHeaders returns the header parameters the options set.
 func (o GetLibraryMediaFoldersOptions) ToHeaders() *client.Headers {
-	out := client.Headers{}
-	return &out
+	return &client.Headers{}
 }
 
 // ToQuery returns the query parameters the options set.

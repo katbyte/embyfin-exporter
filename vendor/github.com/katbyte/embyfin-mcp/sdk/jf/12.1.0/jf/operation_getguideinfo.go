@@ -28,7 +28,7 @@ func (r GetGuideInfoResponse) Answered() bool { return r.Answer != nil }
 // error when the server answered none.
 func (r GetGuideInfoResponse) Record() (GuideInfo, error) {
 	if r.Answer == nil {
-		return GuideInfo{}, errors.New("GetGuideInfo answered no GuideInfo")
+		return GuideInfo{}, errors.New("no GuideInfo answered by GetGuideInfo")
 	}
 
 	return *r.Answer, nil

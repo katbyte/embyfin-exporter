@@ -4,7 +4,6 @@ package plugins
 
 import (
 	"context"
-	"fmt"
 	"net/http"
 	"net/url"
 
@@ -20,12 +19,12 @@ func (c Client) CancelPackageInstallation(ctx context.Context, packageId string)
 		},
 		HTTPMethod: http.MethodDelete,
 		Operation:  "CancelPackageInstallation",
-		Path:       fmt.Sprintf("/Packages/Installing/%s", url.PathEscape(packageId)),
+		Path:       "/Packages/Installing/" + url.PathEscape(packageId),
 	}
 
 	req, err := c.Client.NewRequest(ctx, opts)
 	if err != nil {
-		return
+		return result, err
 	}
 
 	var resp *client.Response
@@ -34,8 +33,8 @@ func (c Client) CancelPackageInstallation(ctx context.Context, packageId string)
 		result.HttpResponse = resp.Response
 	}
 	if err != nil {
-		return
+		return result, err
 	}
 
-	return
+	return result, nil
 }

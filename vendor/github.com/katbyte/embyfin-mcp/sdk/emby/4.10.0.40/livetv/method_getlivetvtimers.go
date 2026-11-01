@@ -14,8 +14,7 @@ import (
 // GetLiveTvTimers calls GET /LiveTv/Timers. Gets live tv timers.
 func (c Client) GetLiveTvTimers(ctx context.Context, options ...emby.GetLiveTvTimersOptions) (result emby.GetLiveTvTimersResponse, err error) {
 	if len(options) > 1 {
-		err = fmt.Errorf("GetLiveTvTimers takes one options struct at most, not %d", len(options))
-		return
+		return result, fmt.Errorf("at most one options struct for GetLiveTvTimers, not %d", len(options))
 	}
 	var option emby.GetLiveTvTimersOptions
 	if len(options) == 1 {
@@ -36,7 +35,7 @@ func (c Client) GetLiveTvTimers(ctx context.Context, options ...emby.GetLiveTvTi
 
 	req, err := c.Client.NewRequest(ctx, opts)
 	if err != nil {
-		return
+		return result, err
 	}
 
 	var resp *client.Response
@@ -45,19 +44,19 @@ func (c Client) GetLiveTvTimers(ctx context.Context, options ...emby.GetLiveTvTi
 		result.HttpResponse = resp.Response
 	}
 	if err != nil {
-		return
+		return result, err
 	}
 
 	if resp.StatusCode == http.StatusNoContent {
-		return
+		return result, nil
 	}
 
 	var answer emby.QueryResultLiveTvTimerInfoDto
 	result.Answer = &answer
-	if err = resp.Unmarshal(result.Answer); err != nil {
-		return
+	if err := resp.Unmarshal(result.Answer); err != nil {
+		return result, err
 	}
 	result.QueryResultLiveTvTimerInfoDto = result.Answer
 
-	return
+	return result, nil
 }

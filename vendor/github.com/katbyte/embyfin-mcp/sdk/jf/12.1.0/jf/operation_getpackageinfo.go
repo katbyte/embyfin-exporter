@@ -30,7 +30,7 @@ func (r GetPackageInfoResponse) Answered() bool { return r.Answer != nil }
 // error when the server answered none.
 func (r GetPackageInfoResponse) Record() (PackageInfo, error) {
 	if r.Answer == nil {
-		return PackageInfo{}, errors.New("GetPackageInfo answered no PackageInfo")
+		return PackageInfo{}, errors.New("no PackageInfo answered by GetPackageInfo")
 	}
 
 	return *r.Answer, nil
@@ -44,8 +44,7 @@ type GetPackageInfoOptions struct {
 
 // ToHeaders returns the header parameters the options set.
 func (o GetPackageInfoOptions) ToHeaders() *client.Headers {
-	out := client.Headers{}
-	return &out
+	return &client.Headers{}
 }
 
 // ToQuery returns the query parameters the options set.

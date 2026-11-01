@@ -28,7 +28,7 @@ func (r PostItemsByIdPlaybackInfoResponse) Answered() bool { return r.Answer != 
 // error when the server answered none.
 func (r PostItemsByIdPlaybackInfoResponse) Record() (PlaybackInfoResponse, error) {
 	if r.Answer == nil {
-		return PlaybackInfoResponse{}, errors.New("PostItemsByIdPlaybackInfo answered no PlaybackInfoResponse")
+		return PlaybackInfoResponse{}, errors.New("no PlaybackInfoResponse answered by PostItemsByIdPlaybackInfo")
 	}
 
 	return *r.Answer, nil

@@ -14,8 +14,7 @@ import (
 // GetUsersPrefixes calls GET /Users/Prefixes. Gets a list of users.
 func (c Client) GetUsersPrefixes(ctx context.Context, options ...emby.GetUsersPrefixesOptions) (result emby.GetUsersPrefixesResponse, err error) {
 	if len(options) > 1 {
-		err = fmt.Errorf("GetUsersPrefixes takes one options struct at most, not %d", len(options))
-		return
+		return result, fmt.Errorf("at most one options struct for GetUsersPrefixes, not %d", len(options))
 	}
 	var option emby.GetUsersPrefixesOptions
 	if len(options) == 1 {
@@ -35,7 +34,7 @@ func (c Client) GetUsersPrefixes(ctx context.Context, options ...emby.GetUsersPr
 
 	req, err := c.Client.NewRequest(ctx, opts)
 	if err != nil {
-		return
+		return result, err
 	}
 
 	var resp *client.Response
@@ -44,16 +43,16 @@ func (c Client) GetUsersPrefixes(ctx context.Context, options ...emby.GetUsersPr
 		result.HttpResponse = resp.Response
 	}
 	if err != nil {
-		return
+		return result, err
 	}
 
 	if resp.StatusCode == http.StatusNoContent {
-		return
+		return result, nil
 	}
 
-	if err = resp.Unmarshal(&result.Answer); err != nil {
-		return
+	if err := resp.Unmarshal(&result.Answer); err != nil {
+		return result, err
 	}
 
-	return
+	return result, nil
 }

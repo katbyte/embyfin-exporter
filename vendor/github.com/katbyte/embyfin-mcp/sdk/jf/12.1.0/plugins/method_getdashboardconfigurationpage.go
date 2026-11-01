@@ -15,8 +15,7 @@ import (
 func (c Client) GetDashboardConfigurationPage(ctx context.Context, name ...string) (result jf.GetDashboardConfigurationPageResponse, err error) {
 	var option jf.GetDashboardConfigurationPageOptions
 	if len(name) > 1 {
-		err = fmt.Errorf("GetDashboardConfigurationPage takes one name at most, not %d", len(name))
-		return
+		return result, fmt.Errorf("at most one name for GetDashboardConfigurationPage, not %d", len(name))
 	}
 	if len(name) == 1 {
 		option.Name = name[0]
@@ -36,7 +35,7 @@ func (c Client) GetDashboardConfigurationPage(ctx context.Context, name ...strin
 
 	req, err := c.Client.NewRequest(ctx, opts)
 	if err != nil {
-		return
+		return result, err
 	}
 
 	var resp *client.Response
@@ -45,8 +44,8 @@ func (c Client) GetDashboardConfigurationPage(ctx context.Context, name ...strin
 		result.HttpResponse = resp.Response
 	}
 	if err != nil {
-		return
+		return result, err
 	}
 
-	return
+	return result, nil
 }

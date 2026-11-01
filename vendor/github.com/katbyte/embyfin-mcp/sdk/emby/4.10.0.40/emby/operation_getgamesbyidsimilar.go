@@ -31,7 +31,7 @@ func (r GetGamesByIdSimilarResponse) Answered() bool { return r.Answer != nil }
 // error when the server answered none.
 func (r GetGamesByIdSimilarResponse) Record() (QueryResultBaseItemDto, error) {
 	if r.Answer == nil {
-		return QueryResultBaseItemDto{}, errors.New("GetGamesByIdSimilar answered no QueryResultBaseItemDto")
+		return QueryResultBaseItemDto{}, errors.New("no QueryResultBaseItemDto answered by GetGamesByIdSimilar")
 	}
 
 	return *r.Answer, nil
@@ -429,8 +429,7 @@ type GetGamesByIdSimilarOptions struct {
 
 // ToHeaders returns the header parameters the options set.
 func (o GetGamesByIdSimilarOptions) ToHeaders() *client.Headers {
-	out := client.Headers{}
-	return &out
+	return &client.Headers{}
 }
 
 // ToQuery returns the query parameters the options set.

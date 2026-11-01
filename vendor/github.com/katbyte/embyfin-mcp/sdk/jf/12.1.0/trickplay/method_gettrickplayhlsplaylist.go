@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"net/http"
 	"net/url"
+	"strconv"
 
 	"github.com/katbyte/embyfin-mcp/sdk/jf/12.1.0/jf"
 	"github.com/katbyte/pandorest/client"
@@ -16,8 +17,7 @@ import (
 func (c Client) GetTrickplayHlsPlaylist(ctx context.Context, itemId jf.ItemID, width int, mediaSourceId ...jf.MediaSourceID) (result jf.GetTrickplayHlsPlaylistResponse, err error) {
 	var option jf.GetTrickplayHlsPlaylistOptions
 	if len(mediaSourceId) > 1 {
-		err = fmt.Errorf("GetTrickplayHlsPlaylist takes one mediaSourceId at most, not %d", len(mediaSourceId))
-		return
+		return result, fmt.Errorf("at most one mediaSourceId for GetTrickplayHlsPlaylist, not %d", len(mediaSourceId))
 	}
 	if len(mediaSourceId) == 1 {
 		option.MediaSourceId = mediaSourceId[0]
@@ -31,13 +31,13 @@ func (c Client) GetTrickplayHlsPlaylist(ctx context.Context, itemId jf.ItemID, w
 		HTTPMethod:     http.MethodGet,
 		Operation:      "GetTrickplayHlsPlaylist",
 		OptionsObject:  option,
-		Path:           fmt.Sprintf("/Videos/%s/Trickplay/%d/tiles.m3u8", url.PathEscape(string(itemId)), width),
+		Path:           "/Videos/" + url.PathEscape(string(itemId)) + "/Trickplay/" + strconv.Itoa(width) + "/tiles.m3u8",
 		StreamResponse: true,
 	}
 
 	req, err := c.Client.NewRequest(ctx, opts)
 	if err != nil {
-		return
+		return result, err
 	}
 
 	var resp *client.Response
@@ -46,8 +46,8 @@ func (c Client) GetTrickplayHlsPlaylist(ctx context.Context, itemId jf.ItemID, w
 		result.HttpResponse = resp.Response
 	}
 	if err != nil {
-		return
+		return result, err
 	}
 
-	return
+	return result, nil
 }

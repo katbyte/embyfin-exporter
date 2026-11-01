@@ -4,7 +4,6 @@ package authentication
 
 import (
 	"context"
-	"fmt"
 	"net/http"
 	"net/url"
 
@@ -20,12 +19,12 @@ func (c Client) RevokeKey(ctx context.Context, key string) (result jf.RevokeKeyR
 		},
 		HTTPMethod: http.MethodDelete,
 		Operation:  "RevokeKey",
-		Path:       fmt.Sprintf("/Auth/Keys/%s", url.PathEscape(key)),
+		Path:       "/Auth/Keys/" + url.PathEscape(key),
 	}
 
 	req, err := c.Client.NewRequest(ctx, opts)
 	if err != nil {
-		return
+		return result, err
 	}
 
 	var resp *client.Response
@@ -34,8 +33,8 @@ func (c Client) RevokeKey(ctx context.Context, key string) (result jf.RevokeKeyR
 		result.HttpResponse = resp.Response
 	}
 	if err != nil {
-		return
+		return result, err
 	}
 
-	return
+	return result, nil
 }

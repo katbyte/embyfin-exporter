@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"net/http"
 	"net/url"
+	"strconv"
 
 	"github.com/katbyte/embyfin-mcp/sdk/jf/12.1.0/jf"
 	"github.com/katbyte/pandorest/client"
@@ -15,8 +16,7 @@ import (
 // GetPersonImageByIndex calls GET /Persons/{name}/Images/{imageType}/{imageIndex}. Get person image by name.
 func (c Client) GetPersonImageByIndex(ctx context.Context, name string, imageType jf.ImageType, imageIndex int, options ...jf.GetPersonImageByIndexOptions) (result jf.GetPersonImageByIndexResponse, err error) {
 	if len(options) > 1 {
-		err = fmt.Errorf("GetPersonImageByIndex takes one options struct at most, not %d", len(options))
-		return
+		return result, fmt.Errorf("at most one options struct for GetPersonImageByIndex, not %d", len(options))
 	}
 	var option jf.GetPersonImageByIndexOptions
 	if len(options) == 1 {
@@ -31,13 +31,13 @@ func (c Client) GetPersonImageByIndex(ctx context.Context, name string, imageTyp
 		HTTPMethod:     http.MethodGet,
 		Operation:      "GetPersonImageByIndex",
 		OptionsObject:  option,
-		Path:           fmt.Sprintf("/Persons/%s/Images/%s/%d", url.PathEscape(name), url.PathEscape(string(imageType)), imageIndex),
+		Path:           "/Persons/" + url.PathEscape(name) + "/Images/" + url.PathEscape(string(imageType)) + "/" + strconv.Itoa(imageIndex),
 		StreamResponse: true,
 	}
 
 	req, err := c.Client.NewRequest(ctx, opts)
 	if err != nil {
-		return
+		return result, err
 	}
 
 	var resp *client.Response
@@ -46,8 +46,8 @@ func (c Client) GetPersonImageByIndex(ctx context.Context, name string, imageTyp
 		result.HttpResponse = resp.Response
 	}
 	if err != nil {
-		return
+		return result, err
 	}
 
-	return
+	return result, nil
 }

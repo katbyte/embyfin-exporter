@@ -14,8 +14,7 @@ import (
 // GetNotificationsServicesDefaults calls GET /Notifications/Services/Defaults. Gets default notification info.
 func (c Client) GetNotificationsServicesDefaults(ctx context.Context, options ...emby.GetNotificationsServicesDefaultsOptions) (result emby.GetNotificationsServicesDefaultsResponse, err error) {
 	if len(options) > 1 {
-		err = fmt.Errorf("GetNotificationsServicesDefaults takes one options struct at most, not %d", len(options))
-		return
+		return result, fmt.Errorf("at most one options struct for GetNotificationsServicesDefaults, not %d", len(options))
 	}
 	var option emby.GetNotificationsServicesDefaultsOptions
 	if len(options) == 1 {
@@ -36,7 +35,7 @@ func (c Client) GetNotificationsServicesDefaults(ctx context.Context, options ..
 
 	req, err := c.Client.NewRequest(ctx, opts)
 	if err != nil {
-		return
+		return result, err
 	}
 
 	var resp *client.Response
@@ -45,19 +44,19 @@ func (c Client) GetNotificationsServicesDefaults(ctx context.Context, options ..
 		result.HttpResponse = resp.Response
 	}
 	if err != nil {
-		return
+		return result, err
 	}
 
 	if resp.StatusCode == http.StatusNoContent {
-		return
+		return result, nil
 	}
 
 	var answer emby.UserNotificationInfo
 	result.Answer = &answer
-	if err = resp.Unmarshal(result.Answer); err != nil {
-		return
+	if err := resp.Unmarshal(result.Answer); err != nil {
+		return result, err
 	}
 	result.UserNotificationInfo = result.Answer
 
-	return
+	return result, nil
 }

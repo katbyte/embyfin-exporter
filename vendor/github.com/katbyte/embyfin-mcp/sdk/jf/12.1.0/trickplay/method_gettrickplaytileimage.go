@@ -7,17 +7,17 @@ import (
 	"fmt"
 	"net/http"
 	"net/url"
+	"strconv"
 
 	"github.com/katbyte/embyfin-mcp/sdk/jf/12.1.0/jf"
 	"github.com/katbyte/pandorest/client"
 )
 
 // GetTrickplayTileImage calls GET /Videos/{itemId}/Trickplay/{width}/{index}.jpg. Gets a trickplay tile image.
-func (c Client) GetTrickplayTileImage(ctx context.Context, itemId jf.ItemID, width int, index int, mediaSourceId ...jf.MediaSourceID) (result jf.GetTrickplayTileImageResponse, err error) {
+func (c Client) GetTrickplayTileImage(ctx context.Context, itemId jf.ItemID, width, index int, mediaSourceId ...jf.MediaSourceID) (result jf.GetTrickplayTileImageResponse, err error) {
 	var option jf.GetTrickplayTileImageOptions
 	if len(mediaSourceId) > 1 {
-		err = fmt.Errorf("GetTrickplayTileImage takes one mediaSourceId at most, not %d", len(mediaSourceId))
-		return
+		return result, fmt.Errorf("at most one mediaSourceId for GetTrickplayTileImage, not %d", len(mediaSourceId))
 	}
 	if len(mediaSourceId) == 1 {
 		option.MediaSourceId = mediaSourceId[0]
@@ -31,13 +31,13 @@ func (c Client) GetTrickplayTileImage(ctx context.Context, itemId jf.ItemID, wid
 		HTTPMethod:     http.MethodGet,
 		Operation:      "GetTrickplayTileImage",
 		OptionsObject:  option,
-		Path:           fmt.Sprintf("/Videos/%s/Trickplay/%d/%d.jpg", url.PathEscape(string(itemId)), width, index),
+		Path:           "/Videos/" + url.PathEscape(string(itemId)) + "/Trickplay/" + strconv.Itoa(width) + "/" + strconv.Itoa(index) + ".jpg",
 		StreamResponse: true,
 	}
 
 	req, err := c.Client.NewRequest(ctx, opts)
 	if err != nil {
-		return
+		return result, err
 	}
 
 	var resp *client.Response
@@ -46,8 +46,8 @@ func (c Client) GetTrickplayTileImage(ctx context.Context, itemId jf.ItemID, wid
 		result.HttpResponse = resp.Response
 	}
 	if err != nil {
-		return
+		return result, err
 	}
 
-	return
+	return result, nil
 }

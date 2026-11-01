@@ -17,8 +17,7 @@ import (
 // Deprecated: the document marks this operation deprecated.
 func (c Client) GetInstantMixFromMusicGenreByName(ctx context.Context, name string, options ...jf.GetInstantMixFromMusicGenreByNameOptions) (result jf.GetInstantMixFromMusicGenreByNameResponse, err error) {
 	if len(options) > 1 {
-		err = fmt.Errorf("GetInstantMixFromMusicGenreByName takes one options struct at most, not %d", len(options))
-		return
+		return result, fmt.Errorf("at most one options struct for GetInstantMixFromMusicGenreByName, not %d", len(options))
 	}
 	var option jf.GetInstantMixFromMusicGenreByNameOptions
 	if len(options) == 1 {
@@ -33,12 +32,12 @@ func (c Client) GetInstantMixFromMusicGenreByName(ctx context.Context, name stri
 		HTTPMethod:    http.MethodGet,
 		Operation:     "GetInstantMixFromMusicGenreByName",
 		OptionsObject: option,
-		Path:          fmt.Sprintf("/MusicGenres/%s/InstantMix", url.PathEscape(name)),
+		Path:          "/MusicGenres/" + url.PathEscape(name) + "/InstantMix",
 	}
 
 	req, err := c.Client.NewRequest(ctx, opts)
 	if err != nil {
-		return
+		return result, err
 	}
 
 	var resp *client.Response
@@ -47,15 +46,15 @@ func (c Client) GetInstantMixFromMusicGenreByName(ctx context.Context, name stri
 		result.HttpResponse = resp.Response
 	}
 	if err != nil {
-		return
+		return result, err
 	}
 
 	var answer jf.BaseItemDtoQueryResult
 	result.Answer = &answer
-	if err = resp.Unmarshal(result.Answer); err != nil {
-		return
+	if err := resp.Unmarshal(result.Answer); err != nil {
+		return result, err
 	}
 	result.BaseItemDtoQueryResult = result.Answer
 
-	return
+	return result, nil
 }

@@ -30,7 +30,7 @@ func (r GetSyncOptionsResponse) Answered() bool { return r.Answer != nil }
 // error when the server answered none.
 func (r GetSyncOptionsResponse) Record() (SyncDialogOptions, error) {
 	if r.Answer == nil {
-		return SyncDialogOptions{}, errors.New("GetSyncOptions answered no SyncDialogOptions")
+		return SyncDialogOptions{}, errors.New("no SyncDialogOptions answered by GetSyncOptions")
 	}
 
 	return *r.Answer, nil
@@ -56,8 +56,7 @@ type GetSyncOptionsOptions struct {
 
 // ToHeaders returns the header parameters the options set.
 func (o GetSyncOptionsOptions) ToHeaders() *client.Headers {
-	out := client.Headers{}
-	return &out
+	return &client.Headers{}
 }
 
 // ToQuery returns the query parameters the options set.

@@ -4,7 +4,6 @@ package plugins
 
 import (
 	"context"
-	"fmt"
 	"net/http"
 	"net/url"
 
@@ -20,12 +19,12 @@ func (c Client) UninstallPlugin(ctx context.Context, pluginId string) (result jf
 		},
 		HTTPMethod: http.MethodDelete,
 		Operation:  "UninstallPlugin",
-		Path:       fmt.Sprintf("/Plugins/%s", url.PathEscape(pluginId)),
+		Path:       "/Plugins/" + url.PathEscape(pluginId),
 	}
 
 	req, err := c.Client.NewRequest(ctx, opts)
 	if err != nil {
-		return
+		return result, err
 	}
 
 	var resp *client.Response
@@ -34,8 +33,8 @@ func (c Client) UninstallPlugin(ctx context.Context, pluginId string) (result jf
 		result.HttpResponse = resp.Response
 	}
 	if err != nil {
-		return
+		return result, err
 	}
 
-	return
+	return result, nil
 }

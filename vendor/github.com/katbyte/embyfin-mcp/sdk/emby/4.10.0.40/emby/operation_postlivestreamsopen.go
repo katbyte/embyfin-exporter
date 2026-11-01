@@ -28,7 +28,7 @@ func (r PostLiveStreamsOpenResponse) Answered() bool { return r.Answer != nil }
 // error when the server answered none.
 func (r PostLiveStreamsOpenResponse) Record() (LiveStreamResponse, error) {
 	if r.Answer == nil {
-		return LiveStreamResponse{}, errors.New("PostLiveStreamsOpen answered no LiveStreamResponse")
+		return LiveStreamResponse{}, errors.New("no LiveStreamResponse answered by PostLiveStreamsOpen")
 	}
 
 	return *r.Answer, nil

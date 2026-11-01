@@ -4,7 +4,6 @@ package syncs
 
 import (
 	"context"
-	"fmt"
 	"net/http"
 	"net/url"
 
@@ -21,12 +20,12 @@ func (c Client) PostSyncJobsByIdDelete(ctx context.Context, id string) (result e
 		},
 		HTTPMethod: http.MethodPost,
 		Operation:  "PostSyncJobsByIdDelete",
-		Path:       fmt.Sprintf("/Sync/Jobs/%s/Delete", url.PathEscape(id)),
+		Path:       "/Sync/Jobs/" + url.PathEscape(id) + "/Delete",
 	}
 
 	req, err := c.Client.NewRequest(ctx, opts)
 	if err != nil {
-		return
+		return result, err
 	}
 
 	var resp *client.Response
@@ -35,8 +34,8 @@ func (c Client) PostSyncJobsByIdDelete(ctx context.Context, id string) (result e
 		result.HttpResponse = resp.Response
 	}
 	if err != nil {
-		return
+		return result, err
 	}
 
-	return
+	return result, nil
 }

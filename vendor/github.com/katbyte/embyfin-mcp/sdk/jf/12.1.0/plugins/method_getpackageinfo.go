@@ -16,8 +16,7 @@ import (
 func (c Client) GetPackageInfo(ctx context.Context, name string, assemblyGuid ...string) (result jf.GetPackageInfoResponse, err error) {
 	var option jf.GetPackageInfoOptions
 	if len(assemblyGuid) > 1 {
-		err = fmt.Errorf("GetPackageInfo takes one assemblyGuid at most, not %d", len(assemblyGuid))
-		return
+		return result, fmt.Errorf("at most one assemblyGuid for GetPackageInfo, not %d", len(assemblyGuid))
 	}
 	if len(assemblyGuid) == 1 {
 		option.AssemblyGuid = assemblyGuid[0]
@@ -31,12 +30,12 @@ func (c Client) GetPackageInfo(ctx context.Context, name string, assemblyGuid ..
 		HTTPMethod:    http.MethodGet,
 		Operation:     "GetPackageInfo",
 		OptionsObject: option,
-		Path:          fmt.Sprintf("/Packages/%s", url.PathEscape(name)),
+		Path:          "/Packages/" + url.PathEscape(name),
 	}
 
 	req, err := c.Client.NewRequest(ctx, opts)
 	if err != nil {
-		return
+		return result, err
 	}
 
 	var resp *client.Response
@@ -45,15 +44,15 @@ func (c Client) GetPackageInfo(ctx context.Context, name string, assemblyGuid ..
 		result.HttpResponse = resp.Response
 	}
 	if err != nil {
-		return
+		return result, err
 	}
 
 	var answer jf.PackageInfo
 	result.Answer = &answer
-	if err = resp.Unmarshal(result.Answer); err != nil {
-		return
+	if err := resp.Unmarshal(result.Answer); err != nil {
+		return result, err
 	}
 	result.PackageInfo = result.Answer
 
-	return
+	return result, nil
 }

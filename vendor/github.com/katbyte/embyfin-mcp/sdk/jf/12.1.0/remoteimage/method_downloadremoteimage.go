@@ -4,7 +4,6 @@ package remoteimage
 
 import (
 	"context"
-	"fmt"
 	"net/http"
 	"net/url"
 
@@ -21,12 +20,12 @@ func (c Client) DownloadRemoteImage(ctx context.Context, itemId jf.ItemID, optio
 		HTTPMethod:    http.MethodPost,
 		Operation:     "DownloadRemoteImage",
 		OptionsObject: options,
-		Path:          fmt.Sprintf("/Items/%s/RemoteImages/Download", url.PathEscape(string(itemId))),
+		Path:          "/Items/" + url.PathEscape(string(itemId)) + "/RemoteImages/Download",
 	}
 
 	req, err := c.Client.NewRequest(ctx, opts)
 	if err != nil {
-		return
+		return result, err
 	}
 
 	var resp *client.Response
@@ -35,8 +34,8 @@ func (c Client) DownloadRemoteImage(ctx context.Context, itemId jf.ItemID, optio
 		result.HttpResponse = resp.Response
 	}
 	if err != nil {
-		return
+		return result, err
 	}
 
-	return
+	return result, nil
 }

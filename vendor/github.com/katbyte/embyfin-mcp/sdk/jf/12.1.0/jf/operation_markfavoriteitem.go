@@ -30,7 +30,7 @@ func (r MarkFavoriteItemResponse) Answered() bool { return r.Answer != nil }
 // error when the server answered none.
 func (r MarkFavoriteItemResponse) Record() (UserItemDataDto, error) {
 	if r.Answer == nil {
-		return UserItemDataDto{}, errors.New("MarkFavoriteItem answered no UserItemDataDto")
+		return UserItemDataDto{}, errors.New("no UserItemDataDto answered by MarkFavoriteItem")
 	}
 
 	return *r.Answer, nil
@@ -44,8 +44,7 @@ type MarkFavoriteItemOptions struct {
 
 // ToHeaders returns the header parameters the options set.
 func (o MarkFavoriteItemOptions) ToHeaders() *client.Headers {
-	out := client.Headers{}
-	return &out
+	return &client.Headers{}
 }
 
 // ToQuery returns the query parameters the options set.

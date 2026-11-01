@@ -31,7 +31,7 @@ func (r GetLiveTvProgramsResponse) Answered() bool { return r.Answer != nil }
 // error when the server answered none.
 func (r GetLiveTvProgramsResponse) Record() (QueryResultBaseItemDto, error) {
 	if r.Answer == nil {
-		return QueryResultBaseItemDto{}, errors.New("GetLiveTvPrograms answered no QueryResultBaseItemDto")
+		return QueryResultBaseItemDto{}, errors.New("no QueryResultBaseItemDto answered by GetLiveTvPrograms")
 	}
 
 	return *r.Answer, nil
@@ -432,8 +432,7 @@ type GetLiveTvProgramsOptions struct {
 
 // ToHeaders returns the header parameters the options set.
 func (o GetLiveTvProgramsOptions) ToHeaders() *client.Headers {
-	out := client.Headers{}
-	return &out
+	return &client.Headers{}
 }
 
 // ToQuery returns the query parameters the options set.

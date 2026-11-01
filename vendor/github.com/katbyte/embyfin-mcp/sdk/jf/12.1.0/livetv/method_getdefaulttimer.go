@@ -15,8 +15,7 @@ import (
 func (c Client) GetDefaultTimer(ctx context.Context, programId ...string) (result jf.GetDefaultTimerResponse, err error) {
 	var option jf.GetDefaultTimerOptions
 	if len(programId) > 1 {
-		err = fmt.Errorf("GetDefaultTimer takes one programId at most, not %d", len(programId))
-		return
+		return result, fmt.Errorf("at most one programId for GetDefaultTimer, not %d", len(programId))
 	}
 	if len(programId) == 1 {
 		option.ProgramId = programId[0]
@@ -35,7 +34,7 @@ func (c Client) GetDefaultTimer(ctx context.Context, programId ...string) (resul
 
 	req, err := c.Client.NewRequest(ctx, opts)
 	if err != nil {
-		return
+		return result, err
 	}
 
 	var resp *client.Response
@@ -44,15 +43,15 @@ func (c Client) GetDefaultTimer(ctx context.Context, programId ...string) (resul
 		result.HttpResponse = resp.Response
 	}
 	if err != nil {
-		return
+		return result, err
 	}
 
 	var answer jf.SeriesTimerInfoDto
 	result.Answer = &answer
-	if err = resp.Unmarshal(result.Answer); err != nil {
-		return
+	if err := resp.Unmarshal(result.Answer); err != nil {
+		return result, err
 	}
 	result.SeriesTimerInfoDto = result.Answer
 
-	return
+	return result, nil
 }

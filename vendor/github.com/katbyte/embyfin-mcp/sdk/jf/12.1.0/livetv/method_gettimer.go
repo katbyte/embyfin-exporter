@@ -4,7 +4,6 @@ package livetv
 
 import (
 	"context"
-	"fmt"
 	"net/http"
 	"net/url"
 
@@ -21,12 +20,12 @@ func (c Client) GetTimer(ctx context.Context, timerId string) (result jf.GetTime
 		},
 		HTTPMethod: http.MethodGet,
 		Operation:  "GetTimer",
-		Path:       fmt.Sprintf("/LiveTv/Timers/%s", url.PathEscape(timerId)),
+		Path:       "/LiveTv/Timers/" + url.PathEscape(timerId),
 	}
 
 	req, err := c.Client.NewRequest(ctx, opts)
 	if err != nil {
-		return
+		return result, err
 	}
 
 	var resp *client.Response
@@ -35,15 +34,15 @@ func (c Client) GetTimer(ctx context.Context, timerId string) (result jf.GetTime
 		result.HttpResponse = resp.Response
 	}
 	if err != nil {
-		return
+		return result, err
 	}
 
 	var answer jf.TimerInfoDto
 	result.Answer = &answer
-	if err = resp.Unmarshal(result.Answer); err != nil {
-		return
+	if err := resp.Unmarshal(result.Answer); err != nil {
+		return result, err
 	}
 	result.TimerInfoDto = result.Answer
 
-	return
+	return result, nil
 }

@@ -28,7 +28,7 @@ func (r GetTaskResponse) Answered() bool { return r.Answer != nil }
 // error when the server answered none.
 func (r GetTaskResponse) Record() (TaskInfo, error) {
 	if r.Answer == nil {
-		return TaskInfo{}, errors.New("GetTask answered no TaskInfo")
+		return TaskInfo{}, errors.New("no TaskInfo answered by GetTask")
 	}
 
 	return *r.Answer, nil

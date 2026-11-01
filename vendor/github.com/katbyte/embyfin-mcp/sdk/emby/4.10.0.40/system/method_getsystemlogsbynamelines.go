@@ -4,7 +4,6 @@ package system
 
 import (
 	"context"
-	"fmt"
 	"net/http"
 	"net/url"
 
@@ -22,12 +21,12 @@ func (c Client) GetSystemLogsByNameLines(ctx context.Context, name string) (resu
 		},
 		HTTPMethod: http.MethodGet,
 		Operation:  "GetSystemLogsByNameLines",
-		Path:       fmt.Sprintf("/System/Logs/%s/Lines", url.PathEscape(name)),
+		Path:       "/System/Logs/" + url.PathEscape(name) + "/Lines",
 	}
 
 	req, err := c.Client.NewRequest(ctx, opts)
 	if err != nil {
-		return
+		return result, err
 	}
 
 	var resp *client.Response
@@ -36,19 +35,19 @@ func (c Client) GetSystemLogsByNameLines(ctx context.Context, name string) (resu
 		result.HttpResponse = resp.Response
 	}
 	if err != nil {
-		return
+		return result, err
 	}
 
 	if resp.StatusCode == http.StatusNoContent {
-		return
+		return result, nil
 	}
 
 	var answer emby.QueryResultString
 	result.Answer = &answer
-	if err = resp.Unmarshal(result.Answer); err != nil {
-		return
+	if err := resp.Unmarshal(result.Answer); err != nil {
+		return result, err
 	}
 	result.QueryResultString = result.Answer
 
-	return
+	return result, nil
 }

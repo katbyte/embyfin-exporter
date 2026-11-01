@@ -4,9 +4,9 @@ package images
 
 import (
 	"context"
-	"fmt"
 	"net/http"
 	"net/url"
+	"strconv"
 
 	"github.com/katbyte/embyfin-mcp/sdk/emby/4.10.0.40/emby"
 	"github.com/katbyte/pandorest/client"
@@ -25,12 +25,12 @@ func (c Client) PostItemsByIdImagesByTypeByIndexUrl(ctx context.Context, id emby
 		HTTPMethod:    http.MethodPost,
 		Operation:     "PostItemsByIdImagesByTypeByIndexUrl",
 		OptionsObject: option,
-		Path:          fmt.Sprintf("/Items/%s/Images/%s/%d/Url", url.PathEscape(string(id)), url.PathEscape(string(typeParam)), index),
+		Path:          "/Items/" + url.PathEscape(string(id)) + "/Images/" + url.PathEscape(string(typeParam)) + "/" + strconv.Itoa(index) + "/Url",
 	}
 
 	req, err := c.Client.NewRequest(ctx, opts)
 	if err != nil {
-		return
+		return result, err
 	}
 
 	var resp *client.Response
@@ -39,8 +39,8 @@ func (c Client) PostItemsByIdImagesByTypeByIndexUrl(ctx context.Context, id emby
 		result.HttpResponse = resp.Response
 	}
 	if err != nil {
-		return
+		return result, err
 	}
 
-	return
+	return result, nil
 }

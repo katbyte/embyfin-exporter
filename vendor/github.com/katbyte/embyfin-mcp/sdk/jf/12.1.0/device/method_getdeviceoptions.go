@@ -28,7 +28,7 @@ func (c Client) GetDeviceOptions(ctx context.Context, id string) (result jf.GetD
 
 	req, err := c.Client.NewRequest(ctx, opts)
 	if err != nil {
-		return
+		return result, err
 	}
 
 	var resp *client.Response
@@ -37,15 +37,15 @@ func (c Client) GetDeviceOptions(ctx context.Context, id string) (result jf.GetD
 		result.HttpResponse = resp.Response
 	}
 	if err != nil {
-		return
+		return result, err
 	}
 
 	var answer jf.DeviceOptionsDto
 	result.Answer = &answer
-	if err = resp.Unmarshal(result.Answer); err != nil {
-		return
+	if err := resp.Unmarshal(result.Answer); err != nil {
+		return result, err
 	}
 	result.DeviceOptionsDto = result.Answer
 
-	return
+	return result, nil
 }

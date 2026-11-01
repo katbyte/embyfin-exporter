@@ -30,7 +30,7 @@ func (r GetAdditionalPartResponse) Answered() bool { return r.Answer != nil }
 // error when the server answered none.
 func (r GetAdditionalPartResponse) Record() (BaseItemDtoQueryResult, error) {
 	if r.Answer == nil {
-		return BaseItemDtoQueryResult{}, errors.New("GetAdditionalPart answered no BaseItemDtoQueryResult")
+		return BaseItemDtoQueryResult{}, errors.New("no BaseItemDtoQueryResult answered by GetAdditionalPart")
 	}
 
 	return *r.Answer, nil
@@ -44,8 +44,7 @@ type GetAdditionalPartOptions struct {
 
 // ToHeaders returns the header parameters the options set.
 func (o GetAdditionalPartOptions) ToHeaders() *client.Headers {
-	out := client.Headers{}
-	return &out
+	return &client.Headers{}
 }
 
 // ToQuery returns the query parameters the options set.

@@ -28,7 +28,7 @@ func (r GetEncodingToneMapOptionsResponse) Answered() bool { return r.Answer != 
 // error when the server answered none.
 func (r GetEncodingToneMapOptionsResponse) Record() (ConfigurationToneMappingToneMapOptions, error) {
 	if r.Answer == nil {
-		return ConfigurationToneMappingToneMapOptions{}, errors.New("GetEncodingToneMapOptions answered no ConfigurationToneMappingToneMapOptions")
+		return ConfigurationToneMappingToneMapOptions{}, errors.New("no ConfigurationToneMappingToneMapOptions answered by GetEncodingToneMapOptions")
 	}
 
 	return *r.Answer, nil

@@ -4,7 +4,6 @@ package sessions
 
 import (
 	"context"
-	"fmt"
 	"net/http"
 	"net/url"
 
@@ -21,12 +20,12 @@ func (c Client) PostSessionsByIdUsersByUserIdDelete(ctx context.Context, id emby
 		},
 		HTTPMethod: http.MethodPost,
 		Operation:  "PostSessionsByIdUsersByUserIdDelete",
-		Path:       fmt.Sprintf("/Sessions/%s/Users/%s/Delete", url.PathEscape(string(id)), url.PathEscape(string(userId))),
+		Path:       "/Sessions/" + url.PathEscape(string(id)) + "/Users/" + url.PathEscape(string(userId)) + "/Delete",
 	}
 
 	req, err := c.Client.NewRequest(ctx, opts)
 	if err != nil {
-		return
+		return result, err
 	}
 
 	var resp *client.Response
@@ -35,8 +34,8 @@ func (c Client) PostSessionsByIdUsersByUserIdDelete(ctx context.Context, id emby
 		result.HttpResponse = resp.Response
 	}
 	if err != nil {
-		return
+		return result, err
 	}
 
-	return
+	return result, nil
 }

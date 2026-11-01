@@ -16,8 +16,7 @@ import (
 func (c Client) GetPlaybackInfo(ctx context.Context, itemId jf.ItemID, userId ...jf.UserID) (result jf.GetPlaybackInfoResponse, err error) {
 	var option jf.GetPlaybackInfoOptions
 	if len(userId) > 1 {
-		err = fmt.Errorf("GetPlaybackInfo takes one userId at most, not %d", len(userId))
-		return
+		return result, fmt.Errorf("at most one userId for GetPlaybackInfo, not %d", len(userId))
 	}
 	if len(userId) == 1 {
 		option.UserId = userId[0]
@@ -31,12 +30,12 @@ func (c Client) GetPlaybackInfo(ctx context.Context, itemId jf.ItemID, userId ..
 		HTTPMethod:    http.MethodGet,
 		Operation:     "GetPlaybackInfo",
 		OptionsObject: option,
-		Path:          fmt.Sprintf("/Items/%s/PlaybackInfo", url.PathEscape(string(itemId))),
+		Path:          "/Items/" + url.PathEscape(string(itemId)) + "/PlaybackInfo",
 	}
 
 	req, err := c.Client.NewRequest(ctx, opts)
 	if err != nil {
-		return
+		return result, err
 	}
 
 	var resp *client.Response
@@ -45,15 +44,15 @@ func (c Client) GetPlaybackInfo(ctx context.Context, itemId jf.ItemID, userId ..
 		result.HttpResponse = resp.Response
 	}
 	if err != nil {
-		return
+		return result, err
 	}
 
 	var answer jf.PlaybackInfoResponse
 	result.Answer = &answer
-	if err = resp.Unmarshal(result.Answer); err != nil {
-		return
+	if err := resp.Unmarshal(result.Answer); err != nil {
+		return result, err
 	}
 	result.PlaybackInfoResponse = result.Answer
 
-	return
+	return result, nil
 }

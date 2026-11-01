@@ -4,7 +4,6 @@ package livetv
 
 import (
 	"context"
-	"fmt"
 	"net/http"
 	"net/url"
 
@@ -22,16 +21,16 @@ func (c Client) PostLiveTvTimersById(ctx context.Context, id string, input emby.
 		},
 		HTTPMethod: http.MethodPost,
 		Operation:  "PostLiveTvTimersById",
-		Path:       fmt.Sprintf("/LiveTv/Timers/%s", url.PathEscape(id)),
+		Path:       "/LiveTv/Timers/" + url.PathEscape(id),
 	}
 
 	req, err := c.Client.NewRequest(ctx, opts)
 	if err != nil {
-		return
+		return result, err
 	}
 
-	if err = req.Marshal(input); err != nil {
-		return
+	if err := req.Marshal(input); err != nil {
+		return result, err
 	}
 
 	var resp *client.Response
@@ -40,8 +39,8 @@ func (c Client) PostLiveTvTimersById(ctx context.Context, id string, input emby.
 		result.HttpResponse = resp.Response
 	}
 	if err != nil {
-		return
+		return result, err
 	}
 
-	return
+	return result, nil
 }

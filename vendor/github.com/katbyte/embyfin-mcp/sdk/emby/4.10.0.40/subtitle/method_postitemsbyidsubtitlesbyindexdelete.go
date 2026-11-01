@@ -4,9 +4,9 @@ package subtitle
 
 import (
 	"context"
-	"fmt"
 	"net/http"
 	"net/url"
+	"strconv"
 
 	"github.com/katbyte/embyfin-mcp/sdk/emby/4.10.0.40/emby"
 	"github.com/katbyte/pandorest/client"
@@ -25,12 +25,12 @@ func (c Client) PostItemsByIdSubtitlesByIndexDelete(ctx context.Context, id emby
 		HTTPMethod:    http.MethodPost,
 		Operation:     "PostItemsByIdSubtitlesByIndexDelete",
 		OptionsObject: option,
-		Path:          fmt.Sprintf("/Items/%s/Subtitles/%d/Delete", url.PathEscape(string(id)), index),
+		Path:          "/Items/" + url.PathEscape(string(id)) + "/Subtitles/" + strconv.Itoa(index) + "/Delete",
 	}
 
 	req, err := c.Client.NewRequest(ctx, opts)
 	if err != nil {
-		return
+		return result, err
 	}
 
 	var resp *client.Response
@@ -39,8 +39,8 @@ func (c Client) PostItemsByIdSubtitlesByIndexDelete(ctx context.Context, id emby
 		result.HttpResponse = resp.Response
 	}
 	if err != nil {
-		return
+		return result, err
 	}
 
-	return
+	return result, nil
 }

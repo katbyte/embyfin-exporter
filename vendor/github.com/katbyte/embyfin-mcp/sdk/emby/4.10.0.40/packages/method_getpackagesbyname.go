@@ -16,8 +16,7 @@ import (
 func (c Client) GetPackagesByName(ctx context.Context, name string, assemblyGuid ...string) (result emby.GetPackagesByNameResponse, err error) {
 	var option emby.GetPackagesByNameOptions
 	if len(assemblyGuid) > 1 {
-		err = fmt.Errorf("GetPackagesByName takes one assemblyGuid at most, not %d", len(assemblyGuid))
-		return
+		return result, fmt.Errorf("at most one assemblyGuid for GetPackagesByName, not %d", len(assemblyGuid))
 	}
 	if len(assemblyGuid) == 1 {
 		option.AssemblyGuid = assemblyGuid[0]
@@ -32,12 +31,12 @@ func (c Client) GetPackagesByName(ctx context.Context, name string, assemblyGuid
 		HTTPMethod:    http.MethodGet,
 		Operation:     "GetPackagesByName",
 		OptionsObject: option,
-		Path:          fmt.Sprintf("/Packages/%s", url.PathEscape(name)),
+		Path:          "/Packages/" + url.PathEscape(name),
 	}
 
 	req, err := c.Client.NewRequest(ctx, opts)
 	if err != nil {
-		return
+		return result, err
 	}
 
 	var resp *client.Response
@@ -46,19 +45,19 @@ func (c Client) GetPackagesByName(ctx context.Context, name string, assemblyGuid
 		result.HttpResponse = resp.Response
 	}
 	if err != nil {
-		return
+		return result, err
 	}
 
 	if resp.StatusCode == http.StatusNoContent {
-		return
+		return result, nil
 	}
 
 	var answer emby.PackageInfo
 	result.Answer = &answer
-	if err = resp.Unmarshal(result.Answer); err != nil {
-		return
+	if err := resp.Unmarshal(result.Answer); err != nil {
+		return result, err
 	}
 	result.PackageInfo = result.Answer
 
-	return
+	return result, nil
 }

@@ -15,8 +15,7 @@ import (
 func (c Client) GetLiveTvTimersDefaults(ctx context.Context, programId ...string) (result emby.GetLiveTvTimersDefaultsResponse, err error) {
 	var option emby.GetLiveTvTimersDefaultsOptions
 	if len(programId) > 1 {
-		err = fmt.Errorf("GetLiveTvTimersDefaults takes one programId at most, not %d", len(programId))
-		return
+		return result, fmt.Errorf("at most one programId for GetLiveTvTimersDefaults, not %d", len(programId))
 	}
 	if len(programId) == 1 {
 		option.ProgramId = programId[0]
@@ -36,7 +35,7 @@ func (c Client) GetLiveTvTimersDefaults(ctx context.Context, programId ...string
 
 	req, err := c.Client.NewRequest(ctx, opts)
 	if err != nil {
-		return
+		return result, err
 	}
 
 	var resp *client.Response
@@ -45,19 +44,19 @@ func (c Client) GetLiveTvTimersDefaults(ctx context.Context, programId ...string
 		result.HttpResponse = resp.Response
 	}
 	if err != nil {
-		return
+		return result, err
 	}
 
 	if resp.StatusCode == http.StatusNoContent {
-		return
+		return result, nil
 	}
 
 	var answer emby.LiveTvSeriesTimerInfoDto
 	result.Answer = &answer
-	if err = resp.Unmarshal(result.Answer); err != nil {
-		return
+	if err := resp.Unmarshal(result.Answer); err != nil {
+		return result, err
 	}
 	result.LiveTvSeriesTimerInfoDto = result.Answer
 
-	return
+	return result, nil
 }

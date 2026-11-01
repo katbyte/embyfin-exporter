@@ -31,7 +31,7 @@ func (r GetSystemLogsQueryResponse) Answered() bool { return r.Answer != nil }
 // error when the server answered none.
 func (r GetSystemLogsQueryResponse) Record() (QueryResultLogFile, error) {
 	if r.Answer == nil {
-		return QueryResultLogFile{}, errors.New("GetSystemLogsQuery answered no QueryResultLogFile")
+		return QueryResultLogFile{}, errors.New("no QueryResultLogFile answered by GetSystemLogsQuery")
 	}
 
 	return *r.Answer, nil
@@ -48,8 +48,7 @@ type GetSystemLogsQueryOptions struct {
 
 // ToHeaders returns the header parameters the options set.
 func (o GetSystemLogsQueryOptions) ToHeaders() *client.Headers {
-	out := client.Headers{}
-	return &out
+	return &client.Headers{}
 }
 
 // ToQuery returns the query parameters the options set.

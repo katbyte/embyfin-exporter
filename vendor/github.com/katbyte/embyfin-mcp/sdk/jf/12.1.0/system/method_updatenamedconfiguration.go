@@ -5,7 +5,6 @@ package system
 import (
 	"context"
 	"encoding/json"
-	"fmt"
 	"net/http"
 	"net/url"
 
@@ -22,16 +21,16 @@ func (c Client) UpdateNamedConfiguration(ctx context.Context, key string, input 
 		},
 		HTTPMethod: http.MethodPost,
 		Operation:  "UpdateNamedConfiguration",
-		Path:       fmt.Sprintf("/System/Configuration/%s", url.PathEscape(key)),
+		Path:       "/System/Configuration/" + url.PathEscape(key),
 	}
 
 	req, err := c.Client.NewRequest(ctx, opts)
 	if err != nil {
-		return
+		return result, err
 	}
 
-	if err = req.Marshal(input); err != nil {
-		return
+	if err := req.Marshal(input); err != nil {
+		return result, err
 	}
 
 	var resp *client.Response
@@ -40,8 +39,8 @@ func (c Client) UpdateNamedConfiguration(ctx context.Context, key string, input 
 		result.HttpResponse = resp.Response
 	}
 	if err != nil {
-		return
+		return result, err
 	}
 
-	return
+	return result, nil
 }

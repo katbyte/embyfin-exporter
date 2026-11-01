@@ -30,7 +30,7 @@ func (r GetBackupResponse) Answered() bool { return r.Answer != nil }
 // error when the server answered none.
 func (r GetBackupResponse) Record() (BackupManifestDto, error) {
 	if r.Answer == nil {
-		return BackupManifestDto{}, errors.New("GetBackup answered no BackupManifestDto")
+		return BackupManifestDto{}, errors.New("no BackupManifestDto answered by GetBackup")
 	}
 
 	return *r.Answer, nil
@@ -44,8 +44,7 @@ type GetBackupOptions struct {
 
 // ToHeaders returns the header parameters the options set.
 func (o GetBackupOptions) ToHeaders() *client.Headers {
-	out := client.Headers{}
-	return &out
+	return &client.Headers{}
 }
 
 // ToQuery returns the query parameters the options set.

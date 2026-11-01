@@ -28,7 +28,7 @@ func (r GetSystemEndpointResponse) Answered() bool { return r.Answer != nil }
 // error when the server answered none.
 func (r GetSystemEndpointResponse) Record() (NetEndPointInfo, error) {
 	if r.Answer == nil {
-		return NetEndPointInfo{}, errors.New("GetSystemEndpoint answered no NetEndPointInfo")
+		return NetEndPointInfo{}, errors.New("no NetEndPointInfo answered by GetSystemEndpoint")
 	}
 
 	return *r.Answer, nil

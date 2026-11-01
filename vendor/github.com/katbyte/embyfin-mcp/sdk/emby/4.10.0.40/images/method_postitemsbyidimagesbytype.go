@@ -19,8 +19,7 @@ import (
 func (c Client) PostItemsByIdImagesByType(ctx context.Context, id emby.ItemID, typeParam emby.ImageType, input io.Reader, contentType string, index ...int) (result emby.PostItemsByIdImagesByTypeResponse, err error) {
 	var option emby.PostItemsByIdImagesByTypeOptions
 	if len(index) > 1 {
-		err = fmt.Errorf("PostItemsByIdImagesByType takes one index at most, not %d", len(index))
-		return
+		return result, fmt.Errorf("at most one index for PostItemsByIdImagesByType, not %d", len(index))
 	}
 	if len(index) == 1 {
 		option.Index = &index[0]
@@ -35,16 +34,16 @@ func (c Client) PostItemsByIdImagesByType(ctx context.Context, id emby.ItemID, t
 		HTTPMethod:    http.MethodPost,
 		Operation:     "PostItemsByIdImagesByType",
 		OptionsObject: option,
-		Path:          fmt.Sprintf("/Items/%s/Images/%s", url.PathEscape(string(id)), url.PathEscape(string(typeParam))),
+		Path:          "/Items/" + url.PathEscape(string(id)) + "/Images/" + url.PathEscape(string(typeParam)),
 	}
 
 	req, err := c.Client.NewRequest(ctx, opts)
 	if err != nil {
-		return
+		return result, err
 	}
 
-	if err = req.SetBody(input, contentType); err != nil {
-		return
+	if err := req.SetBody(input, contentType); err != nil {
+		return result, err
 	}
 
 	var resp *client.Response
@@ -53,8 +52,8 @@ func (c Client) PostItemsByIdImagesByType(ctx context.Context, id emby.ItemID, t
 		result.HttpResponse = resp.Response
 	}
 	if err != nil {
-		return
+		return result, err
 	}
 
-	return
+	return result, nil
 }

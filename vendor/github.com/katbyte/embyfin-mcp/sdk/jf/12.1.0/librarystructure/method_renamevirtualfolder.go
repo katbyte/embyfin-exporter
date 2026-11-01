@@ -14,8 +14,7 @@ import (
 // RenameVirtualFolder calls POST /Library/VirtualFolders/Name. Renames a virtual folder.
 func (c Client) RenameVirtualFolder(ctx context.Context, options ...jf.RenameVirtualFolderOptions) (result jf.RenameVirtualFolderResponse, err error) {
 	if len(options) > 1 {
-		err = fmt.Errorf("RenameVirtualFolder takes one options struct at most, not %d", len(options))
-		return
+		return result, fmt.Errorf("at most one options struct for RenameVirtualFolder, not %d", len(options))
 	}
 	var option jf.RenameVirtualFolderOptions
 	if len(options) == 1 {
@@ -34,7 +33,7 @@ func (c Client) RenameVirtualFolder(ctx context.Context, options ...jf.RenameVir
 
 	req, err := c.Client.NewRequest(ctx, opts)
 	if err != nil {
-		return
+		return result, err
 	}
 
 	var resp *client.Response
@@ -43,8 +42,8 @@ func (c Client) RenameVirtualFolder(ctx context.Context, options ...jf.RenameVir
 		result.HttpResponse = resp.Response
 	}
 	if err != nil {
-		return
+		return result, err
 	}
 
-	return
+	return result, nil
 }

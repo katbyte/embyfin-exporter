@@ -28,7 +28,7 @@ func (r PostSyncJobsResponse) Answered() bool { return r.Answer != nil }
 // error when the server answered none.
 func (r PostSyncJobsResponse) Record() (SyncJobCreationResult, error) {
 	if r.Answer == nil {
-		return SyncJobCreationResult{}, errors.New("PostSyncJobs answered no SyncJobCreationResult")
+		return SyncJobCreationResult{}, errors.New("no SyncJobCreationResult answered by PostSyncJobs")
 	}
 
 	return *r.Answer, nil

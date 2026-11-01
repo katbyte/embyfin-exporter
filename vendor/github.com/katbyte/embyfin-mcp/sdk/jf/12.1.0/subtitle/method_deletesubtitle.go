@@ -4,9 +4,9 @@ package subtitle
 
 import (
 	"context"
-	"fmt"
 	"net/http"
 	"net/url"
+	"strconv"
 
 	"github.com/katbyte/embyfin-mcp/sdk/jf/12.1.0/jf"
 	"github.com/katbyte/pandorest/client"
@@ -20,12 +20,12 @@ func (c Client) DeleteSubtitle(ctx context.Context, itemId jf.ItemID, index int)
 		},
 		HTTPMethod: http.MethodDelete,
 		Operation:  "DeleteSubtitle",
-		Path:       fmt.Sprintf("/Videos/%s/Subtitles/%d", url.PathEscape(string(itemId)), index),
+		Path:       "/Videos/" + url.PathEscape(string(itemId)) + "/Subtitles/" + strconv.Itoa(index),
 	}
 
 	req, err := c.Client.NewRequest(ctx, opts)
 	if err != nil {
-		return
+		return result, err
 	}
 
 	var resp *client.Response
@@ -34,8 +34,8 @@ func (c Client) DeleteSubtitle(ctx context.Context, itemId jf.ItemID, index int)
 		result.HttpResponse = resp.Response
 	}
 	if err != nil {
-		return
+		return result, err
 	}
 
-	return
+	return result, nil
 }

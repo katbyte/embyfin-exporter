@@ -28,7 +28,7 @@ func (r GetItemsByIdDeleteInfoResponse) Answered() bool { return r.Answer != nil
 // error when the server answered none.
 func (r GetItemsByIdDeleteInfoResponse) Record() (LibraryDeleteInfo, error) {
 	if r.Answer == nil {
-		return LibraryDeleteInfo{}, errors.New("GetItemsByIdDeleteInfo answered no LibraryDeleteInfo")
+		return LibraryDeleteInfo{}, errors.New("no LibraryDeleteInfo answered by GetItemsByIdDeleteInfo")
 	}
 
 	return *r.Answer, nil

@@ -4,7 +4,6 @@ package connect
 
 import (
 	"context"
-	"fmt"
 	"net/http"
 	"net/url"
 
@@ -21,12 +20,12 @@ func (c Client) PostUsersByIdConnectLinkDelete(ctx context.Context, id emby.User
 		},
 		HTTPMethod: http.MethodPost,
 		Operation:  "PostUsersByIdConnectLinkDelete",
-		Path:       fmt.Sprintf("/Users/%s/Connect/Link/Delete", url.PathEscape(string(id))),
+		Path:       "/Users/" + url.PathEscape(string(id)) + "/Connect/Link/Delete",
 	}
 
 	req, err := c.Client.NewRequest(ctx, opts)
 	if err != nil {
-		return
+		return result, err
 	}
 
 	var resp *client.Response
@@ -35,8 +34,8 @@ func (c Client) PostUsersByIdConnectLinkDelete(ctx context.Context, id emby.User
 		result.HttpResponse = resp.Response
 	}
 	if err != nil {
-		return
+		return result, err
 	}
 
-	return
+	return result, nil
 }

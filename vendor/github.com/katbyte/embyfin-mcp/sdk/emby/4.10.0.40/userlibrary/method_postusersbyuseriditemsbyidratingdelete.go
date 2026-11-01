@@ -4,7 +4,6 @@ package userlibrary
 
 import (
 	"context"
-	"fmt"
 	"net/http"
 	"net/url"
 
@@ -22,12 +21,12 @@ func (c Client) PostUsersByUserIdItemsByIdRatingDelete(ctx context.Context, user
 		},
 		HTTPMethod: http.MethodPost,
 		Operation:  "PostUsersByUserIdItemsByIdRatingDelete",
-		Path:       fmt.Sprintf("/Users/%s/Items/%s/Rating/Delete", url.PathEscape(string(userId)), url.PathEscape(string(id))),
+		Path:       "/Users/" + url.PathEscape(string(userId)) + "/Items/" + url.PathEscape(string(id)) + "/Rating/Delete",
 	}
 
 	req, err := c.Client.NewRequest(ctx, opts)
 	if err != nil {
-		return
+		return result, err
 	}
 
 	var resp *client.Response
@@ -36,19 +35,19 @@ func (c Client) PostUsersByUserIdItemsByIdRatingDelete(ctx context.Context, user
 		result.HttpResponse = resp.Response
 	}
 	if err != nil {
-		return
+		return result, err
 	}
 
 	if resp.StatusCode == http.StatusNoContent {
-		return
+		return result, nil
 	}
 
 	var answer emby.UserItemDataDto
 	result.Answer = &answer
-	if err = resp.Unmarshal(result.Answer); err != nil {
-		return
+	if err := resp.Unmarshal(result.Answer); err != nil {
+		return result, err
 	}
 	result.UserItemDataDto = result.Answer
 
-	return
+	return result, nil
 }

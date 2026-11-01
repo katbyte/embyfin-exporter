@@ -28,11 +28,11 @@ func (c Client) LogFile(ctx context.Context, input io.Reader, contentType string
 
 	req, err := c.Client.NewRequest(ctx, opts)
 	if err != nil {
-		return
+		return result, err
 	}
 
-	if err = req.SetBody(input, contentType); err != nil {
-		return
+	if err := req.SetBody(input, contentType); err != nil {
+		return result, err
 	}
 
 	var resp *client.Response
@@ -41,15 +41,15 @@ func (c Client) LogFile(ctx context.Context, input io.Reader, contentType string
 		result.HttpResponse = resp.Response
 	}
 	if err != nil {
-		return
+		return result, err
 	}
 
 	var answer jf.ClientLogDocumentResponseDto
 	result.Answer = &answer
-	if err = resp.Unmarshal(result.Answer); err != nil {
-		return
+	if err := resp.Unmarshal(result.Answer); err != nil {
+		return result, err
 	}
 	result.ClientLogDocumentResponseDto = result.Answer
 
-	return
+	return result, nil
 }

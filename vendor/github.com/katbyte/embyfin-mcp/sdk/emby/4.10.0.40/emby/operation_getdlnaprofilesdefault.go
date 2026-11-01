@@ -28,7 +28,7 @@ func (r GetDlnaProfilesDefaultResponse) Answered() bool { return r.Answer != nil
 // error when the server answered none.
 func (r GetDlnaProfilesDefaultResponse) Record() (DlnaProfilesDlnaProfile, error) {
 	if r.Answer == nil {
-		return DlnaProfilesDlnaProfile{}, errors.New("GetDlnaProfilesDefault answered no DlnaProfilesDlnaProfile")
+		return DlnaProfilesDlnaProfile{}, errors.New("no DlnaProfilesDlnaProfile answered by GetDlnaProfilesDefault")
 	}
 
 	return *r.Answer, nil

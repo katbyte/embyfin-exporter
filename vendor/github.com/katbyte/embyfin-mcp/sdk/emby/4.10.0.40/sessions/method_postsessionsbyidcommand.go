@@ -4,7 +4,6 @@ package sessions
 
 import (
 	"context"
-	"fmt"
 	"net/http"
 	"net/url"
 
@@ -22,16 +21,16 @@ func (c Client) PostSessionsByIdCommand(ctx context.Context, id emby.SessionID, 
 		},
 		HTTPMethod: http.MethodPost,
 		Operation:  "PostSessionsByIdCommand",
-		Path:       fmt.Sprintf("/Sessions/%s/Command", url.PathEscape(string(id))),
+		Path:       "/Sessions/" + url.PathEscape(string(id)) + "/Command",
 	}
 
 	req, err := c.Client.NewRequest(ctx, opts)
 	if err != nil {
-		return
+		return result, err
 	}
 
-	if err = req.Marshal(input); err != nil {
-		return
+	if err := req.Marshal(input); err != nil {
+		return result, err
 	}
 
 	var resp *client.Response
@@ -40,8 +39,8 @@ func (c Client) PostSessionsByIdCommand(ctx context.Context, id emby.SessionID, 
 		result.HttpResponse = resp.Response
 	}
 	if err != nil {
-		return
+		return result, err
 	}
 
-	return
+	return result, nil
 }

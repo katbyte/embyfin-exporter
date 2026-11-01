@@ -4,7 +4,6 @@ package video
 
 import (
 	"context"
-	"fmt"
 	"net/http"
 	"net/url"
 
@@ -22,13 +21,13 @@ func (c Client) GetVideosByIdByStreamFileName(ctx context.Context, id emby.ItemI
 		HTTPMethod:     http.MethodGet,
 		Operation:      "GetVideosByIdByStreamFileName",
 		OptionsObject:  options,
-		Path:           fmt.Sprintf("/Videos/%s/%s", url.PathEscape(string(id)), url.PathEscape(streamFileName)),
+		Path:           "/Videos/" + url.PathEscape(string(id)) + "/" + url.PathEscape(streamFileName),
 		StreamResponse: true,
 	}
 
 	req, err := c.Client.NewRequest(ctx, opts)
 	if err != nil {
-		return
+		return result, err
 	}
 
 	var resp *client.Response
@@ -37,8 +36,8 @@ func (c Client) GetVideosByIdByStreamFileName(ctx context.Context, id emby.ItemI
 		result.HttpResponse = resp.Response
 	}
 	if err != nil {
-		return
+		return result, err
 	}
 
-	return
+	return result, nil
 }

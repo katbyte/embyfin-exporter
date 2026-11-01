@@ -31,7 +31,7 @@ func (r GetItemsByIdInstantMixResponse) Answered() bool { return r.Answer != nil
 // error when the server answered none.
 func (r GetItemsByIdInstantMixResponse) Record() (QueryResultBaseItemDto, error) {
 	if r.Answer == nil {
-		return QueryResultBaseItemDto{}, errors.New("GetItemsByIdInstantMix answered no QueryResultBaseItemDto")
+		return QueryResultBaseItemDto{}, errors.New("no QueryResultBaseItemDto answered by GetItemsByIdInstantMix")
 	}
 
 	return *r.Answer, nil
@@ -429,8 +429,7 @@ type GetItemsByIdInstantMixOptions struct {
 
 // ToHeaders returns the header parameters the options set.
 func (o GetItemsByIdInstantMixOptions) ToHeaders() *client.Headers {
-	out := client.Headers{}
-	return &out
+	return &client.Headers{}
 }
 
 // ToQuery returns the query parameters the options set.

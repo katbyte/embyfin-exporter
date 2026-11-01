@@ -4,7 +4,6 @@ package users
 
 import (
 	"context"
-	"fmt"
 	"net/http"
 	"net/url"
 
@@ -23,16 +22,16 @@ func (c Client) PostUsersByIdAuthenticate(ctx context.Context, id emby.UserID, i
 		},
 		HTTPMethod: http.MethodPost,
 		Operation:  "PostUsersByIdAuthenticate",
-		Path:       fmt.Sprintf("/Users/%s/Authenticate", url.PathEscape(string(id))),
+		Path:       "/Users/" + url.PathEscape(string(id)) + "/Authenticate",
 	}
 
 	req, err := c.Client.NewRequest(ctx, opts)
 	if err != nil {
-		return
+		return result, err
 	}
 
-	if err = req.Marshal(input); err != nil {
-		return
+	if err := req.Marshal(input); err != nil {
+		return result, err
 	}
 
 	var resp *client.Response
@@ -41,19 +40,19 @@ func (c Client) PostUsersByIdAuthenticate(ctx context.Context, id emby.UserID, i
 		result.HttpResponse = resp.Response
 	}
 	if err != nil {
-		return
+		return result, err
 	}
 
 	if resp.StatusCode == http.StatusNoContent {
-		return
+		return result, nil
 	}
 
 	var answer emby.AuthenticationAuthenticationResult
 	result.Answer = &answer
-	if err = resp.Unmarshal(result.Answer); err != nil {
-		return
+	if err := resp.Unmarshal(result.Answer); err != nil {
+		return result, err
 	}
 	result.AuthenticationAuthenticationResult = result.Answer
 
-	return
+	return result, nil
 }

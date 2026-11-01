@@ -15,8 +15,7 @@ import (
 // UpdateUserItemRating calls POST /UserItems/{itemId}/Rating. Updates a user's rating for an item.
 func (c Client) UpdateUserItemRating(ctx context.Context, itemId jf.ItemID, options ...jf.UpdateUserItemRatingOptions) (result jf.UpdateUserItemRatingResponse, err error) {
 	if len(options) > 1 {
-		err = fmt.Errorf("UpdateUserItemRating takes one options struct at most, not %d", len(options))
-		return
+		return result, fmt.Errorf("at most one options struct for UpdateUserItemRating, not %d", len(options))
 	}
 	var option jf.UpdateUserItemRatingOptions
 	if len(options) == 1 {
@@ -31,12 +30,12 @@ func (c Client) UpdateUserItemRating(ctx context.Context, itemId jf.ItemID, opti
 		HTTPMethod:    http.MethodPost,
 		Operation:     "UpdateUserItemRating",
 		OptionsObject: option,
-		Path:          fmt.Sprintf("/UserItems/%s/Rating", url.PathEscape(string(itemId))),
+		Path:          "/UserItems/" + url.PathEscape(string(itemId)) + "/Rating",
 	}
 
 	req, err := c.Client.NewRequest(ctx, opts)
 	if err != nil {
-		return
+		return result, err
 	}
 
 	var resp *client.Response
@@ -45,15 +44,15 @@ func (c Client) UpdateUserItemRating(ctx context.Context, itemId jf.ItemID, opti
 		result.HttpResponse = resp.Response
 	}
 	if err != nil {
-		return
+		return result, err
 	}
 
 	var answer jf.UserItemDataDto
 	result.Answer = &answer
-	if err = resp.Unmarshal(result.Answer); err != nil {
-		return
+	if err := resp.Unmarshal(result.Answer); err != nil {
+		return result, err
 	}
 	result.UserItemDataDto = result.Answer
 
-	return
+	return result, nil
 }

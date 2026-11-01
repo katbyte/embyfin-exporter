@@ -4,7 +4,6 @@ package audio
 
 import (
 	"context"
-	"fmt"
 	"net/http"
 	"net/url"
 
@@ -22,13 +21,13 @@ func (c Client) GetAudioByIdByStreamFileName(ctx context.Context, id emby.ItemID
 		HTTPMethod:     http.MethodGet,
 		Operation:      "GetAudioByIdByStreamFileName",
 		OptionsObject:  options,
-		Path:           fmt.Sprintf("/Audio/%s/%s", url.PathEscape(string(id)), url.PathEscape(streamFileName)),
+		Path:           "/Audio/" + url.PathEscape(string(id)) + "/" + url.PathEscape(streamFileName),
 		StreamResponse: true,
 	}
 
 	req, err := c.Client.NewRequest(ctx, opts)
 	if err != nil {
-		return
+		return result, err
 	}
 
 	var resp *client.Response
@@ -37,8 +36,8 @@ func (c Client) GetAudioByIdByStreamFileName(ctx context.Context, id emby.ItemID
 		result.HttpResponse = resp.Response
 	}
 	if err != nil {
-		return
+		return result, err
 	}
 
-	return
+	return result, nil
 }

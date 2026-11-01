@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"net/http"
 	"net/url"
+	"strconv"
 
 	"github.com/katbyte/embyfin-mcp/sdk/emby/4.10.0.40/emby"
 	"github.com/katbyte/pandorest/client"
@@ -15,8 +16,7 @@ import (
 // GetItemsByIdByMediaSourceIdSubtitlesByIndexByStartPositionTicksStreamByFormat calls GET /Items/{Id}/{MediaSourceId}/Subtitles/{Index}/{StartPositionTicks}/Stream.{Format}. Gets subtitles in a specified format.
 func (c Client) GetItemsByIdByMediaSourceIdSubtitlesByIndexByStartPositionTicksStreamByFormat(ctx context.Context, id emby.ItemID, mediaSourceId emby.MediaSourceID, index int, startPositionTicks int64, format string, options ...emby.GetItemsByIdByMediaSourceIdSubtitlesByIndexByStartPositionTicksStreamByFormatOptions) (result emby.GetItemsByIdByMediaSourceIdSubtitlesByIndexByStartPositionTicksStreamByFormatResponse, err error) {
 	if len(options) > 1 {
-		err = fmt.Errorf("GetItemsByIdByMediaSourceIdSubtitlesByIndexByStartPositionTicksStreamByFormat takes one options struct at most, not %d", len(options))
-		return
+		return result, fmt.Errorf("at most one options struct for GetItemsByIdByMediaSourceIdSubtitlesByIndexByStartPositionTicksStreamByFormat, not %d", len(options))
 	}
 	var option emby.GetItemsByIdByMediaSourceIdSubtitlesByIndexByStartPositionTicksStreamByFormatOptions
 	if len(options) == 1 {
@@ -31,13 +31,13 @@ func (c Client) GetItemsByIdByMediaSourceIdSubtitlesByIndexByStartPositionTicksS
 		HTTPMethod:     http.MethodGet,
 		Operation:      "GetItemsByIdByMediaSourceIdSubtitlesByIndexByStartPositionTicksStreamByFormat",
 		OptionsObject:  option,
-		Path:           fmt.Sprintf("/Items/%s/%s/Subtitles/%d/%d/Stream.%s", url.PathEscape(string(id)), url.PathEscape(string(mediaSourceId)), index, startPositionTicks, url.PathEscape(format)),
+		Path:           "/Items/" + url.PathEscape(string(id)) + "/" + url.PathEscape(string(mediaSourceId)) + "/Subtitles/" + strconv.Itoa(index) + "/" + strconv.FormatInt(startPositionTicks, 10) + "/Stream." + url.PathEscape(format),
 		StreamResponse: true,
 	}
 
 	req, err := c.Client.NewRequest(ctx, opts)
 	if err != nil {
-		return
+		return result, err
 	}
 
 	var resp *client.Response
@@ -46,8 +46,8 @@ func (c Client) GetItemsByIdByMediaSourceIdSubtitlesByIndexByStartPositionTicksS
 		result.HttpResponse = resp.Response
 	}
 	if err != nil {
-		return
+		return result, err
 	}
 
-	return
+	return result, nil
 }

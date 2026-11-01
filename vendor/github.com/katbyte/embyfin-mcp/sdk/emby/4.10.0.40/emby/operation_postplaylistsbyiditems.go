@@ -30,7 +30,7 @@ func (r PostPlaylistsByIdItemsResponse) Answered() bool { return r.Answer != nil
 // error when the server answered none.
 func (r PostPlaylistsByIdItemsResponse) Record() (PlaylistsAddToPlaylistResult, error) {
 	if r.Answer == nil {
-		return PlaylistsAddToPlaylistResult{}, errors.New("PostPlaylistsByIdItems answered no PlaylistsAddToPlaylistResult")
+		return PlaylistsAddToPlaylistResult{}, errors.New("no PlaylistsAddToPlaylistResult answered by PostPlaylistsByIdItems")
 	}
 
 	return *r.Answer, nil
@@ -47,8 +47,7 @@ type PostPlaylistsByIdItemsOptions struct {
 
 // ToHeaders returns the header parameters the options set.
 func (o PostPlaylistsByIdItemsOptions) ToHeaders() *client.Headers {
-	out := client.Headers{}
-	return &out
+	return &client.Headers{}
 }
 
 // ToQuery returns the query parameters the options set.

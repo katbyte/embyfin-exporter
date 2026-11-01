@@ -4,7 +4,6 @@ package subtitle
 
 import (
 	"context"
-	"fmt"
 	"net/http"
 	"net/url"
 
@@ -26,12 +25,12 @@ func (c Client) PostItemsByIdRemoteSearchSubtitlesBySubtitleId(ctx context.Conte
 		HTTPMethod:    http.MethodPost,
 		Operation:     "PostItemsByIdRemoteSearchSubtitlesBySubtitleId",
 		OptionsObject: option,
-		Path:          fmt.Sprintf("/Items/%s/RemoteSearch/Subtitles/%s", url.PathEscape(string(id)), url.PathEscape(subtitleId)),
+		Path:          "/Items/" + url.PathEscape(string(id)) + "/RemoteSearch/Subtitles/" + url.PathEscape(subtitleId),
 	}
 
 	req, err := c.Client.NewRequest(ctx, opts)
 	if err != nil {
-		return
+		return result, err
 	}
 
 	var resp *client.Response
@@ -40,19 +39,19 @@ func (c Client) PostItemsByIdRemoteSearchSubtitlesBySubtitleId(ctx context.Conte
 		result.HttpResponse = resp.Response
 	}
 	if err != nil {
-		return
+		return result, err
 	}
 
 	if resp.StatusCode == http.StatusNoContent {
-		return
+		return result, nil
 	}
 
 	var answer emby.SubtitlesSubtitleDownloadResult
 	result.Answer = &answer
-	if err = resp.Unmarshal(result.Answer); err != nil {
-		return
+	if err := resp.Unmarshal(result.Answer); err != nil {
+		return result, err
 	}
 	result.SubtitlesSubtitleDownloadResult = result.Answer
 
-	return
+	return result, nil
 }

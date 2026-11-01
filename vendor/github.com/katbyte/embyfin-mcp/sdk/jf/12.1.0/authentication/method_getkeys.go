@@ -24,7 +24,7 @@ func (c Client) GetKeys(ctx context.Context) (result jf.GetKeysResponse, err err
 
 	req, err := c.Client.NewRequest(ctx, opts)
 	if err != nil {
-		return
+		return result, err
 	}
 
 	var resp *client.Response
@@ -33,15 +33,15 @@ func (c Client) GetKeys(ctx context.Context) (result jf.GetKeysResponse, err err
 		result.HttpResponse = resp.Response
 	}
 	if err != nil {
-		return
+		return result, err
 	}
 
 	var answer jf.AuthenticationInfoQueryResult
 	result.Answer = &answer
-	if err = resp.Unmarshal(result.Answer); err != nil {
-		return
+	if err := resp.Unmarshal(result.Answer); err != nil {
+		return result, err
 	}
 	result.AuthenticationInfoQueryResult = result.Answer
 
-	return
+	return result, nil
 }

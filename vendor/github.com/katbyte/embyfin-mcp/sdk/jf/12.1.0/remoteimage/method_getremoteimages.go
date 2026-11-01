@@ -15,8 +15,7 @@ import (
 // GetRemoteImages calls GET /Items/{itemId}/RemoteImages. Gets available remote images for an item.
 func (c Client) GetRemoteImages(ctx context.Context, itemId jf.ItemID, options ...jf.GetRemoteImagesOptions) (result jf.GetRemoteImagesResponse, err error) {
 	if len(options) > 1 {
-		err = fmt.Errorf("GetRemoteImages takes one options struct at most, not %d", len(options))
-		return
+		return result, fmt.Errorf("at most one options struct for GetRemoteImages, not %d", len(options))
 	}
 	var option jf.GetRemoteImagesOptions
 	if len(options) == 1 {
@@ -31,12 +30,12 @@ func (c Client) GetRemoteImages(ctx context.Context, itemId jf.ItemID, options .
 		HTTPMethod:    http.MethodGet,
 		Operation:     "GetRemoteImages",
 		OptionsObject: option,
-		Path:          fmt.Sprintf("/Items/%s/RemoteImages", url.PathEscape(string(itemId))),
+		Path:          "/Items/" + url.PathEscape(string(itemId)) + "/RemoteImages",
 	}
 
 	req, err := c.Client.NewRequest(ctx, opts)
 	if err != nil {
-		return
+		return result, err
 	}
 
 	var resp *client.Response
@@ -45,15 +44,15 @@ func (c Client) GetRemoteImages(ctx context.Context, itemId jf.ItemID, options .
 		result.HttpResponse = resp.Response
 	}
 	if err != nil {
-		return
+		return result, err
 	}
 
 	var answer jf.RemoteImageResult
 	result.Answer = &answer
-	if err = resp.Unmarshal(result.Answer); err != nil {
-		return
+	if err := resp.Unmarshal(result.Answer); err != nil {
+		return result, err
 	}
 	result.RemoteImageResult = result.Answer
 
-	return
+	return result, nil
 }

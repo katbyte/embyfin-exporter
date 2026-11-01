@@ -23,7 +23,7 @@ func (c Client) GetQuickConnectEnabled(ctx context.Context) (result jf.GetQuickC
 
 	req, err := c.Client.NewRequest(ctx, opts)
 	if err != nil {
-		return
+		return result, err
 	}
 
 	var resp *client.Response
@@ -32,14 +32,14 @@ func (c Client) GetQuickConnectEnabled(ctx context.Context) (result jf.GetQuickC
 		result.HttpResponse = resp.Response
 	}
 	if err != nil {
-		return
+		return result, err
 	}
 
 	var answer bool
 	result.Answer = &answer
-	if err = resp.Unmarshal(result.Answer); err != nil {
-		return
+	if err := resp.Unmarshal(result.Answer); err != nil {
+		return result, err
 	}
 
-	return
+	return result, nil
 }

@@ -28,7 +28,7 @@ func (r GetSystemInfoResponse) Answered() bool { return r.Answer != nil }
 // error when the server answered none.
 func (r GetSystemInfoResponse) Record() (SystemInfo, error) {
 	if r.Answer == nil {
-		return SystemInfo{}, errors.New("GetSystemInfo answered no SystemInfo")
+		return SystemInfo{}, errors.New("no SystemInfo answered by GetSystemInfo")
 	}
 
 	return *r.Answer, nil

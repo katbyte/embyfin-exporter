@@ -28,7 +28,7 @@ func (r PostPartiesByIdJoinResponse) Answered() bool { return r.Answer != nil }
 // error when the server answered none.
 func (r PostPartiesByIdJoinResponse) Record() (SessionPartyInfoResult, error) {
 	if r.Answer == nil {
-		return SessionPartyInfoResult{}, errors.New("PostPartiesByIdJoin answered no SessionPartyInfoResult")
+		return SessionPartyInfoResult{}, errors.New("no SessionPartyInfoResult answered by PostPartiesByIdJoin")
 	}
 
 	return *r.Answer, nil

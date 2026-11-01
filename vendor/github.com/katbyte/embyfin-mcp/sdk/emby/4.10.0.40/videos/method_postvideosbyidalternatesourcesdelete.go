@@ -4,7 +4,6 @@ package videos
 
 import (
 	"context"
-	"fmt"
 	"net/http"
 	"net/url"
 
@@ -21,12 +20,12 @@ func (c Client) PostVideosByIdAlternateSourcesDelete(ctx context.Context, id emb
 		},
 		HTTPMethod: http.MethodPost,
 		Operation:  "PostVideosByIdAlternateSourcesDelete",
-		Path:       fmt.Sprintf("/Videos/%s/AlternateSources/Delete", url.PathEscape(string(id))),
+		Path:       "/Videos/" + url.PathEscape(string(id)) + "/AlternateSources/Delete",
 	}
 
 	req, err := c.Client.NewRequest(ctx, opts)
 	if err != nil {
-		return
+		return result, err
 	}
 
 	var resp *client.Response
@@ -35,8 +34,8 @@ func (c Client) PostVideosByIdAlternateSourcesDelete(ctx context.Context, id emb
 		result.HttpResponse = resp.Response
 	}
 	if err != nil {
-		return
+		return result, err
 	}
 
-	return
+	return result, nil
 }

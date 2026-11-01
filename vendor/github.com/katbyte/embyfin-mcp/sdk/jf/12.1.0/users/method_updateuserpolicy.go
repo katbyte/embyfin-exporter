@@ -4,7 +4,6 @@ package users
 
 import (
 	"context"
-	"fmt"
 	"net/http"
 	"net/url"
 
@@ -21,16 +20,16 @@ func (c Client) UpdateUserPolicy(ctx context.Context, userId jf.UserID, input jf
 		},
 		HTTPMethod: http.MethodPost,
 		Operation:  "UpdateUserPolicy",
-		Path:       fmt.Sprintf("/Users/%s/Policy", url.PathEscape(string(userId))),
+		Path:       "/Users/" + url.PathEscape(string(userId)) + "/Policy",
 	}
 
 	req, err := c.Client.NewRequest(ctx, opts)
 	if err != nil {
-		return
+		return result, err
 	}
 
-	if err = req.Marshal(input); err != nil {
-		return
+	if err := req.Marshal(input); err != nil {
+		return result, err
 	}
 
 	var resp *client.Response
@@ -39,8 +38,8 @@ func (c Client) UpdateUserPolicy(ctx context.Context, userId jf.UserID, input jf
 		result.HttpResponse = resp.Response
 	}
 	if err != nil {
-		return
+		return result, err
 	}
 
-	return
+	return result, nil
 }

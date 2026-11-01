@@ -23,7 +23,7 @@ func (c Client) ReportSessionEnded(ctx context.Context) (result jf.ReportSession
 
 	req, err := c.Client.NewRequest(ctx, opts)
 	if err != nil {
-		return
+		return result, err
 	}
 
 	var resp *client.Response
@@ -32,8 +32,8 @@ func (c Client) ReportSessionEnded(ctx context.Context) (result jf.ReportSession
 		result.HttpResponse = resp.Response
 	}
 	if err != nil {
-		return
+		return result, err
 	}
 
-	return
+	return result, nil
 }

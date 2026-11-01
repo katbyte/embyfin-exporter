@@ -28,7 +28,7 @@ func (r GetUsersByUserIdItemsByIdResponse) Answered() bool { return r.Answer != 
 // error when the server answered none.
 func (r GetUsersByUserIdItemsByIdResponse) Record() (BaseItemDto, error) {
 	if r.Answer == nil {
-		return BaseItemDto{}, errors.New("GetUsersByUserIdItemsById answered no BaseItemDto")
+		return BaseItemDto{}, errors.New("no BaseItemDto answered by GetUsersByUserIdItemsById")
 	}
 
 	return *r.Answer, nil

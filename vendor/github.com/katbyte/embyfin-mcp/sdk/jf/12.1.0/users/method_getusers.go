@@ -14,8 +14,7 @@ import (
 // GetUsers calls GET /Users. Gets a list of users.
 func (c Client) GetUsers(ctx context.Context, options ...jf.GetUsersOptions) (result jf.GetUsersResponse, err error) {
 	if len(options) > 1 {
-		err = fmt.Errorf("GetUsers takes one options struct at most, not %d", len(options))
-		return
+		return result, fmt.Errorf("at most one options struct for GetUsers, not %d", len(options))
 	}
 	var option jf.GetUsersOptions
 	if len(options) == 1 {
@@ -34,7 +33,7 @@ func (c Client) GetUsers(ctx context.Context, options ...jf.GetUsersOptions) (re
 
 	req, err := c.Client.NewRequest(ctx, opts)
 	if err != nil {
-		return
+		return result, err
 	}
 
 	var resp *client.Response
@@ -43,12 +42,12 @@ func (c Client) GetUsers(ctx context.Context, options ...jf.GetUsersOptions) (re
 		result.HttpResponse = resp.Response
 	}
 	if err != nil {
-		return
+		return result, err
 	}
 
-	if err = resp.Unmarshal(&result.Answer); err != nil {
-		return
+	if err := resp.Unmarshal(&result.Answer); err != nil {
+		return result, err
 	}
 
-	return
+	return result, nil
 }

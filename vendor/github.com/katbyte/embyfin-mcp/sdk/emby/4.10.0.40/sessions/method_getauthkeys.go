@@ -14,8 +14,7 @@ import (
 // GetAuthKeys calls GET /Auth/Keys. Requires authentication as administrator.
 func (c Client) GetAuthKeys(ctx context.Context, options ...emby.GetAuthKeysOptions) (result emby.GetAuthKeysResponse, err error) {
 	if len(options) > 1 {
-		err = fmt.Errorf("GetAuthKeys takes one options struct at most, not %d", len(options))
-		return
+		return result, fmt.Errorf("at most one options struct for GetAuthKeys, not %d", len(options))
 	}
 	var option emby.GetAuthKeysOptions
 	if len(options) == 1 {
@@ -35,7 +34,7 @@ func (c Client) GetAuthKeys(ctx context.Context, options ...emby.GetAuthKeysOpti
 
 	req, err := c.Client.NewRequest(ctx, opts)
 	if err != nil {
-		return
+		return result, err
 	}
 
 	var resp *client.Response
@@ -44,16 +43,16 @@ func (c Client) GetAuthKeys(ctx context.Context, options ...emby.GetAuthKeysOpti
 		result.HttpResponse = resp.Response
 	}
 	if err != nil {
-		return
+		return result, err
 	}
 
 	if resp.StatusCode == http.StatusNoContent {
-		return
+		return result, nil
 	}
 
-	if err = resp.Unmarshal(&result.Answer); err != nil {
-		return
+	if err := resp.Unmarshal(&result.Answer); err != nil {
+		return result, err
 	}
 
-	return
+	return result, nil
 }

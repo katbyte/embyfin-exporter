@@ -4,7 +4,6 @@ package library
 
 import (
 	"context"
-	"fmt"
 	"net/http"
 	"net/url"
 
@@ -21,13 +20,13 @@ func (c Client) GetItemsByIdFile(ctx context.Context, id emby.ItemID) (result em
 		},
 		HTTPMethod:     http.MethodGet,
 		Operation:      "GetItemsByIdFile",
-		Path:           fmt.Sprintf("/Items/%s/File", url.PathEscape(string(id))),
+		Path:           "/Items/" + url.PathEscape(string(id)) + "/File",
 		StreamResponse: true,
 	}
 
 	req, err := c.Client.NewRequest(ctx, opts)
 	if err != nil {
-		return
+		return result, err
 	}
 
 	var resp *client.Response
@@ -36,8 +35,8 @@ func (c Client) GetItemsByIdFile(ctx context.Context, id emby.ItemID) (result em
 		result.HttpResponse = resp.Response
 	}
 	if err != nil {
-		return
+		return result, err
 	}
 
-	return
+	return result, nil
 }

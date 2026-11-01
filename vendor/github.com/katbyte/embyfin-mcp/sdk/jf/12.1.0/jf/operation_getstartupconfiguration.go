@@ -28,7 +28,7 @@ func (r GetStartupConfigurationResponse) Answered() bool { return r.Answer != ni
 // error when the server answered none.
 func (r GetStartupConfigurationResponse) Record() (StartupConfigurationDto, error) {
 	if r.Answer == nil {
-		return StartupConfigurationDto{}, errors.New("GetStartupConfiguration answered no StartupConfigurationDto")
+		return StartupConfigurationDto{}, errors.New("no StartupConfigurationDto answered by GetStartupConfiguration")
 	}
 
 	return *r.Answer, nil

@@ -28,7 +28,7 @@ func (r GetPartiesInfoResponse) Answered() bool { return r.Answer != nil }
 // error when the server answered none.
 func (r GetPartiesInfoResponse) Record() (SessionPartyInfoResult, error) {
 	if r.Answer == nil {
-		return SessionPartyInfoResult{}, errors.New("GetPartiesInfo answered no SessionPartyInfoResult")
+		return SessionPartyInfoResult{}, errors.New("no SessionPartyInfoResult answered by GetPartiesInfo")
 	}
 
 	return *r.Answer, nil

@@ -4,7 +4,6 @@ package plugins
 
 import (
 	"context"
-	"fmt"
 	"net/http"
 	"net/url"
 
@@ -13,19 +12,19 @@ import (
 )
 
 // EnablePlugin calls POST /Plugins/{pluginId}/{version}/Enable. Enables a disabled plugin.
-func (c Client) EnablePlugin(ctx context.Context, pluginId string, version string) (result jf.EnablePluginResponse, err error) {
+func (c Client) EnablePlugin(ctx context.Context, pluginId, version string) (result jf.EnablePluginResponse, err error) {
 	opts := client.RequestOptions{
 		ExpectedStatusCodes: []int{
 			http.StatusNoContent,
 		},
 		HTTPMethod: http.MethodPost,
 		Operation:  "EnablePlugin",
-		Path:       fmt.Sprintf("/Plugins/%s/%s/Enable", url.PathEscape(pluginId), url.PathEscape(version)),
+		Path:       "/Plugins/" + url.PathEscape(pluginId) + "/" + url.PathEscape(version) + "/Enable",
 	}
 
 	req, err := c.Client.NewRequest(ctx, opts)
 	if err != nil {
-		return
+		return result, err
 	}
 
 	var resp *client.Response
@@ -34,8 +33,8 @@ func (c Client) EnablePlugin(ctx context.Context, pluginId string, version strin
 		result.HttpResponse = resp.Response
 	}
 	if err != nil {
-		return
+		return result, err
 	}
 
-	return
+	return result, nil
 }

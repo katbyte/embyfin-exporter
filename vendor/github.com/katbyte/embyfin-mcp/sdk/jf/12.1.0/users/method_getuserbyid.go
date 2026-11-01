@@ -4,7 +4,6 @@ package users
 
 import (
 	"context"
-	"fmt"
 	"net/http"
 	"net/url"
 
@@ -21,12 +20,12 @@ func (c Client) GetUserById(ctx context.Context, userId jf.UserID) (result jf.Ge
 		},
 		HTTPMethod: http.MethodGet,
 		Operation:  "GetUserById",
-		Path:       fmt.Sprintf("/Users/%s", url.PathEscape(string(userId))),
+		Path:       "/Users/" + url.PathEscape(string(userId)),
 	}
 
 	req, err := c.Client.NewRequest(ctx, opts)
 	if err != nil {
-		return
+		return result, err
 	}
 
 	var resp *client.Response
@@ -35,15 +34,15 @@ func (c Client) GetUserById(ctx context.Context, userId jf.UserID) (result jf.Ge
 		result.HttpResponse = resp.Response
 	}
 	if err != nil {
-		return
+		return result, err
 	}
 
 	var answer jf.UserDto
 	result.Answer = &answer
-	if err = resp.Unmarshal(result.Answer); err != nil {
-		return
+	if err := resp.Unmarshal(result.Answer); err != nil {
+		return result, err
 	}
 	result.UserDto = result.Answer
 
-	return
+	return result, nil
 }

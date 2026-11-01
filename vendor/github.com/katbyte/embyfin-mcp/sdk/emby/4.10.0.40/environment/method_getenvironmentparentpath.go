@@ -29,7 +29,7 @@ func (c Client) GetEnvironmentParentPath(ctx context.Context, path string) (resu
 
 	req, err := c.Client.NewRequest(ctx, opts)
 	if err != nil {
-		return
+		return result, err
 	}
 
 	var resp *client.Response
@@ -38,18 +38,18 @@ func (c Client) GetEnvironmentParentPath(ctx context.Context, path string) (resu
 		result.HttpResponse = resp.Response
 	}
 	if err != nil {
-		return
+		return result, err
 	}
 
 	if resp.StatusCode == http.StatusNoContent {
-		return
+		return result, nil
 	}
 
 	var answer string
 	result.Answer = &answer
-	if err = resp.Text(result.Answer); err != nil {
-		return
+	if err := resp.Text(result.Answer); err != nil {
+		return result, err
 	}
 
-	return
+	return result, nil
 }

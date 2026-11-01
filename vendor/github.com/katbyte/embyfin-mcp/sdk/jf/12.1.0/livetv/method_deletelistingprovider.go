@@ -15,8 +15,7 @@ import (
 func (c Client) DeleteListingProvider(ctx context.Context, id ...string) (result jf.DeleteListingProviderResponse, err error) {
 	var option jf.DeleteListingProviderOptions
 	if len(id) > 1 {
-		err = fmt.Errorf("DeleteListingProvider takes one id at most, not %d", len(id))
-		return
+		return result, fmt.Errorf("at most one id for DeleteListingProvider, not %d", len(id))
 	}
 	if len(id) == 1 {
 		option.Id = id[0]
@@ -34,7 +33,7 @@ func (c Client) DeleteListingProvider(ctx context.Context, id ...string) (result
 
 	req, err := c.Client.NewRequest(ctx, opts)
 	if err != nil {
-		return
+		return result, err
 	}
 
 	var resp *client.Response
@@ -43,8 +42,8 @@ func (c Client) DeleteListingProvider(ctx context.Context, id ...string) (result
 		result.HttpResponse = resp.Response
 	}
 	if err != nil {
-		return
+		return result, err
 	}
 
-	return
+	return result, nil
 }

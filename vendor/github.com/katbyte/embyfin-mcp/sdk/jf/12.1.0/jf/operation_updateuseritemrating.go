@@ -31,7 +31,7 @@ func (r UpdateUserItemRatingResponse) Answered() bool { return r.Answer != nil }
 // error when the server answered none.
 func (r UpdateUserItemRatingResponse) Record() (UserItemDataDto, error) {
 	if r.Answer == nil {
-		return UserItemDataDto{}, errors.New("UpdateUserItemRating answered no UserItemDataDto")
+		return UserItemDataDto{}, errors.New("no UserItemDataDto answered by UpdateUserItemRating")
 	}
 
 	return *r.Answer, nil
@@ -48,8 +48,7 @@ type UpdateUserItemRatingOptions struct {
 
 // ToHeaders returns the header parameters the options set.
 func (o UpdateUserItemRatingOptions) ToHeaders() *client.Headers {
-	out := client.Headers{}
-	return &out
+	return &client.Headers{}
 }
 
 // ToQuery returns the query parameters the options set.

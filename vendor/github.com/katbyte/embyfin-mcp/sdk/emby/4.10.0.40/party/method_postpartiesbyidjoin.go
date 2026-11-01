@@ -4,7 +4,6 @@ package party
 
 import (
 	"context"
-	"fmt"
 	"net/http"
 	"net/url"
 
@@ -22,12 +21,12 @@ func (c Client) PostPartiesByIdJoin(ctx context.Context, id string) (result emby
 		},
 		HTTPMethod: http.MethodPost,
 		Operation:  "PostPartiesByIdJoin",
-		Path:       fmt.Sprintf("/Parties/%s/Join", url.PathEscape(id)),
+		Path:       "/Parties/" + url.PathEscape(id) + "/Join",
 	}
 
 	req, err := c.Client.NewRequest(ctx, opts)
 	if err != nil {
-		return
+		return result, err
 	}
 
 	var resp *client.Response
@@ -36,19 +35,19 @@ func (c Client) PostPartiesByIdJoin(ctx context.Context, id string) (result emby
 		result.HttpResponse = resp.Response
 	}
 	if err != nil {
-		return
+		return result, err
 	}
 
 	if resp.StatusCode == http.StatusNoContent {
-		return
+		return result, nil
 	}
 
 	var answer emby.SessionPartyInfoResult
 	result.Answer = &answer
-	if err = resp.Unmarshal(result.Answer); err != nil {
-		return
+	if err := resp.Unmarshal(result.Answer); err != nil {
+		return result, err
 	}
 	result.SessionPartyInfoResult = result.Answer
 
-	return
+	return result, nil
 }

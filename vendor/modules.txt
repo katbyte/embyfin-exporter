@@ -12,13 +12,13 @@ github.com/fsnotify/fsnotify/internal
 ## explicit; go 1.18
 github.com/go-viper/mapstructure/v2
 github.com/go-viper/mapstructure/v2/internal/errors
-# github.com/gookit/color v1.6.1
+# github.com/gookit/color v1.6.3
 ## explicit; go 1.18
 github.com/gookit/color
 # github.com/inconshreveable/mousetrap v1.1.0
 ## explicit; go 1.18
 github.com/inconshreveable/mousetrap
-# github.com/katbyte/embyfin-mcp v0.9.0
+# github.com/katbyte/embyfin-mcp v0.10.2
 ## explicit; go 1.27.0
 github.com/katbyte/embyfin-mcp/lib/mediapath
 github.com/katbyte/embyfin-mcp/lib/serverlog
@@ -143,7 +143,7 @@ github.com/katbyte/embyfin-mcp/sdk/jf/12.1.0/users
 github.com/katbyte/embyfin-mcp/sdk/jf/12.1.0/userview
 github.com/katbyte/embyfin-mcp/sdk/jf/12.1.0/video
 github.com/katbyte/embyfin-mcp/sdk/jf/12.1.0/year
-# github.com/katbyte/go-kt v0.9.0
+# github.com/katbyte/go-kt v0.9.1
 ## explicit; go 1.27.0
 github.com/katbyte/go-kt/clog
 github.com/katbyte/go-kt/httpc
@@ -157,7 +157,7 @@ github.com/katbyte/go-kt/prometheus/metrics
 github.com/katbyte/go-kt/prometheus/metricstest
 github.com/katbyte/go-kt/prometheus/poller
 github.com/katbyte/go-kt/version
-# github.com/katbyte/pandorest v0.11.0
+# github.com/katbyte/pandorest v0.13.2
 ## explicit; go 1.27.0
 github.com/katbyte/pandorest/client
 # github.com/munnerz/goautoneg v0.0.0-20191010083416-a7dc8b61c822

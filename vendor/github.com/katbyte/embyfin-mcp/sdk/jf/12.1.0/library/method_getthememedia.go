@@ -15,8 +15,7 @@ import (
 // GetThemeMedia calls GET /Items/{itemId}/ThemeMedia. Get theme songs and videos for an item.
 func (c Client) GetThemeMedia(ctx context.Context, itemId jf.ItemID, options ...jf.GetThemeMediaOptions) (result jf.GetThemeMediaResponse, err error) {
 	if len(options) > 1 {
-		err = fmt.Errorf("GetThemeMedia takes one options struct at most, not %d", len(options))
-		return
+		return result, fmt.Errorf("at most one options struct for GetThemeMedia, not %d", len(options))
 	}
 	var option jf.GetThemeMediaOptions
 	if len(options) == 1 {
@@ -31,12 +30,12 @@ func (c Client) GetThemeMedia(ctx context.Context, itemId jf.ItemID, options ...
 		HTTPMethod:    http.MethodGet,
 		Operation:     "GetThemeMedia",
 		OptionsObject: option,
-		Path:          fmt.Sprintf("/Items/%s/ThemeMedia", url.PathEscape(string(itemId))),
+		Path:          "/Items/" + url.PathEscape(string(itemId)) + "/ThemeMedia",
 	}
 
 	req, err := c.Client.NewRequest(ctx, opts)
 	if err != nil {
-		return
+		return result, err
 	}
 
 	var resp *client.Response
@@ -45,15 +44,15 @@ func (c Client) GetThemeMedia(ctx context.Context, itemId jf.ItemID, options ...
 		result.HttpResponse = resp.Response
 	}
 	if err != nil {
-		return
+		return result, err
 	}
 
 	var answer jf.AllThemeMediaResult
 	result.Answer = &answer
-	if err = resp.Unmarshal(result.Answer); err != nil {
-		return
+	if err := resp.Unmarshal(result.Answer); err != nil {
+		return result, err
 	}
 	result.AllThemeMediaResult = result.Answer
 
-	return
+	return result, nil
 }

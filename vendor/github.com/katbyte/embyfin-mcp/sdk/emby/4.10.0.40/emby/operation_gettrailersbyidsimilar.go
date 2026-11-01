@@ -31,7 +31,7 @@ func (r GetTrailersByIdSimilarResponse) Answered() bool { return r.Answer != nil
 // error when the server answered none.
 func (r GetTrailersByIdSimilarResponse) Record() (QueryResultBaseItemDto, error) {
 	if r.Answer == nil {
-		return QueryResultBaseItemDto{}, errors.New("GetTrailersByIdSimilar answered no QueryResultBaseItemDto")
+		return QueryResultBaseItemDto{}, errors.New("no QueryResultBaseItemDto answered by GetTrailersByIdSimilar")
 	}
 
 	return *r.Answer, nil
@@ -429,8 +429,7 @@ type GetTrailersByIdSimilarOptions struct {
 
 // ToHeaders returns the header parameters the options set.
 func (o GetTrailersByIdSimilarOptions) ToHeaders() *client.Headers {
-	out := client.Headers{}
-	return &out
+	return &client.Headers{}
 }
 
 // ToQuery returns the query parameters the options set.

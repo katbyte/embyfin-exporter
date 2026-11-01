@@ -4,7 +4,6 @@ package users
 
 import (
 	"context"
-	"fmt"
 	"net/http"
 	"net/url"
 
@@ -22,16 +21,16 @@ func (c Client) PostUsersByIdPolicy(ctx context.Context, id emby.UserID, input e
 		},
 		HTTPMethod: http.MethodPost,
 		Operation:  "PostUsersByIdPolicy",
-		Path:       fmt.Sprintf("/Users/%s/Policy", url.PathEscape(string(id))),
+		Path:       "/Users/" + url.PathEscape(string(id)) + "/Policy",
 	}
 
 	req, err := c.Client.NewRequest(ctx, opts)
 	if err != nil {
-		return
+		return result, err
 	}
 
-	if err = req.Marshal(input); err != nil {
-		return
+	if err := req.Marshal(input); err != nil {
+		return result, err
 	}
 
 	var resp *client.Response
@@ -40,8 +39,8 @@ func (c Client) PostUsersByIdPolicy(ctx context.Context, id emby.UserID, input e
 		result.HttpResponse = resp.Response
 	}
 	if err != nil {
-		return
+		return result, err
 	}
 
-	return
+	return result, nil
 }

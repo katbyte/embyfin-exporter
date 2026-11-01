@@ -28,7 +28,7 @@ func (r CreateBackupResponse) Answered() bool { return r.Answer != nil }
 // error when the server answered none.
 func (r CreateBackupResponse) Record() (BackupManifestDto, error) {
 	if r.Answer == nil {
-		return BackupManifestDto{}, errors.New("CreateBackup answered no BackupManifestDto")
+		return BackupManifestDto{}, errors.New("no BackupManifestDto answered by CreateBackup")
 	}
 
 	return *r.Answer, nil

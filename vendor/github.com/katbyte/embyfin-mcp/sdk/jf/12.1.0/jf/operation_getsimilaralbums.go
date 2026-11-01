@@ -31,7 +31,7 @@ func (r GetSimilarAlbumsResponse) Answered() bool { return r.Answer != nil }
 // error when the server answered none.
 func (r GetSimilarAlbumsResponse) Record() (BaseItemDtoQueryResult, error) {
 	if r.Answer == nil {
-		return BaseItemDtoQueryResult{}, errors.New("GetSimilarAlbums answered no BaseItemDtoQueryResult")
+		return BaseItemDtoQueryResult{}, errors.New("no BaseItemDtoQueryResult answered by GetSimilarAlbums")
 	}
 
 	return *r.Answer, nil
@@ -54,8 +54,7 @@ type GetSimilarAlbumsOptions struct {
 
 // ToHeaders returns the header parameters the options set.
 func (o GetSimilarAlbumsOptions) ToHeaders() *client.Headers {
-	out := client.Headers{}
-	return &out
+	return &client.Headers{}
 }
 
 // ToQuery returns the query parameters the options set.

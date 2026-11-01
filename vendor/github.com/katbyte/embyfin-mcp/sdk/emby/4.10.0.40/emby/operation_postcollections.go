@@ -31,7 +31,7 @@ func (r PostCollectionsResponse) Answered() bool { return r.Answer != nil }
 // error when the server answered none.
 func (r PostCollectionsResponse) Record() (CollectionsCollectionCreationResult, error) {
 	if r.Answer == nil {
-		return CollectionsCollectionCreationResult{}, errors.New("PostCollections answered no CollectionsCollectionCreationResult")
+		return CollectionsCollectionCreationResult{}, errors.New("no CollectionsCollectionCreationResult answered by PostCollections")
 	}
 
 	return *r.Answer, nil
@@ -54,8 +54,7 @@ type PostCollectionsOptions struct {
 
 // ToHeaders returns the header parameters the options set.
 func (o PostCollectionsOptions) ToHeaders() *client.Headers {
-	out := client.Headers{}
-	return &out
+	return &client.Headers{}
 }
 
 // ToQuery returns the query parameters the options set.

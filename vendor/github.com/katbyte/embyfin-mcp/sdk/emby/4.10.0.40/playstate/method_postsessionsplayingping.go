@@ -15,8 +15,7 @@ import (
 func (c Client) PostSessionsPlayingPing(ctx context.Context, playSessionId ...string) (result emby.PostSessionsPlayingPingResponse, err error) {
 	var option emby.PostSessionsPlayingPingOptions
 	if len(playSessionId) > 1 {
-		err = fmt.Errorf("PostSessionsPlayingPing takes one playSessionId at most, not %d", len(playSessionId))
-		return
+		return result, fmt.Errorf("at most one playSessionId for PostSessionsPlayingPing, not %d", len(playSessionId))
 	}
 	if len(playSessionId) == 1 {
 		option.PlaySessionId = playSessionId[0]
@@ -35,7 +34,7 @@ func (c Client) PostSessionsPlayingPing(ctx context.Context, playSessionId ...st
 
 	req, err := c.Client.NewRequest(ctx, opts)
 	if err != nil {
-		return
+		return result, err
 	}
 
 	var resp *client.Response
@@ -44,8 +43,8 @@ func (c Client) PostSessionsPlayingPing(ctx context.Context, playSessionId ...st
 		result.HttpResponse = resp.Response
 	}
 	if err != nil {
-		return
+		return result, err
 	}
 
-	return
+	return result, nil
 }

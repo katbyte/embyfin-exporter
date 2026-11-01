@@ -4,7 +4,6 @@ package scheduledtask
 
 import (
 	"context"
-	"fmt"
 	"net/http"
 	"net/url"
 
@@ -21,12 +20,12 @@ func (c Client) PostScheduledTasksRunningByIdDelete(ctx context.Context, id emby
 		},
 		HTTPMethod: http.MethodPost,
 		Operation:  "PostScheduledTasksRunningByIdDelete",
-		Path:       fmt.Sprintf("/ScheduledTasks/Running/%s/Delete", url.PathEscape(string(id))),
+		Path:       "/ScheduledTasks/Running/" + url.PathEscape(string(id)) + "/Delete",
 	}
 
 	req, err := c.Client.NewRequest(ctx, opts)
 	if err != nil {
-		return
+		return result, err
 	}
 
 	var resp *client.Response
@@ -35,8 +34,8 @@ func (c Client) PostScheduledTasksRunningByIdDelete(ctx context.Context, id emby
 		result.HttpResponse = resp.Response
 	}
 	if err != nil {
-		return
+		return result, err
 	}
 
-	return
+	return result, nil
 }

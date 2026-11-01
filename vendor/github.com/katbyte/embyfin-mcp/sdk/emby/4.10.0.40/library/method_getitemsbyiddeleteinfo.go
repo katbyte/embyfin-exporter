@@ -4,7 +4,6 @@ package library
 
 import (
 	"context"
-	"fmt"
 	"net/http"
 	"net/url"
 
@@ -22,12 +21,12 @@ func (c Client) GetItemsByIdDeleteInfo(ctx context.Context, id emby.ItemID) (res
 		},
 		HTTPMethod: http.MethodGet,
 		Operation:  "GetItemsByIdDeleteInfo",
-		Path:       fmt.Sprintf("/Items/%s/DeleteInfo", url.PathEscape(string(id))),
+		Path:       "/Items/" + url.PathEscape(string(id)) + "/DeleteInfo",
 	}
 
 	req, err := c.Client.NewRequest(ctx, opts)
 	if err != nil {
-		return
+		return result, err
 	}
 
 	var resp *client.Response
@@ -36,19 +35,19 @@ func (c Client) GetItemsByIdDeleteInfo(ctx context.Context, id emby.ItemID) (res
 		result.HttpResponse = resp.Response
 	}
 	if err != nil {
-		return
+		return result, err
 	}
 
 	if resp.StatusCode == http.StatusNoContent {
-		return
+		return result, nil
 	}
 
 	var answer emby.LibraryDeleteInfo
 	result.Answer = &answer
-	if err = resp.Unmarshal(result.Answer); err != nil {
-		return
+	if err := resp.Unmarshal(result.Answer); err != nil {
+		return result, err
 	}
 	result.LibraryDeleteInfo = result.Answer
 
-	return
+	return result, nil
 }

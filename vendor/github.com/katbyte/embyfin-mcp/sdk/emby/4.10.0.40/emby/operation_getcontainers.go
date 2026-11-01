@@ -31,7 +31,7 @@ func (r GetContainersResponse) Answered() bool { return r.Answer != nil }
 // error when the server answered none.
 func (r GetContainersResponse) Record() (QueryResultUserLibraryTagItem, error) {
 	if r.Answer == nil {
-		return QueryResultUserLibraryTagItem{}, errors.New("GetContainers answered no QueryResultUserLibraryTagItem")
+		return QueryResultUserLibraryTagItem{}, errors.New("no QueryResultUserLibraryTagItem answered by GetContainers")
 	}
 
 	return *r.Answer, nil
@@ -429,8 +429,7 @@ type GetContainersOptions struct {
 
 // ToHeaders returns the header parameters the options set.
 func (o GetContainersOptions) ToHeaders() *client.Headers {
-	out := client.Headers{}
-	return &out
+	return &client.Headers{}
 }
 
 // ToQuery returns the query parameters the options set.

@@ -15,8 +15,7 @@ import (
 func (c Client) GetBitrateTestBytes(ctx context.Context, size ...int) (result jf.GetBitrateTestBytesResponse, err error) {
 	var option jf.GetBitrateTestBytesOptions
 	if len(size) > 1 {
-		err = fmt.Errorf("GetBitrateTestBytes takes one size at most, not %d", len(size))
-		return
+		return result, fmt.Errorf("at most one size for GetBitrateTestBytes, not %d", len(size))
 	}
 	if len(size) == 1 {
 		option.Size = &size[0]
@@ -36,7 +35,7 @@ func (c Client) GetBitrateTestBytes(ctx context.Context, size ...int) (result jf
 
 	req, err := c.Client.NewRequest(ctx, opts)
 	if err != nil {
-		return
+		return result, err
 	}
 
 	var resp *client.Response
@@ -45,8 +44,8 @@ func (c Client) GetBitrateTestBytes(ctx context.Context, size ...int) (result jf
 		result.HttpResponse = resp.Response
 	}
 	if err != nil {
-		return
+		return result, err
 	}
 
-	return
+	return result, nil
 }

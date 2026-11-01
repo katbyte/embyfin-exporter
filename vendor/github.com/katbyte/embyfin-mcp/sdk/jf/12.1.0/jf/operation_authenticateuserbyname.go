@@ -28,7 +28,7 @@ func (r AuthenticateUserByNameResponse) Answered() bool { return r.Answer != nil
 // error when the server answered none.
 func (r AuthenticateUserByNameResponse) Record() (AuthenticationResult, error) {
 	if r.Answer == nil {
-		return AuthenticationResult{}, errors.New("AuthenticateUserByName answered no AuthenticationResult")
+		return AuthenticationResult{}, errors.New("no AuthenticationResult answered by AuthenticateUserByName")
 	}
 
 	return *r.Answer, nil

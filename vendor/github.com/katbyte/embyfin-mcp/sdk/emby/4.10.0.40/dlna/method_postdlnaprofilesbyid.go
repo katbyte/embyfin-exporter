@@ -4,7 +4,6 @@ package dlna
 
 import (
 	"context"
-	"fmt"
 	"net/http"
 	"net/url"
 
@@ -22,16 +21,16 @@ func (c Client) PostDlnaProfilesById(ctx context.Context, id string, input emby.
 		},
 		HTTPMethod: http.MethodPost,
 		Operation:  "PostDlnaProfilesById",
-		Path:       fmt.Sprintf("/Dlna/Profiles/%s", url.PathEscape(id)),
+		Path:       "/Dlna/Profiles/" + url.PathEscape(id),
 	}
 
 	req, err := c.Client.NewRequest(ctx, opts)
 	if err != nil {
-		return
+		return result, err
 	}
 
-	if err = req.Marshal(input); err != nil {
-		return
+	if err := req.Marshal(input); err != nil {
+		return result, err
 	}
 
 	var resp *client.Response
@@ -40,8 +39,8 @@ func (c Client) PostDlnaProfilesById(ctx context.Context, id string, input emby.
 		result.HttpResponse = resp.Response
 	}
 	if err != nil {
-		return
+		return result, err
 	}
 
-	return
+	return result, nil
 }

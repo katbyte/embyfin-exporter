@@ -15,8 +15,7 @@ import (
 // GetAudioByIdStreamByContainer calls GET /Audio/{Id}/stream.{Container}. Gets an audio stream.
 func (c Client) GetAudioByIdStreamByContainer(ctx context.Context, id emby.ItemID, container string, options ...emby.GetAudioByIdStreamByContainerOptions) (result emby.GetAudioByIdStreamByContainerResponse, err error) {
 	if len(options) > 1 {
-		err = fmt.Errorf("GetAudioByIdStreamByContainer takes one options struct at most, not %d", len(options))
-		return
+		return result, fmt.Errorf("at most one options struct for GetAudioByIdStreamByContainer, not %d", len(options))
 	}
 	var option emby.GetAudioByIdStreamByContainerOptions
 	if len(options) == 1 {
@@ -31,13 +30,13 @@ func (c Client) GetAudioByIdStreamByContainer(ctx context.Context, id emby.ItemI
 		HTTPMethod:     http.MethodGet,
 		Operation:      "GetAudioByIdStreamByContainer",
 		OptionsObject:  option,
-		Path:           fmt.Sprintf("/Audio/%s/stream.%s", url.PathEscape(string(id)), url.PathEscape(container)),
+		Path:           "/Audio/" + url.PathEscape(string(id)) + "/stream." + url.PathEscape(container),
 		StreamResponse: true,
 	}
 
 	req, err := c.Client.NewRequest(ctx, opts)
 	if err != nil {
-		return
+		return result, err
 	}
 
 	var resp *client.Response
@@ -46,8 +45,8 @@ func (c Client) GetAudioByIdStreamByContainer(ctx context.Context, id emby.ItemI
 		result.HttpResponse = resp.Response
 	}
 	if err != nil {
-		return
+		return result, err
 	}
 
-	return
+	return result, nil
 }

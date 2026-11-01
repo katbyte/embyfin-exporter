@@ -15,8 +15,7 @@ import (
 // GetPersonImage calls GET /Persons/{name}/Images/{imageType}. Get person image by name.
 func (c Client) GetPersonImage(ctx context.Context, name string, imageType jf.ImageType, options ...jf.GetPersonImageOptions) (result jf.GetPersonImageResponse, err error) {
 	if len(options) > 1 {
-		err = fmt.Errorf("GetPersonImage takes one options struct at most, not %d", len(options))
-		return
+		return result, fmt.Errorf("at most one options struct for GetPersonImage, not %d", len(options))
 	}
 	var option jf.GetPersonImageOptions
 	if len(options) == 1 {
@@ -31,13 +30,13 @@ func (c Client) GetPersonImage(ctx context.Context, name string, imageType jf.Im
 		HTTPMethod:     http.MethodGet,
 		Operation:      "GetPersonImage",
 		OptionsObject:  option,
-		Path:           fmt.Sprintf("/Persons/%s/Images/%s", url.PathEscape(name), url.PathEscape(string(imageType))),
+		Path:           "/Persons/" + url.PathEscape(name) + "/Images/" + url.PathEscape(string(imageType)),
 		StreamResponse: true,
 	}
 
 	req, err := c.Client.NewRequest(ctx, opts)
 	if err != nil {
-		return
+		return result, err
 	}
 
 	var resp *client.Response
@@ -46,8 +45,8 @@ func (c Client) GetPersonImage(ctx context.Context, name string, imageType jf.Im
 		result.HttpResponse = resp.Response
 	}
 	if err != nil {
-		return
+		return result, err
 	}
 
-	return
+	return result, nil
 }

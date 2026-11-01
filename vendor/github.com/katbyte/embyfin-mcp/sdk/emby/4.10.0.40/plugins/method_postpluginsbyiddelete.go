@@ -4,7 +4,6 @@ package plugins
 
 import (
 	"context"
-	"fmt"
 	"net/http"
 	"net/url"
 
@@ -21,12 +20,12 @@ func (c Client) PostPluginsByIdDelete(ctx context.Context, id string) (result em
 		},
 		HTTPMethod: http.MethodPost,
 		Operation:  "PostPluginsByIdDelete",
-		Path:       fmt.Sprintf("/Plugins/%s/Delete", url.PathEscape(id)),
+		Path:       "/Plugins/" + url.PathEscape(id) + "/Delete",
 	}
 
 	req, err := c.Client.NewRequest(ctx, opts)
 	if err != nil {
-		return
+		return result, err
 	}
 
 	var resp *client.Response
@@ -35,8 +34,8 @@ func (c Client) PostPluginsByIdDelete(ctx context.Context, id string) (result em
 		result.HttpResponse = resp.Response
 	}
 	if err != nil {
-		return
+		return result, err
 	}
 
-	return
+	return result, nil
 }

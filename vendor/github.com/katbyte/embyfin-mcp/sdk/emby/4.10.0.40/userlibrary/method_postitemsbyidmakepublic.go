@@ -4,7 +4,6 @@ package userlibrary
 
 import (
 	"context"
-	"fmt"
 	"net/http"
 	"net/url"
 
@@ -21,12 +20,12 @@ func (c Client) PostItemsByIdMakePublic(ctx context.Context, id emby.ItemID) (re
 		},
 		HTTPMethod: http.MethodPost,
 		Operation:  "PostItemsByIdMakePublic",
-		Path:       fmt.Sprintf("/Items/%s/MakePublic", url.PathEscape(string(id))),
+		Path:       "/Items/" + url.PathEscape(string(id)) + "/MakePublic",
 	}
 
 	req, err := c.Client.NewRequest(ctx, opts)
 	if err != nil {
-		return
+		return result, err
 	}
 
 	var resp *client.Response
@@ -35,8 +34,8 @@ func (c Client) PostItemsByIdMakePublic(ctx context.Context, id emby.ItemID) (re
 		result.HttpResponse = resp.Response
 	}
 	if err != nil {
-		return
+		return result, err
 	}
 
-	return
+	return result, nil
 }

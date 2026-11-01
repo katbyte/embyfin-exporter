@@ -4,7 +4,6 @@ package syncs
 
 import (
 	"context"
-	"fmt"
 	"net/http"
 	"net/url"
 
@@ -27,12 +26,12 @@ func (c Client) DeleteSyncByTargetIdItems(ctx context.Context, targetId string, 
 		HTTPMethod:    http.MethodDelete,
 		Operation:     "DeleteSyncByTargetIdItems",
 		OptionsObject: option,
-		Path:          fmt.Sprintf("/Sync/%s/Items", url.PathEscape(targetId)),
+		Path:          "/Sync/" + url.PathEscape(targetId) + "/Items",
 	}
 
 	req, err := c.Client.NewRequest(ctx, opts)
 	if err != nil {
-		return
+		return result, err
 	}
 
 	var resp *client.Response
@@ -41,8 +40,8 @@ func (c Client) DeleteSyncByTargetIdItems(ctx context.Context, targetId string, 
 		result.HttpResponse = resp.Response
 	}
 	if err != nil {
-		return
+		return result, err
 	}
 
-	return
+	return result, nil
 }

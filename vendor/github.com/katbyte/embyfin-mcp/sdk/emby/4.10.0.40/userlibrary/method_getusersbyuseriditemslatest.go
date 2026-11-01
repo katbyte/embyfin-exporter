@@ -15,8 +15,7 @@ import (
 // GetUsersByUserIdItemsLatest calls GET /Users/{UserId}/Items/Latest. Gets latest media.
 func (c Client) GetUsersByUserIdItemsLatest(ctx context.Context, userId emby.UserID, options ...emby.GetUsersByUserIdItemsLatestOptions) (result emby.GetUsersByUserIdItemsLatestResponse, err error) {
 	if len(options) > 1 {
-		err = fmt.Errorf("GetUsersByUserIdItemsLatest takes one options struct at most, not %d", len(options))
-		return
+		return result, fmt.Errorf("at most one options struct for GetUsersByUserIdItemsLatest, not %d", len(options))
 	}
 	var option emby.GetUsersByUserIdItemsLatestOptions
 	if len(options) == 1 {
@@ -31,12 +30,12 @@ func (c Client) GetUsersByUserIdItemsLatest(ctx context.Context, userId emby.Use
 		HTTPMethod:    http.MethodGet,
 		Operation:     "GetUsersByUserIdItemsLatest",
 		OptionsObject: option,
-		Path:          fmt.Sprintf("/Users/%s/Items/Latest", url.PathEscape(string(userId))),
+		Path:          "/Users/" + url.PathEscape(string(userId)) + "/Items/Latest",
 	}
 
 	req, err := c.Client.NewRequest(ctx, opts)
 	if err != nil {
-		return
+		return result, err
 	}
 
 	var resp *client.Response
@@ -45,16 +44,16 @@ func (c Client) GetUsersByUserIdItemsLatest(ctx context.Context, userId emby.Use
 		result.HttpResponse = resp.Response
 	}
 	if err != nil {
-		return
+		return result, err
 	}
 
 	if resp.StatusCode == http.StatusNoContent {
-		return
+		return result, nil
 	}
 
-	if err = resp.Unmarshal(&result.Answer); err != nil {
-		return
+	if err := resp.Unmarshal(&result.Answer); err != nil {
+		return result, err
 	}
 
-	return
+	return result, nil
 }

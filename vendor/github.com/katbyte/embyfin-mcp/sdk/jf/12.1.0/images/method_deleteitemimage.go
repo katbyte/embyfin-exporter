@@ -16,8 +16,7 @@ import (
 func (c Client) DeleteItemImage(ctx context.Context, itemId jf.ItemID, imageType jf.ImageType, imageIndex ...int) (result jf.DeleteItemImageResponse, err error) {
 	var option jf.DeleteItemImageOptions
 	if len(imageIndex) > 1 {
-		err = fmt.Errorf("DeleteItemImage takes one imageIndex at most, not %d", len(imageIndex))
-		return
+		return result, fmt.Errorf("at most one imageIndex for DeleteItemImage, not %d", len(imageIndex))
 	}
 	if len(imageIndex) == 1 {
 		option.ImageIndex = &imageIndex[0]
@@ -30,12 +29,12 @@ func (c Client) DeleteItemImage(ctx context.Context, itemId jf.ItemID, imageType
 		HTTPMethod:    http.MethodDelete,
 		Operation:     "DeleteItemImage",
 		OptionsObject: option,
-		Path:          fmt.Sprintf("/Items/%s/Images/%s", url.PathEscape(string(itemId)), url.PathEscape(string(imageType))),
+		Path:          "/Items/" + url.PathEscape(string(itemId)) + "/Images/" + url.PathEscape(string(imageType)),
 	}
 
 	req, err := c.Client.NewRequest(ctx, opts)
 	if err != nil {
-		return
+		return result, err
 	}
 
 	var resp *client.Response
@@ -44,8 +43,8 @@ func (c Client) DeleteItemImage(ctx context.Context, itemId jf.ItemID, imageType
 		result.HttpResponse = resp.Response
 	}
 	if err != nil {
-		return
+		return result, err
 	}
 
-	return
+	return result, nil
 }

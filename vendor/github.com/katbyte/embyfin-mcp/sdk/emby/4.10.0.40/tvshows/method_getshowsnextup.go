@@ -28,7 +28,7 @@ func (c Client) GetShowsNextUp(ctx context.Context, options emby.GetShowsNextUpO
 
 	req, err := c.Client.NewRequest(ctx, opts)
 	if err != nil {
-		return
+		return result, err
 	}
 
 	var resp *client.Response
@@ -37,21 +37,21 @@ func (c Client) GetShowsNextUp(ctx context.Context, options emby.GetShowsNextUpO
 		result.HttpResponse = resp.Response
 	}
 	if err != nil {
-		return
+		return result, err
 	}
 
 	if resp.StatusCode == http.StatusNoContent {
-		return
+		return result, nil
 	}
 
 	var answer emby.QueryResultBaseItemDto
 	result.Answer = &answer
-	if err = resp.Unmarshal(result.Answer); err != nil {
-		return
+	if err := resp.Unmarshal(result.Answer); err != nil {
+		return result, err
 	}
 	result.QueryResultBaseItemDto = result.Answer
 
-	return
+	return result, nil
 }
 
 // GetShowsNextUpComplete calls GetShowsNextUp page by page from options.StartIndex until every
@@ -64,7 +64,7 @@ func (c Client) GetShowsNextUpComplete(ctx context.Context, options emby.GetShow
 	}
 	options.Limit = &limit
 	start := 0
-	if options.StartIndex != nil {
+	if options.StartIndex != nil && *options.StartIndex > 0 {
 		start = *options.StartIndex
 	}
 	for {
@@ -72,11 +72,10 @@ func (c Client) GetShowsNextUpComplete(ctx context.Context, options emby.GetShow
 		page, err = c.GetShowsNextUp(ctx, options)
 		result.LatestHttpResponse = page.HttpResponse
 		if err != nil {
-			err = fmt.Errorf("loading results: %w", err)
-			return
+			return result, fmt.Errorf("loading results: %w", err)
 		}
 		if page.Answer == nil || len(page.Answer.Items) == 0 {
-			return
+			return result, nil
 		}
 		result.Items = append(result.Items, page.Answer.Items...)
 		start += len(page.Answer.Items)
@@ -84,7 +83,7 @@ func (c Client) GetShowsNextUpComplete(ctx context.Context, options emby.GetShow
 		// a short page is the last; so is reaching the total, when the server
 		// reports one (a list may report 0 whatever it holds)
 		if len(page.Answer.Items) < limit || page.Answer.TotalRecordCount > 0 && start >= page.Answer.TotalRecordCount {
-			return
+			return result, nil
 		}
 	}
 }
@@ -111,7 +110,7 @@ func (c Client) GetShowsNextUpEach(ctx context.Context, options emby.GetShowsNex
 		}
 		options.Limit = &limit
 		start := 0
-		if options.StartIndex != nil {
+		if options.StartIndex != nil && *options.StartIndex > 0 {
 			start = *options.StartIndex
 		}
 		for {
@@ -123,8 +122,8 @@ func (c Client) GetShowsNextUpEach(ctx context.Context, options emby.GetShowsNex
 			if page.Answer == nil || len(page.Answer.Items) == 0 {
 				return
 			}
-			for _, item := range page.Answer.Items {
-				if !yield(item, nil) {
+			for i := range page.Answer.Items {
+				if !yield(page.Answer.Items[i], nil) {
 					return
 				}
 			}

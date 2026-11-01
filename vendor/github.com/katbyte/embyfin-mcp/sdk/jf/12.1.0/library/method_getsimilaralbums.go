@@ -15,8 +15,7 @@ import (
 // GetSimilarAlbums calls GET /Albums/{itemId}/Similar. Gets similar items.
 func (c Client) GetSimilarAlbums(ctx context.Context, itemId jf.ItemID, options ...jf.GetSimilarAlbumsOptions) (result jf.GetSimilarAlbumsResponse, err error) {
 	if len(options) > 1 {
-		err = fmt.Errorf("GetSimilarAlbums takes one options struct at most, not %d", len(options))
-		return
+		return result, fmt.Errorf("at most one options struct for GetSimilarAlbums, not %d", len(options))
 	}
 	var option jf.GetSimilarAlbumsOptions
 	if len(options) == 1 {
@@ -31,12 +30,12 @@ func (c Client) GetSimilarAlbums(ctx context.Context, itemId jf.ItemID, options 
 		HTTPMethod:    http.MethodGet,
 		Operation:     "GetSimilarAlbums",
 		OptionsObject: option,
-		Path:          fmt.Sprintf("/Albums/%s/Similar", url.PathEscape(string(itemId))),
+		Path:          "/Albums/" + url.PathEscape(string(itemId)) + "/Similar",
 	}
 
 	req, err := c.Client.NewRequest(ctx, opts)
 	if err != nil {
-		return
+		return result, err
 	}
 
 	var resp *client.Response
@@ -45,15 +44,15 @@ func (c Client) GetSimilarAlbums(ctx context.Context, itemId jf.ItemID, options 
 		result.HttpResponse = resp.Response
 	}
 	if err != nil {
-		return
+		return result, err
 	}
 
 	var answer jf.BaseItemDtoQueryResult
 	result.Answer = &answer
-	if err = resp.Unmarshal(result.Answer); err != nil {
-		return
+	if err := resp.Unmarshal(result.Answer); err != nil {
+		return result, err
 	}
 	result.BaseItemDtoQueryResult = result.Answer
 
-	return
+	return result, nil
 }

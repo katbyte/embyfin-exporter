@@ -28,7 +28,7 @@ func (r GetKeysResponse) Answered() bool { return r.Answer != nil }
 // error when the server answered none.
 func (r GetKeysResponse) Record() (AuthenticationInfoQueryResult, error) {
 	if r.Answer == nil {
-		return AuthenticationInfoQueryResult{}, errors.New("GetKeys answered no AuthenticationInfoQueryResult")
+		return AuthenticationInfoQueryResult{}, errors.New("no AuthenticationInfoQueryResult answered by GetKeys")
 	}
 
 	return *r.Answer, nil

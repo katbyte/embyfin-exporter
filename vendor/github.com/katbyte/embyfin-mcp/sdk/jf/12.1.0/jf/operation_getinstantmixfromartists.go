@@ -31,7 +31,7 @@ func (r GetInstantMixFromArtistsResponse) Answered() bool { return r.Answer != n
 // error when the server answered none.
 func (r GetInstantMixFromArtistsResponse) Record() (BaseItemDtoQueryResult, error) {
 	if r.Answer == nil {
-		return BaseItemDtoQueryResult{}, errors.New("GetInstantMixFromArtists answered no BaseItemDtoQueryResult")
+		return BaseItemDtoQueryResult{}, errors.New("no BaseItemDtoQueryResult answered by GetInstantMixFromArtists")
 	}
 
 	return *r.Answer, nil
@@ -63,8 +63,7 @@ type GetInstantMixFromArtistsOptions struct {
 
 // ToHeaders returns the header parameters the options set.
 func (o GetInstantMixFromArtistsOptions) ToHeaders() *client.Headers {
-	out := client.Headers{}
-	return &out
+	return &client.Headers{}
 }
 
 // ToQuery returns the query parameters the options set.

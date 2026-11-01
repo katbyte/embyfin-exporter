@@ -29,7 +29,7 @@ func (c Client) GetLogFile(ctx context.Context, name string) (result jf.GetLogFi
 
 	req, err := c.Client.NewRequest(ctx, opts)
 	if err != nil {
-		return
+		return result, err
 	}
 
 	var resp *client.Response
@@ -38,8 +38,8 @@ func (c Client) GetLogFile(ctx context.Context, name string) (result jf.GetLogFi
 		result.HttpResponse = resp.Response
 	}
 	if err != nil {
-		return
+		return result, err
 	}
 
-	return
+	return result, nil
 }

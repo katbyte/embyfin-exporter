@@ -4,7 +4,6 @@ package dlnaserver
 
 import (
 	"context"
-	"fmt"
 	"net/http"
 	"net/url"
 
@@ -21,13 +20,13 @@ func (c Client) GetDlnaByUuIdDescriptionXml(ctx context.Context, uuId string) (r
 		},
 		HTTPMethod:     http.MethodGet,
 		Operation:      "GetDlnaByUuIdDescriptionXml",
-		Path:           fmt.Sprintf("/Dlna/%s/description.xml", url.PathEscape(uuId)),
+		Path:           "/Dlna/" + url.PathEscape(uuId) + "/description.xml",
 		StreamResponse: true,
 	}
 
 	req, err := c.Client.NewRequest(ctx, opts)
 	if err != nil {
-		return
+		return result, err
 	}
 
 	var resp *client.Response
@@ -36,8 +35,8 @@ func (c Client) GetDlnaByUuIdDescriptionXml(ctx context.Context, uuId string) (r
 		result.HttpResponse = resp.Response
 	}
 	if err != nil {
-		return
+		return result, err
 	}
 
-	return
+	return result, nil
 }

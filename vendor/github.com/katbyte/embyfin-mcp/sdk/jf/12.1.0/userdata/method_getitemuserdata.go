@@ -16,8 +16,7 @@ import (
 func (c Client) GetItemUserData(ctx context.Context, itemId jf.ItemID, userId ...jf.UserID) (result jf.GetItemUserDataResponse, err error) {
 	var option jf.GetItemUserDataOptions
 	if len(userId) > 1 {
-		err = fmt.Errorf("GetItemUserData takes one userId at most, not %d", len(userId))
-		return
+		return result, fmt.Errorf("at most one userId for GetItemUserData, not %d", len(userId))
 	}
 	if len(userId) == 1 {
 		option.UserId = userId[0]
@@ -31,12 +30,12 @@ func (c Client) GetItemUserData(ctx context.Context, itemId jf.ItemID, userId ..
 		HTTPMethod:    http.MethodGet,
 		Operation:     "GetItemUserData",
 		OptionsObject: option,
-		Path:          fmt.Sprintf("/UserItems/%s/UserData", url.PathEscape(string(itemId))),
+		Path:          "/UserItems/" + url.PathEscape(string(itemId)) + "/UserData",
 	}
 
 	req, err := c.Client.NewRequest(ctx, opts)
 	if err != nil {
-		return
+		return result, err
 	}
 
 	var resp *client.Response
@@ -45,15 +44,15 @@ func (c Client) GetItemUserData(ctx context.Context, itemId jf.ItemID, userId ..
 		result.HttpResponse = resp.Response
 	}
 	if err != nil {
-		return
+		return result, err
 	}
 
 	var answer jf.UserItemDataDto
 	result.Answer = &answer
-	if err = resp.Unmarshal(result.Answer); err != nil {
-		return
+	if err := resp.Unmarshal(result.Answer); err != nil {
+		return result, err
 	}
 	result.UserItemDataDto = result.Answer
 
-	return
+	return result, nil
 }

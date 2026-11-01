@@ -28,7 +28,7 @@ func (r GetBackupRestoreBackupInfoResponse) Answered() bool { return r.Answer !=
 // error when the server answered none.
 func (r GetBackupRestoreBackupInfoResponse) Record() (MBBackupApiAllBackupsInfo, error) {
 	if r.Answer == nil {
-		return MBBackupApiAllBackupsInfo{}, errors.New("GetBackupRestoreBackupInfo answered no MBBackupApiAllBackupsInfo")
+		return MBBackupApiAllBackupsInfo{}, errors.New("no MBBackupApiAllBackupsInfo answered by GetBackupRestoreBackupInfo")
 	}
 
 	return *r.Answer, nil

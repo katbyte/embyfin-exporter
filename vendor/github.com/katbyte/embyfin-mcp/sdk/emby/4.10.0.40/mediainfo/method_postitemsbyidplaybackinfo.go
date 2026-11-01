@@ -4,7 +4,6 @@ package mediainfo
 
 import (
 	"context"
-	"fmt"
 	"net/http"
 	"net/url"
 
@@ -23,16 +22,16 @@ func (c Client) PostItemsByIdPlaybackInfo(ctx context.Context, id emby.ItemID, i
 		},
 		HTTPMethod: http.MethodPost,
 		Operation:  "PostItemsByIdPlaybackInfo",
-		Path:       fmt.Sprintf("/Items/%s/PlaybackInfo", url.PathEscape(string(id))),
+		Path:       "/Items/" + url.PathEscape(string(id)) + "/PlaybackInfo",
 	}
 
 	req, err := c.Client.NewRequest(ctx, opts)
 	if err != nil {
-		return
+		return result, err
 	}
 
-	if err = req.Marshal(input); err != nil {
-		return
+	if err := req.Marshal(input); err != nil {
+		return result, err
 	}
 
 	var resp *client.Response
@@ -41,19 +40,19 @@ func (c Client) PostItemsByIdPlaybackInfo(ctx context.Context, id emby.ItemID, i
 		result.HttpResponse = resp.Response
 	}
 	if err != nil {
-		return
+		return result, err
 	}
 
 	if resp.StatusCode == http.StatusNoContent {
-		return
+		return result, nil
 	}
 
 	var answer emby.PlaybackInfoResponse
 	result.Answer = &answer
-	if err = resp.Unmarshal(result.Answer); err != nil {
-		return
+	if err := resp.Unmarshal(result.Answer); err != nil {
+		return result, err
 	}
 	result.PlaybackInfoResponse = result.Answer
 
-	return
+	return result, nil
 }

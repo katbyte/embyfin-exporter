@@ -15,8 +15,7 @@ import (
 // GetLogEntries calls GET /System/ActivityLog/Entries. Gets activity log entries.
 func (c Client) GetLogEntries(ctx context.Context, options ...jf.GetLogEntriesOptions) (result jf.GetLogEntriesResponse, err error) {
 	if len(options) > 1 {
-		err = fmt.Errorf("GetLogEntries takes one options struct at most, not %d", len(options))
-		return
+		return result, fmt.Errorf("at most one options struct for GetLogEntries, not %d", len(options))
 	}
 	var option jf.GetLogEntriesOptions
 	if len(options) == 1 {
@@ -36,7 +35,7 @@ func (c Client) GetLogEntries(ctx context.Context, options ...jf.GetLogEntriesOp
 
 	req, err := c.Client.NewRequest(ctx, opts)
 	if err != nil {
-		return
+		return result, err
 	}
 
 	var resp *client.Response
@@ -45,17 +44,17 @@ func (c Client) GetLogEntries(ctx context.Context, options ...jf.GetLogEntriesOp
 		result.HttpResponse = resp.Response
 	}
 	if err != nil {
-		return
+		return result, err
 	}
 
 	var answer jf.ActivityLogEntryQueryResult
 	result.Answer = &answer
-	if err = resp.Unmarshal(result.Answer); err != nil {
-		return
+	if err := resp.Unmarshal(result.Answer); err != nil {
+		return result, err
 	}
 	result.ActivityLogEntryQueryResult = result.Answer
 
-	return
+	return result, nil
 }
 
 // GetLogEntriesComplete calls GetLogEntries page by page from options.StartIndex until every
@@ -63,8 +62,7 @@ func (c Client) GetLogEntries(ctx context.Context, options ...jf.GetLogEntriesOp
 // unset.
 func (c Client) GetLogEntriesComplete(ctx context.Context, options ...jf.GetLogEntriesOptions) (result jf.GetLogEntriesCompleteResult, err error) {
 	if len(options) > 1 {
-		err = fmt.Errorf("GetLogEntriesComplete takes one options struct at most, not %d", len(options))
-		return
+		return result, fmt.Errorf("at most one options struct for GetLogEntriesComplete, not %d", len(options))
 	}
 	var option jf.GetLogEntriesOptions
 	if len(options) == 1 {
@@ -77,7 +75,7 @@ func (c Client) GetLogEntriesComplete(ctx context.Context, options ...jf.GetLogE
 	}
 	option.Limit = &limit
 	start := 0
-	if option.StartIndex != nil {
+	if option.StartIndex != nil && *option.StartIndex > 0 {
 		start = *option.StartIndex
 	}
 	for {
@@ -85,11 +83,10 @@ func (c Client) GetLogEntriesComplete(ctx context.Context, options ...jf.GetLogE
 		page, err = c.GetLogEntries(ctx, option)
 		result.LatestHttpResponse = page.HttpResponse
 		if err != nil {
-			err = fmt.Errorf("loading results: %w", err)
-			return
+			return result, fmt.Errorf("loading results: %w", err)
 		}
 		if page.Answer == nil || len(page.Answer.Items) == 0 {
-			return
+			return result, nil
 		}
 		result.Items = append(result.Items, page.Answer.Items...)
 		start += len(page.Answer.Items)
@@ -97,7 +94,7 @@ func (c Client) GetLogEntriesComplete(ctx context.Context, options ...jf.GetLogE
 		// a short page is the last; so is reaching the total, when the server
 		// reports one (a list may report 0 whatever it holds)
 		if len(page.Answer.Items) < limit || page.Answer.TotalRecordCount > 0 && start >= page.Answer.TotalRecordCount {
-			return
+			return result, nil
 		}
 	}
 }
@@ -119,7 +116,7 @@ func (c Client) GetLogEntriesEach(ctx context.Context, options ...jf.GetLogEntri
 	return func(yield func(jf.ActivityLogEntry, error) bool) {
 		var zero jf.ActivityLogEntry
 		if len(options) > 1 {
-			yield(zero, fmt.Errorf("GetLogEntriesEach takes one options struct at most, not %d", len(options)))
+			yield(zero, fmt.Errorf("at most one options struct for GetLogEntriesEach, not %d", len(options)))
 			return
 		}
 		var option jf.GetLogEntriesOptions
@@ -133,7 +130,7 @@ func (c Client) GetLogEntriesEach(ctx context.Context, options ...jf.GetLogEntri
 		}
 		option.Limit = &limit
 		start := 0
-		if option.StartIndex != nil {
+		if option.StartIndex != nil && *option.StartIndex > 0 {
 			start = *option.StartIndex
 		}
 		for {
@@ -145,8 +142,8 @@ func (c Client) GetLogEntriesEach(ctx context.Context, options ...jf.GetLogEntri
 			if page.Answer == nil || len(page.Answer.Items) == 0 {
 				return
 			}
-			for _, item := range page.Answer.Items {
-				if !yield(item, nil) {
+			for i := range page.Answer.Items {
+				if !yield(page.Answer.Items[i], nil) {
 					return
 				}
 			}

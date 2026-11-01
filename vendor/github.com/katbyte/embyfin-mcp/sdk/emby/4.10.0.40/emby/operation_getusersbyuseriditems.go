@@ -31,7 +31,7 @@ func (r GetUsersByUserIdItemsResponse) Answered() bool { return r.Answer != nil 
 // error when the server answered none.
 func (r GetUsersByUserIdItemsResponse) Record() (QueryResultBaseItemDto, error) {
 	if r.Answer == nil {
-		return QueryResultBaseItemDto{}, errors.New("GetUsersByUserIdItems answered no QueryResultBaseItemDto")
+		return QueryResultBaseItemDto{}, errors.New("no QueryResultBaseItemDto answered by GetUsersByUserIdItems")
 	}
 
 	return *r.Answer, nil
@@ -426,8 +426,7 @@ type GetUsersByUserIdItemsOptions struct {
 
 // ToHeaders returns the header parameters the options set.
 func (o GetUsersByUserIdItemsOptions) ToHeaders() *client.Headers {
-	out := client.Headers{}
-	return &out
+	return &client.Headers{}
 }
 
 // ToQuery returns the query parameters the options set.

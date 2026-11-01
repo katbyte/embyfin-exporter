@@ -14,8 +14,7 @@ import (
 // DeleteLibraryVirtualFolders calls DELETE /Library/VirtualFolders. Requires authentication as administrator.
 func (c Client) DeleteLibraryVirtualFolders(ctx context.Context, options ...emby.DeleteLibraryVirtualFoldersOptions) (result emby.DeleteLibraryVirtualFoldersResponse, err error) {
 	if len(options) > 1 {
-		err = fmt.Errorf("DeleteLibraryVirtualFolders takes one options struct at most, not %d", len(options))
-		return
+		return result, fmt.Errorf("at most one options struct for DeleteLibraryVirtualFolders, not %d", len(options))
 	}
 	var option emby.DeleteLibraryVirtualFoldersOptions
 	if len(options) == 1 {
@@ -35,7 +34,7 @@ func (c Client) DeleteLibraryVirtualFolders(ctx context.Context, options ...emby
 
 	req, err := c.Client.NewRequest(ctx, opts)
 	if err != nil {
-		return
+		return result, err
 	}
 
 	var resp *client.Response
@@ -44,8 +43,8 @@ func (c Client) DeleteLibraryVirtualFolders(ctx context.Context, options ...emby
 		result.HttpResponse = resp.Response
 	}
 	if err != nil {
-		return
+		return result, err
 	}
 
-	return
+	return result, nil
 }

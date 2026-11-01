@@ -15,8 +15,7 @@ import (
 func (c Client) DeleteLiveTvListingProviders(ctx context.Context, id ...string) (result emby.DeleteLiveTvListingProvidersResponse, err error) {
 	var option emby.DeleteLiveTvListingProvidersOptions
 	if len(id) > 1 {
-		err = fmt.Errorf("DeleteLiveTvListingProviders takes one id at most, not %d", len(id))
-		return
+		return result, fmt.Errorf("at most one id for DeleteLiveTvListingProviders, not %d", len(id))
 	}
 	if len(id) == 1 {
 		option.Id = id[0]
@@ -35,7 +34,7 @@ func (c Client) DeleteLiveTvListingProviders(ctx context.Context, id ...string) 
 
 	req, err := c.Client.NewRequest(ctx, opts)
 	if err != nil {
-		return
+		return result, err
 	}
 
 	var resp *client.Response
@@ -44,8 +43,8 @@ func (c Client) DeleteLiveTvListingProviders(ctx context.Context, id ...string) 
 		result.HttpResponse = resp.Response
 	}
 	if err != nil {
-		return
+		return result, err
 	}
 
-	return
+	return result, nil
 }

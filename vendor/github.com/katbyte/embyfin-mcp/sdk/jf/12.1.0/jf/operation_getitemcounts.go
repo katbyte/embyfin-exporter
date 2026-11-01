@@ -31,7 +31,7 @@ func (r GetItemCountsResponse) Answered() bool { return r.Answer != nil }
 // error when the server answered none.
 func (r GetItemCountsResponse) Record() (ItemCounts, error) {
 	if r.Answer == nil {
-		return ItemCounts{}, errors.New("GetItemCounts answered no ItemCounts")
+		return ItemCounts{}, errors.New("no ItemCounts answered by GetItemCounts")
 	}
 
 	return *r.Answer, nil
@@ -48,8 +48,7 @@ type GetItemCountsOptions struct {
 
 // ToHeaders returns the header parameters the options set.
 func (o GetItemCountsOptions) ToHeaders() *client.Headers {
-	out := client.Headers{}
-	return &out
+	return &client.Headers{}
 }
 
 // ToQuery returns the query parameters the options set.

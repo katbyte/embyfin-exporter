@@ -4,7 +4,6 @@ package userlibrary
 
 import (
 	"context"
-	"fmt"
 	"net/http"
 	"net/url"
 
@@ -22,12 +21,12 @@ func (c Client) DeleteUsersByUserIdFavoriteItemsById(ctx context.Context, userId
 		},
 		HTTPMethod: http.MethodDelete,
 		Operation:  "DeleteUsersByUserIdFavoriteItemsById",
-		Path:       fmt.Sprintf("/Users/%s/FavoriteItems/%s", url.PathEscape(string(userId)), url.PathEscape(string(id))),
+		Path:       "/Users/" + url.PathEscape(string(userId)) + "/FavoriteItems/" + url.PathEscape(string(id)),
 	}
 
 	req, err := c.Client.NewRequest(ctx, opts)
 	if err != nil {
-		return
+		return result, err
 	}
 
 	var resp *client.Response
@@ -36,19 +35,19 @@ func (c Client) DeleteUsersByUserIdFavoriteItemsById(ctx context.Context, userId
 		result.HttpResponse = resp.Response
 	}
 	if err != nil {
-		return
+		return result, err
 	}
 
 	if resp.StatusCode == http.StatusNoContent {
-		return
+		return result, nil
 	}
 
 	var answer emby.UserItemDataDto
 	result.Answer = &answer
-	if err = resp.Unmarshal(result.Answer); err != nil {
-		return
+	if err := resp.Unmarshal(result.Answer); err != nil {
+		return result, err
 	}
 	result.UserItemDataDto = result.Answer
 
-	return
+	return result, nil
 }

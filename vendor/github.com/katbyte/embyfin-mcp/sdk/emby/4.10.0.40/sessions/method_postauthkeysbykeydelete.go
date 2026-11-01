@@ -4,7 +4,6 @@ package sessions
 
 import (
 	"context"
-	"fmt"
 	"net/http"
 	"net/url"
 
@@ -21,12 +20,12 @@ func (c Client) PostAuthKeysByKeyDelete(ctx context.Context, key string) (result
 		},
 		HTTPMethod: http.MethodPost,
 		Operation:  "PostAuthKeysByKeyDelete",
-		Path:       fmt.Sprintf("/Auth/Keys/%s/Delete", url.PathEscape(key)),
+		Path:       "/Auth/Keys/" + url.PathEscape(key) + "/Delete",
 	}
 
 	req, err := c.Client.NewRequest(ctx, opts)
 	if err != nil {
-		return
+		return result, err
 	}
 
 	var resp *client.Response
@@ -35,8 +34,8 @@ func (c Client) PostAuthKeysByKeyDelete(ctx context.Context, key string) (result
 		result.HttpResponse = resp.Response
 	}
 	if err != nil {
-		return
+		return result, err
 	}
 
-	return
+	return result, nil
 }

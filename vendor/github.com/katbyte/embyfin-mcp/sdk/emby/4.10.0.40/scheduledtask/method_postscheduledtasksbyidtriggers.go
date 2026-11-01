@@ -4,7 +4,6 @@ package scheduledtask
 
 import (
 	"context"
-	"fmt"
 	"net/http"
 	"net/url"
 
@@ -22,16 +21,16 @@ func (c Client) PostScheduledTasksByIdTriggers(ctx context.Context, id emby.Task
 		},
 		HTTPMethod: http.MethodPost,
 		Operation:  "PostScheduledTasksByIdTriggers",
-		Path:       fmt.Sprintf("/ScheduledTasks/%s/Triggers", url.PathEscape(string(id))),
+		Path:       "/ScheduledTasks/" + url.PathEscape(string(id)) + "/Triggers",
 	}
 
 	req, err := c.Client.NewRequest(ctx, opts)
 	if err != nil {
-		return
+		return result, err
 	}
 
-	if err = req.Marshal(input); err != nil {
-		return
+	if err := req.Marshal(input); err != nil {
+		return result, err
 	}
 
 	var resp *client.Response
@@ -40,8 +39,8 @@ func (c Client) PostScheduledTasksByIdTriggers(ctx context.Context, id emby.Task
 		result.HttpResponse = resp.Response
 	}
 	if err != nil {
-		return
+		return result, err
 	}
 
-	return
+	return result, nil
 }

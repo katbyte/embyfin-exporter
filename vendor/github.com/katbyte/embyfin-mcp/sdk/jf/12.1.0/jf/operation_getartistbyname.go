@@ -30,7 +30,7 @@ func (r GetArtistByNameResponse) Answered() bool { return r.Answer != nil }
 // error when the server answered none.
 func (r GetArtistByNameResponse) Record() (BaseItemDto, error) {
 	if r.Answer == nil {
-		return BaseItemDto{}, errors.New("GetArtistByName answered no BaseItemDto")
+		return BaseItemDto{}, errors.New("no BaseItemDto answered by GetArtistByName")
 	}
 
 	return *r.Answer, nil
@@ -44,8 +44,7 @@ type GetArtistByNameOptions struct {
 
 // ToHeaders returns the header parameters the options set.
 func (o GetArtistByNameOptions) ToHeaders() *client.Headers {
-	out := client.Headers{}
-	return &out
+	return &client.Headers{}
 }
 
 // ToQuery returns the query parameters the options set.

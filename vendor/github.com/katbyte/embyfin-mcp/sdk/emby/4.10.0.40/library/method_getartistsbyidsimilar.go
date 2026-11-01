@@ -16,8 +16,7 @@ import (
 // GetArtistsByIdSimilar calls GET /Artists/{Id}/Similar. Finds albums similar to a given album.
 func (c Client) GetArtistsByIdSimilar(ctx context.Context, id emby.ItemID, options ...emby.GetArtistsByIdSimilarOptions) (result emby.GetArtistsByIdSimilarResponse, err error) {
 	if len(options) > 1 {
-		err = fmt.Errorf("GetArtistsByIdSimilar takes one options struct at most, not %d", len(options))
-		return
+		return result, fmt.Errorf("at most one options struct for GetArtistsByIdSimilar, not %d", len(options))
 	}
 	var option emby.GetArtistsByIdSimilarOptions
 	if len(options) == 1 {
@@ -33,12 +32,12 @@ func (c Client) GetArtistsByIdSimilar(ctx context.Context, id emby.ItemID, optio
 		HTTPMethod:    http.MethodGet,
 		Operation:     "GetArtistsByIdSimilar",
 		OptionsObject: option,
-		Path:          fmt.Sprintf("/Artists/%s/Similar", url.PathEscape(string(id))),
+		Path:          "/Artists/" + url.PathEscape(string(id)) + "/Similar",
 	}
 
 	req, err := c.Client.NewRequest(ctx, opts)
 	if err != nil {
-		return
+		return result, err
 	}
 
 	var resp *client.Response
@@ -47,21 +46,21 @@ func (c Client) GetArtistsByIdSimilar(ctx context.Context, id emby.ItemID, optio
 		result.HttpResponse = resp.Response
 	}
 	if err != nil {
-		return
+		return result, err
 	}
 
 	if resp.StatusCode == http.StatusNoContent {
-		return
+		return result, nil
 	}
 
 	var answer emby.QueryResultBaseItemDto
 	result.Answer = &answer
-	if err = resp.Unmarshal(result.Answer); err != nil {
-		return
+	if err := resp.Unmarshal(result.Answer); err != nil {
+		return result, err
 	}
 	result.QueryResultBaseItemDto = result.Answer
 
-	return
+	return result, nil
 }
 
 // GetArtistsByIdSimilarComplete calls GetArtistsByIdSimilar page by page from options.StartIndex until every
@@ -69,8 +68,7 @@ func (c Client) GetArtistsByIdSimilar(ctx context.Context, id emby.ItemID, optio
 // unset.
 func (c Client) GetArtistsByIdSimilarComplete(ctx context.Context, id emby.ItemID, options ...emby.GetArtistsByIdSimilarOptions) (result emby.GetArtistsByIdSimilarCompleteResult, err error) {
 	if len(options) > 1 {
-		err = fmt.Errorf("GetArtistsByIdSimilarComplete takes one options struct at most, not %d", len(options))
-		return
+		return result, fmt.Errorf("at most one options struct for GetArtistsByIdSimilarComplete, not %d", len(options))
 	}
 	var option emby.GetArtistsByIdSimilarOptions
 	if len(options) == 1 {
@@ -83,7 +81,7 @@ func (c Client) GetArtistsByIdSimilarComplete(ctx context.Context, id emby.ItemI
 	}
 	option.Limit = &limit
 	start := 0
-	if option.StartIndex != nil {
+	if option.StartIndex != nil && *option.StartIndex > 0 {
 		start = *option.StartIndex
 	}
 	for {
@@ -91,11 +89,10 @@ func (c Client) GetArtistsByIdSimilarComplete(ctx context.Context, id emby.ItemI
 		page, err = c.GetArtistsByIdSimilar(ctx, id, option)
 		result.LatestHttpResponse = page.HttpResponse
 		if err != nil {
-			err = fmt.Errorf("loading results: %w", err)
-			return
+			return result, fmt.Errorf("loading results: %w", err)
 		}
 		if page.Answer == nil || len(page.Answer.Items) == 0 {
-			return
+			return result, nil
 		}
 		result.Items = append(result.Items, page.Answer.Items...)
 		start += len(page.Answer.Items)
@@ -103,7 +100,7 @@ func (c Client) GetArtistsByIdSimilarComplete(ctx context.Context, id emby.ItemI
 		// a short page is the last; so is reaching the total, when the server
 		// reports one (a list may report 0 whatever it holds)
 		if len(page.Answer.Items) < limit || page.Answer.TotalRecordCount > 0 && start >= page.Answer.TotalRecordCount {
-			return
+			return result, nil
 		}
 	}
 }
@@ -125,7 +122,7 @@ func (c Client) GetArtistsByIdSimilarEach(ctx context.Context, id emby.ItemID, o
 	return func(yield func(emby.BaseItemDto, error) bool) {
 		var zero emby.BaseItemDto
 		if len(options) > 1 {
-			yield(zero, fmt.Errorf("GetArtistsByIdSimilarEach takes one options struct at most, not %d", len(options)))
+			yield(zero, fmt.Errorf("at most one options struct for GetArtistsByIdSimilarEach, not %d", len(options)))
 			return
 		}
 		var option emby.GetArtistsByIdSimilarOptions
@@ -139,7 +136,7 @@ func (c Client) GetArtistsByIdSimilarEach(ctx context.Context, id emby.ItemID, o
 		}
 		option.Limit = &limit
 		start := 0
-		if option.StartIndex != nil {
+		if option.StartIndex != nil && *option.StartIndex > 0 {
 			start = *option.StartIndex
 		}
 		for {
@@ -151,8 +148,8 @@ func (c Client) GetArtistsByIdSimilarEach(ctx context.Context, id emby.ItemID, o
 			if page.Answer == nil || len(page.Answer.Items) == 0 {
 				return
 			}
-			for _, item := range page.Answer.Items {
-				if !yield(item, nil) {
+			for i := range page.Answer.Items {
+				if !yield(page.Answer.Items[i], nil) {
 					return
 				}
 			}

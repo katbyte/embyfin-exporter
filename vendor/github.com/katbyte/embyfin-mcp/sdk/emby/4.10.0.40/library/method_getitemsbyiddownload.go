@@ -4,7 +4,6 @@ package library
 
 import (
 	"context"
-	"fmt"
 	"net/http"
 	"net/url"
 
@@ -21,13 +20,13 @@ func (c Client) GetItemsByIdDownload(ctx context.Context, id emby.ItemID) (resul
 		},
 		HTTPMethod:     http.MethodGet,
 		Operation:      "GetItemsByIdDownload",
-		Path:           fmt.Sprintf("/Items/%s/Download", url.PathEscape(string(id))),
+		Path:           "/Items/" + url.PathEscape(string(id)) + "/Download",
 		StreamResponse: true,
 	}
 
 	req, err := c.Client.NewRequest(ctx, opts)
 	if err != nil {
-		return
+		return result, err
 	}
 
 	var resp *client.Response
@@ -36,8 +35,8 @@ func (c Client) GetItemsByIdDownload(ctx context.Context, id emby.ItemID) (resul
 		result.HttpResponse = resp.Response
 	}
 	if err != nil {
-		return
+		return result, err
 	}
 
-	return
+	return result, nil
 }

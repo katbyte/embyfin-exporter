@@ -4,6 +4,7 @@ package jf
 
 import (
 	"errors"
+	"slices"
 
 	"github.com/katbyte/pandorest/client"
 )
@@ -30,5 +31,5 @@ func New(baseURL, apiKey string, opts ...client.Option) (*client.Client, error) 
 	}
 
 	// the credential is a secret whatever the authorizer makes of it, so no error repeats it
-	return service.New(baseURL, credential(apiKey), append(opts[:len(opts):len(opts)], client.WithSecrets(apiKey))...)
+	return service.New(baseURL, credential(apiKey), append(slices.Clip(opts), client.WithSecrets(apiKey))...)
 }

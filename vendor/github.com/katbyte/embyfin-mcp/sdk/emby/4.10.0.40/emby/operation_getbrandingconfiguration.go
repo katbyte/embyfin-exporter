@@ -28,7 +28,7 @@ func (r GetBrandingConfigurationResponse) Answered() bool { return r.Answer != n
 // error when the server answered none.
 func (r GetBrandingConfigurationResponse) Record() (BrandingBrandingOptions, error) {
 	if r.Answer == nil {
-		return BrandingBrandingOptions{}, errors.New("GetBrandingConfiguration answered no BrandingBrandingOptions")
+		return BrandingBrandingOptions{}, errors.New("no BrandingBrandingOptions answered by GetBrandingConfiguration")
 	}
 
 	return *r.Answer, nil

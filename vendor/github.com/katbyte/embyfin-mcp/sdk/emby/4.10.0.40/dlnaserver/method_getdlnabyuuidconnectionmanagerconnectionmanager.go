@@ -4,7 +4,6 @@ package dlnaserver
 
 import (
 	"context"
-	"fmt"
 	"net/http"
 	"net/url"
 
@@ -21,13 +20,13 @@ func (c Client) GetDlnaByUuIdConnectionmanagerConnectionmanager(ctx context.Cont
 		},
 		HTTPMethod:     http.MethodGet,
 		Operation:      "GetDlnaByUuIdConnectionmanagerConnectionmanager",
-		Path:           fmt.Sprintf("/Dlna/%s/connectionmanager/connectionmanager", url.PathEscape(uuId)),
+		Path:           "/Dlna/" + url.PathEscape(uuId) + "/connectionmanager/connectionmanager",
 		StreamResponse: true,
 	}
 
 	req, err := c.Client.NewRequest(ctx, opts)
 	if err != nil {
-		return
+		return result, err
 	}
 
 	var resp *client.Response
@@ -36,8 +35,8 @@ func (c Client) GetDlnaByUuIdConnectionmanagerConnectionmanager(ctx context.Cont
 		result.HttpResponse = resp.Response
 	}
 	if err != nil {
-		return
+		return result, err
 	}
 
-	return
+	return result, nil
 }

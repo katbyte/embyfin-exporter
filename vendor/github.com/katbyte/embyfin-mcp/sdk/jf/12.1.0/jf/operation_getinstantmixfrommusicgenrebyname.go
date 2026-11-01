@@ -31,7 +31,7 @@ func (r GetInstantMixFromMusicGenreByNameResponse) Answered() bool { return r.An
 // error when the server answered none.
 func (r GetInstantMixFromMusicGenreByNameResponse) Record() (BaseItemDtoQueryResult, error) {
 	if r.Answer == nil {
-		return BaseItemDtoQueryResult{}, errors.New("GetInstantMixFromMusicGenreByName answered no BaseItemDtoQueryResult")
+		return BaseItemDtoQueryResult{}, errors.New("no BaseItemDtoQueryResult answered by GetInstantMixFromMusicGenreByName")
 	}
 
 	return *r.Answer, nil
@@ -63,8 +63,7 @@ type GetInstantMixFromMusicGenreByNameOptions struct {
 
 // ToHeaders returns the header parameters the options set.
 func (o GetInstantMixFromMusicGenreByNameOptions) ToHeaders() *client.Headers {
-	out := client.Headers{}
-	return &out
+	return &client.Headers{}
 }
 
 // ToQuery returns the query parameters the options set.

@@ -28,7 +28,7 @@ func (r GetEncodingFfmpegOptionsResponse) Answered() bool { return r.Answer != n
 // error when the server answered none.
 func (r GetEncodingFfmpegOptionsResponse) Record() (EditObjectContainer, error) {
 	if r.Answer == nil {
-		return EditObjectContainer{}, errors.New("GetEncodingFfmpegOptions answered no EditObjectContainer")
+		return EditObjectContainer{}, errors.New("no EditObjectContainer answered by GetEncodingFfmpegOptions")
 	}
 
 	return *r.Answer, nil

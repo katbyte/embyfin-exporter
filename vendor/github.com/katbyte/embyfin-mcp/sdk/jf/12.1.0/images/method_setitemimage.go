@@ -4,7 +4,6 @@ package images
 
 import (
 	"context"
-	"fmt"
 	"io"
 	"net/http"
 	"net/url"
@@ -25,16 +24,16 @@ func (c Client) SetItemImage(ctx context.Context, itemId jf.ItemID, imageType jf
 		},
 		HTTPMethod: http.MethodPost,
 		Operation:  "SetItemImage",
-		Path:       fmt.Sprintf("/Items/%s/Images/%s", url.PathEscape(string(itemId)), url.PathEscape(string(imageType))),
+		Path:       "/Items/" + url.PathEscape(string(itemId)) + "/Images/" + url.PathEscape(string(imageType)),
 	}
 
 	req, err := c.Client.NewRequest(ctx, opts)
 	if err != nil {
-		return
+		return result, err
 	}
 
-	if err = req.SetBody(input, contentType); err != nil {
-		return
+	if err := req.SetBody(input, contentType); err != nil {
+		return result, err
 	}
 
 	var resp *client.Response
@@ -43,8 +42,8 @@ func (c Client) SetItemImage(ctx context.Context, itemId jf.ItemID, imageType jf
 		result.HttpResponse = resp.Response
 	}
 	if err != nil {
-		return
+		return result, err
 	}
 
-	return
+	return result, nil
 }

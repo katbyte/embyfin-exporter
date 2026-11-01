@@ -14,8 +14,7 @@ import (
 // AddListingProvider calls POST /LiveTv/ListingProviders. Adds a listings provider.
 func (c Client) AddListingProvider(ctx context.Context, input jf.ListingsProviderInfo, options ...jf.AddListingProviderOptions) (result jf.AddListingProviderResponse, err error) {
 	if len(options) > 1 {
-		err = fmt.Errorf("AddListingProvider takes one options struct at most, not %d", len(options))
-		return
+		return result, fmt.Errorf("at most one options struct for AddListingProvider, not %d", len(options))
 	}
 	var option jf.AddListingProviderOptions
 	if len(options) == 1 {
@@ -36,11 +35,11 @@ func (c Client) AddListingProvider(ctx context.Context, input jf.ListingsProvide
 
 	req, err := c.Client.NewRequest(ctx, opts)
 	if err != nil {
-		return
+		return result, err
 	}
 
-	if err = req.Marshal(input); err != nil {
-		return
+	if err := req.Marshal(input); err != nil {
+		return result, err
 	}
 
 	var resp *client.Response
@@ -49,15 +48,15 @@ func (c Client) AddListingProvider(ctx context.Context, input jf.ListingsProvide
 		result.HttpResponse = resp.Response
 	}
 	if err != nil {
-		return
+		return result, err
 	}
 
 	var answer jf.ListingsProviderInfo
 	result.Answer = &answer
-	if err = resp.Unmarshal(result.Answer); err != nil {
-		return
+	if err := resp.Unmarshal(result.Answer); err != nil {
+		return result, err
 	}
 	result.ListingsProviderInfo = result.Answer
 
-	return
+	return result, nil
 }

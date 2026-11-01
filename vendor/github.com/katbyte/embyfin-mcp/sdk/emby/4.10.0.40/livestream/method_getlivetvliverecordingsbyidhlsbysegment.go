@@ -4,7 +4,6 @@ package livestream
 
 import (
 	"context"
-	"fmt"
 	"net/http"
 	"net/url"
 
@@ -13,7 +12,7 @@ import (
 )
 
 // GetLiveTvLiveRecordingsByIdHlsBySegment calls GET /LiveTv/LiveRecordings/{Id}/hls/{Segment}. Gets a live recording.
-func (c Client) GetLiveTvLiveRecordingsByIdHlsBySegment(ctx context.Context, id string, segment string) (result emby.GetLiveTvLiveRecordingsByIdHlsBySegmentResponse, err error) {
+func (c Client) GetLiveTvLiveRecordingsByIdHlsBySegment(ctx context.Context, id, segment string) (result emby.GetLiveTvLiveRecordingsByIdHlsBySegmentResponse, err error) {
 	opts := client.RequestOptions{
 		Accept: "application/octet-stream",
 		ExpectedStatusCodes: []int{
@@ -21,13 +20,13 @@ func (c Client) GetLiveTvLiveRecordingsByIdHlsBySegment(ctx context.Context, id 
 		},
 		HTTPMethod:     http.MethodGet,
 		Operation:      "GetLiveTvLiveRecordingsByIdHlsBySegment",
-		Path:           fmt.Sprintf("/LiveTv/LiveRecordings/%s/hls/%s", url.PathEscape(id), url.PathEscape(segment)),
+		Path:           "/LiveTv/LiveRecordings/" + url.PathEscape(id) + "/hls/" + url.PathEscape(segment),
 		StreamResponse: true,
 	}
 
 	req, err := c.Client.NewRequest(ctx, opts)
 	if err != nil {
-		return
+		return result, err
 	}
 
 	var resp *client.Response
@@ -36,8 +35,8 @@ func (c Client) GetLiveTvLiveRecordingsByIdHlsBySegment(ctx context.Context, id 
 		result.HttpResponse = resp.Response
 	}
 	if err != nil {
-		return
+		return result, err
 	}
 
-	return
+	return result, nil
 }

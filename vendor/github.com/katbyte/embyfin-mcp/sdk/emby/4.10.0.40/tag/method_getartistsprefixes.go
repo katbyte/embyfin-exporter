@@ -14,8 +14,7 @@ import (
 // GetArtistsPrefixes calls GET /Artists/Prefixes. Gets items based on a query.
 func (c Client) GetArtistsPrefixes(ctx context.Context, options ...emby.GetArtistsPrefixesOptions) (result emby.GetArtistsPrefixesResponse, err error) {
 	if len(options) > 1 {
-		err = fmt.Errorf("GetArtistsPrefixes takes one options struct at most, not %d", len(options))
-		return
+		return result, fmt.Errorf("at most one options struct for GetArtistsPrefixes, not %d", len(options))
 	}
 	var option emby.GetArtistsPrefixesOptions
 	if len(options) == 1 {
@@ -35,7 +34,7 @@ func (c Client) GetArtistsPrefixes(ctx context.Context, options ...emby.GetArtis
 
 	req, err := c.Client.NewRequest(ctx, opts)
 	if err != nil {
-		return
+		return result, err
 	}
 
 	var resp *client.Response
@@ -44,16 +43,16 @@ func (c Client) GetArtistsPrefixes(ctx context.Context, options ...emby.GetArtis
 		result.HttpResponse = resp.Response
 	}
 	if err != nil {
-		return
+		return result, err
 	}
 
 	if resp.StatusCode == http.StatusNoContent {
-		return
+		return result, nil
 	}
 
-	if err = resp.Unmarshal(&result.Answer); err != nil {
-		return
+	if err := resp.Unmarshal(&result.Answer); err != nil {
+		return result, err
 	}
 
-	return
+	return result, nil
 }

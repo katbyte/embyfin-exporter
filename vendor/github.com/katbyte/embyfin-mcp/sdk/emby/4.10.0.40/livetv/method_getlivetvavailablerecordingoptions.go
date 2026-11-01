@@ -25,7 +25,7 @@ func (c Client) GetLiveTvAvailableRecordingOptions(ctx context.Context) (result 
 
 	req, err := c.Client.NewRequest(ctx, opts)
 	if err != nil {
-		return
+		return result, err
 	}
 
 	var resp *client.Response
@@ -34,19 +34,19 @@ func (c Client) GetLiveTvAvailableRecordingOptions(ctx context.Context) (result 
 		result.HttpResponse = resp.Response
 	}
 	if err != nil {
-		return
+		return result, err
 	}
 
 	if resp.StatusCode == http.StatusNoContent {
-		return
+		return result, nil
 	}
 
 	var answer emby.ApiAvailableRecordingOptions
 	result.Answer = &answer
-	if err = resp.Unmarshal(result.Answer); err != nil {
-		return
+	if err := resp.Unmarshal(result.Answer); err != nil {
+		return result, err
 	}
 	result.ApiAvailableRecordingOptions = result.Answer
 
-	return
+	return result, nil
 }

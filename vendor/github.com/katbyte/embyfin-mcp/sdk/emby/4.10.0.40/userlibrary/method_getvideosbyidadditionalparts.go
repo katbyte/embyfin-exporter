@@ -15,8 +15,7 @@ import (
 // GetVideosByIdAdditionalParts calls GET /Videos/{Id}/AdditionalParts. Gets additional parts for a video.
 func (c Client) GetVideosByIdAdditionalParts(ctx context.Context, id emby.ItemID, options ...emby.GetVideosByIdAdditionalPartsOptions) (result emby.GetVideosByIdAdditionalPartsResponse, err error) {
 	if len(options) > 1 {
-		err = fmt.Errorf("GetVideosByIdAdditionalParts takes one options struct at most, not %d", len(options))
-		return
+		return result, fmt.Errorf("at most one options struct for GetVideosByIdAdditionalParts, not %d", len(options))
 	}
 	var option emby.GetVideosByIdAdditionalPartsOptions
 	if len(options) == 1 {
@@ -32,12 +31,12 @@ func (c Client) GetVideosByIdAdditionalParts(ctx context.Context, id emby.ItemID
 		HTTPMethod:    http.MethodGet,
 		Operation:     "GetVideosByIdAdditionalParts",
 		OptionsObject: option,
-		Path:          fmt.Sprintf("/Videos/%s/AdditionalParts", url.PathEscape(string(id))),
+		Path:          "/Videos/" + url.PathEscape(string(id)) + "/AdditionalParts",
 	}
 
 	req, err := c.Client.NewRequest(ctx, opts)
 	if err != nil {
-		return
+		return result, err
 	}
 
 	var resp *client.Response
@@ -46,19 +45,19 @@ func (c Client) GetVideosByIdAdditionalParts(ctx context.Context, id emby.ItemID
 		result.HttpResponse = resp.Response
 	}
 	if err != nil {
-		return
+		return result, err
 	}
 
 	if resp.StatusCode == http.StatusNoContent {
-		return
+		return result, nil
 	}
 
 	var answer emby.QueryResultBaseItemDto
 	result.Answer = &answer
-	if err = resp.Unmarshal(result.Answer); err != nil {
-		return
+	if err := resp.Unmarshal(result.Answer); err != nil {
+		return result, err
 	}
 	result.QueryResultBaseItemDto = result.Answer
 
-	return
+	return result, nil
 }

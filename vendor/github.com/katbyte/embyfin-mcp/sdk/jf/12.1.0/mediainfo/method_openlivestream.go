@@ -14,8 +14,7 @@ import (
 // OpenLiveStream calls POST /LiveStreams/Open. Opens a media source.
 func (c Client) OpenLiveStream(ctx context.Context, input jf.OpenLiveStreamDto, options ...jf.OpenLiveStreamOptions) (result jf.OpenLiveStreamResponse, err error) {
 	if len(options) > 1 {
-		err = fmt.Errorf("OpenLiveStream takes one options struct at most, not %d", len(options))
-		return
+		return result, fmt.Errorf("at most one options struct for OpenLiveStream, not %d", len(options))
 	}
 	var option jf.OpenLiveStreamOptions
 	if len(options) == 1 {
@@ -36,11 +35,11 @@ func (c Client) OpenLiveStream(ctx context.Context, input jf.OpenLiveStreamDto, 
 
 	req, err := c.Client.NewRequest(ctx, opts)
 	if err != nil {
-		return
+		return result, err
 	}
 
-	if err = req.Marshal(input); err != nil {
-		return
+	if err := req.Marshal(input); err != nil {
+		return result, err
 	}
 
 	var resp *client.Response
@@ -49,15 +48,15 @@ func (c Client) OpenLiveStream(ctx context.Context, input jf.OpenLiveStreamDto, 
 		result.HttpResponse = resp.Response
 	}
 	if err != nil {
-		return
+		return result, err
 	}
 
 	var answer jf.LiveStreamResponse
 	result.Answer = &answer
-	if err = resp.Unmarshal(result.Answer); err != nil {
-		return
+	if err := resp.Unmarshal(result.Answer); err != nil {
+		return result, err
 	}
 	result.LiveStreamResponse = result.Answer
 
-	return
+	return result, nil
 }

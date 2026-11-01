@@ -28,7 +28,7 @@ func (r GetDefaultListingProviderResponse) Answered() bool { return r.Answer != 
 // error when the server answered none.
 func (r GetDefaultListingProviderResponse) Record() (ListingsProviderInfo, error) {
 	if r.Answer == nil {
-		return ListingsProviderInfo{}, errors.New("GetDefaultListingProvider answered no ListingsProviderInfo")
+		return ListingsProviderInfo{}, errors.New("no ListingsProviderInfo answered by GetDefaultListingProvider")
 	}
 
 	return *r.Answer, nil

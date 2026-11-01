@@ -16,8 +16,7 @@ import (
 func (c Client) MarkFavoriteItem(ctx context.Context, itemId jf.ItemID, userId ...jf.UserID) (result jf.MarkFavoriteItemResponse, err error) {
 	var option jf.MarkFavoriteItemOptions
 	if len(userId) > 1 {
-		err = fmt.Errorf("MarkFavoriteItem takes one userId at most, not %d", len(userId))
-		return
+		return result, fmt.Errorf("at most one userId for MarkFavoriteItem, not %d", len(userId))
 	}
 	if len(userId) == 1 {
 		option.UserId = userId[0]
@@ -31,12 +30,12 @@ func (c Client) MarkFavoriteItem(ctx context.Context, itemId jf.ItemID, userId .
 		HTTPMethod:    http.MethodPost,
 		Operation:     "MarkFavoriteItem",
 		OptionsObject: option,
-		Path:          fmt.Sprintf("/UserFavoriteItems/%s", url.PathEscape(string(itemId))),
+		Path:          "/UserFavoriteItems/" + url.PathEscape(string(itemId)),
 	}
 
 	req, err := c.Client.NewRequest(ctx, opts)
 	if err != nil {
-		return
+		return result, err
 	}
 
 	var resp *client.Response
@@ -45,15 +44,15 @@ func (c Client) MarkFavoriteItem(ctx context.Context, itemId jf.ItemID, userId .
 		result.HttpResponse = resp.Response
 	}
 	if err != nil {
-		return
+		return result, err
 	}
 
 	var answer jf.UserItemDataDto
 	result.Answer = &answer
-	if err = resp.Unmarshal(result.Answer); err != nil {
-		return
+	if err := resp.Unmarshal(result.Answer); err != nil {
+		return result, err
 	}
 	result.UserItemDataDto = result.Answer
 
-	return
+	return result, nil
 }

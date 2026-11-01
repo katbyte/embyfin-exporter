@@ -30,7 +30,7 @@ func (r PostSyncDataResponse) Answered() bool { return r.Answer != nil }
 // error when the server answered none.
 func (r PostSyncDataResponse) Record() (SyncDataResponse, error) {
 	if r.Answer == nil {
-		return SyncDataResponse{}, errors.New("PostSyncData answered no SyncDataResponse")
+		return SyncDataResponse{}, errors.New("no SyncDataResponse answered by PostSyncData")
 	}
 
 	return *r.Answer, nil
@@ -44,8 +44,7 @@ type PostSyncDataOptions struct {
 
 // ToHeaders returns the header parameters the options set.
 func (o PostSyncDataOptions) ToHeaders() *client.Headers {
-	out := client.Headers{}
-	return &out
+	return &client.Headers{}
 }
 
 // ToQuery returns the query parameters the options set.

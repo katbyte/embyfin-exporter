@@ -14,8 +14,7 @@ import (
 // GetItemsPrefixes calls GET /Items/Prefixes. Gets items based on a query.
 func (c Client) GetItemsPrefixes(ctx context.Context, options ...emby.GetItemsPrefixesOptions) (result emby.GetItemsPrefixesResponse, err error) {
 	if len(options) > 1 {
-		err = fmt.Errorf("GetItemsPrefixes takes one options struct at most, not %d", len(options))
-		return
+		return result, fmt.Errorf("at most one options struct for GetItemsPrefixes, not %d", len(options))
 	}
 	var option emby.GetItemsPrefixesOptions
 	if len(options) == 1 {
@@ -35,7 +34,7 @@ func (c Client) GetItemsPrefixes(ctx context.Context, options ...emby.GetItemsPr
 
 	req, err := c.Client.NewRequest(ctx, opts)
 	if err != nil {
-		return
+		return result, err
 	}
 
 	var resp *client.Response
@@ -44,16 +43,16 @@ func (c Client) GetItemsPrefixes(ctx context.Context, options ...emby.GetItemsPr
 		result.HttpResponse = resp.Response
 	}
 	if err != nil {
-		return
+		return result, err
 	}
 
 	if resp.StatusCode == http.StatusNoContent {
-		return
+		return result, nil
 	}
 
-	if err = resp.Unmarshal(&result.Answer); err != nil {
-		return
+	if err := resp.Unmarshal(&result.Answer); err != nil {
+		return result, err
 	}
 
-	return
+	return result, nil
 }

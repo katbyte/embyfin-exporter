@@ -31,7 +31,7 @@ func (r GetYearsResponse) Answered() bool { return r.Answer != nil }
 // error when the server answered none.
 func (r GetYearsResponse) Record() (BaseItemDtoQueryResult, error) {
 	if r.Answer == nil {
-		return BaseItemDtoQueryResult{}, errors.New("GetYears answered no BaseItemDtoQueryResult")
+		return BaseItemDtoQueryResult{}, errors.New("no BaseItemDtoQueryResult answered by GetYears")
 	}
 
 	return *r.Answer, nil
@@ -87,8 +87,7 @@ type GetYearsOptions struct {
 
 // ToHeaders returns the header parameters the options set.
 func (o GetYearsOptions) ToHeaders() *client.Headers {
-	out := client.Headers{}
-	return &out
+	return &client.Headers{}
 }
 
 // ToQuery returns the query parameters the options set.

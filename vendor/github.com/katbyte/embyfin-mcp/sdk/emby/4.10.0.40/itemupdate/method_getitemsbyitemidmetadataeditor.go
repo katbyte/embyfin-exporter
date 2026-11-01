@@ -4,7 +4,6 @@ package itemupdate
 
 import (
 	"context"
-	"fmt"
 	"net/http"
 	"net/url"
 
@@ -22,12 +21,12 @@ func (c Client) GetItemsByItemIdMetadataEditor(ctx context.Context, itemId emby.
 		},
 		HTTPMethod: http.MethodGet,
 		Operation:  "GetItemsByItemIdMetadataEditor",
-		Path:       fmt.Sprintf("/Items/%s/MetadataEditor", url.PathEscape(string(itemId))),
+		Path:       "/Items/" + url.PathEscape(string(itemId)) + "/MetadataEditor",
 	}
 
 	req, err := c.Client.NewRequest(ctx, opts)
 	if err != nil {
-		return
+		return result, err
 	}
 
 	var resp *client.Response
@@ -36,19 +35,19 @@ func (c Client) GetItemsByItemIdMetadataEditor(ctx context.Context, itemId emby.
 		result.HttpResponse = resp.Response
 	}
 	if err != nil {
-		return
+		return result, err
 	}
 
 	if resp.StatusCode == http.StatusNoContent {
-		return
+		return result, nil
 	}
 
 	var answer emby.MetadataEditorInfo
 	result.Answer = &answer
-	if err = resp.Unmarshal(result.Answer); err != nil {
-		return
+	if err := resp.Unmarshal(result.Answer); err != nil {
+		return result, err
 	}
 	result.MetadataEditorInfo = result.Answer
 
-	return
+	return result, nil
 }

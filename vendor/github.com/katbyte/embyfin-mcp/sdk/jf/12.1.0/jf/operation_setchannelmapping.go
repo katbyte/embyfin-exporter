@@ -28,7 +28,7 @@ func (r SetChannelMappingResponse) Answered() bool { return r.Answer != nil }
 // error when the server answered none.
 func (r SetChannelMappingResponse) Record() (TunerChannelMapping, error) {
 	if r.Answer == nil {
-		return TunerChannelMapping{}, errors.New("SetChannelMapping answered no TunerChannelMapping")
+		return TunerChannelMapping{}, errors.New("no TunerChannelMapping answered by SetChannelMapping")
 	}
 
 	return *r.Answer, nil

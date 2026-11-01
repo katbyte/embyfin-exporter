@@ -28,7 +28,7 @@ func (r AuthenticateWithQuickConnectResponse) Answered() bool { return r.Answer 
 // error when the server answered none.
 func (r AuthenticateWithQuickConnectResponse) Record() (AuthenticationResult, error) {
 	if r.Answer == nil {
-		return AuthenticationResult{}, errors.New("AuthenticateWithQuickConnect answered no AuthenticationResult")
+		return AuthenticationResult{}, errors.New("no AuthenticationResult answered by AuthenticateWithQuickConnect")
 	}
 
 	return *r.Answer, nil

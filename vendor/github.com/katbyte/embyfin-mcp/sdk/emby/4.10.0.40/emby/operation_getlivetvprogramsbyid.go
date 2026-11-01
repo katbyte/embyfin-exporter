@@ -28,7 +28,7 @@ func (r GetLiveTvProgramsByIdResponse) Answered() bool { return r.Answer != nil 
 // error when the server answered none.
 func (r GetLiveTvProgramsByIdResponse) Record() (BaseItemDto, error) {
 	if r.Answer == nil {
-		return BaseItemDto{}, errors.New("GetLiveTvProgramsById answered no BaseItemDto")
+		return BaseItemDto{}, errors.New("no BaseItemDto answered by GetLiveTvProgramsById")
 	}
 
 	return *r.Answer, nil

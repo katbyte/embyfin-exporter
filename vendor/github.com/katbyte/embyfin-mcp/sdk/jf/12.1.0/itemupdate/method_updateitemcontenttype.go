@@ -16,8 +16,7 @@ import (
 func (c Client) UpdateItemContentType(ctx context.Context, itemId jf.ItemID, contentTypeOption ...string) (result jf.UpdateItemContentTypeResponse, err error) {
 	var option jf.UpdateItemContentTypeOptions
 	if len(contentTypeOption) > 1 {
-		err = fmt.Errorf("UpdateItemContentType takes one contentTypeOption at most, not %d", len(contentTypeOption))
-		return
+		return result, fmt.Errorf("at most one contentTypeOption for UpdateItemContentType, not %d", len(contentTypeOption))
 	}
 	if len(contentTypeOption) == 1 {
 		option.ContentType = contentTypeOption[0]
@@ -30,12 +29,12 @@ func (c Client) UpdateItemContentType(ctx context.Context, itemId jf.ItemID, con
 		HTTPMethod:    http.MethodPost,
 		Operation:     "UpdateItemContentType",
 		OptionsObject: option,
-		Path:          fmt.Sprintf("/Items/%s/ContentType", url.PathEscape(string(itemId))),
+		Path:          "/Items/" + url.PathEscape(string(itemId)) + "/ContentType",
 	}
 
 	req, err := c.Client.NewRequest(ctx, opts)
 	if err != nil {
-		return
+		return result, err
 	}
 
 	var resp *client.Response
@@ -44,8 +43,8 @@ func (c Client) UpdateItemContentType(ctx context.Context, itemId jf.ItemID, con
 		result.HttpResponse = resp.Response
 	}
 	if err != nil {
-		return
+		return result, err
 	}
 
-	return
+	return result, nil
 }

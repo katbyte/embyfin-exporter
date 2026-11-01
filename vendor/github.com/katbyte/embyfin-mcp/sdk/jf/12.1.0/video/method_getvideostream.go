@@ -15,8 +15,7 @@ import (
 // GetVideoStream calls GET /Videos/{itemId}/stream. Gets a video stream.
 func (c Client) GetVideoStream(ctx context.Context, itemId jf.ItemID, options ...jf.GetVideoStreamOptions) (result jf.GetVideoStreamResponse, err error) {
 	if len(options) > 1 {
-		err = fmt.Errorf("GetVideoStream takes one options struct at most, not %d", len(options))
-		return
+		return result, fmt.Errorf("at most one options struct for GetVideoStream, not %d", len(options))
 	}
 	var option jf.GetVideoStreamOptions
 	if len(options) == 1 {
@@ -31,13 +30,13 @@ func (c Client) GetVideoStream(ctx context.Context, itemId jf.ItemID, options ..
 		HTTPMethod:     http.MethodGet,
 		Operation:      "GetVideoStream",
 		OptionsObject:  option,
-		Path:           fmt.Sprintf("/Videos/%s/stream", url.PathEscape(string(itemId))),
+		Path:           "/Videos/" + url.PathEscape(string(itemId)) + "/stream",
 		StreamResponse: true,
 	}
 
 	req, err := c.Client.NewRequest(ctx, opts)
 	if err != nil {
-		return
+		return result, err
 	}
 
 	var resp *client.Response
@@ -46,8 +45,8 @@ func (c Client) GetVideoStream(ctx context.Context, itemId jf.ItemID, options ..
 		result.HttpResponse = resp.Response
 	}
 	if err != nil {
-		return
+		return result, err
 	}
 
-	return
+	return result, nil
 }

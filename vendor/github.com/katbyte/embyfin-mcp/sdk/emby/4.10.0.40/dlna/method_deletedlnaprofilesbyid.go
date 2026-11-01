@@ -4,7 +4,6 @@ package dlna
 
 import (
 	"context"
-	"fmt"
 	"net/http"
 	"net/url"
 
@@ -21,12 +20,12 @@ func (c Client) DeleteDlnaProfilesById(ctx context.Context, id string) (result e
 		},
 		HTTPMethod: http.MethodDelete,
 		Operation:  "DeleteDlnaProfilesById",
-		Path:       fmt.Sprintf("/Dlna/Profiles/%s", url.PathEscape(id)),
+		Path:       "/Dlna/Profiles/" + url.PathEscape(id),
 	}
 
 	req, err := c.Client.NewRequest(ctx, opts)
 	if err != nil {
-		return
+		return result, err
 	}
 
 	var resp *client.Response
@@ -35,8 +34,8 @@ func (c Client) DeleteDlnaProfilesById(ctx context.Context, id string) (result e
 		result.HttpResponse = resp.Response
 	}
 	if err != nil {
-		return
+		return result, err
 	}
 
-	return
+	return result, nil
 }

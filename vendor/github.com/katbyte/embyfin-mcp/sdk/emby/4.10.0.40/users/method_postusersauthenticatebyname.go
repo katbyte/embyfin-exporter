@@ -30,11 +30,11 @@ func (c Client) PostUsersAuthenticateByName(ctx context.Context, input emby.Auth
 
 	req, err := c.Client.NewRequest(ctx, opts)
 	if err != nil {
-		return
+		return result, err
 	}
 
-	if err = req.Marshal(input); err != nil {
-		return
+	if err := req.Marshal(input); err != nil {
+		return result, err
 	}
 
 	var resp *client.Response
@@ -43,19 +43,19 @@ func (c Client) PostUsersAuthenticateByName(ctx context.Context, input emby.Auth
 		result.HttpResponse = resp.Response
 	}
 	if err != nil {
-		return
+		return result, err
 	}
 
 	if resp.StatusCode == http.StatusNoContent {
-		return
+		return result, nil
 	}
 
 	var answer emby.AuthenticationAuthenticationResult
 	result.Answer = &answer
-	if err = resp.Unmarshal(result.Answer); err != nil {
-		return
+	if err := resp.Unmarshal(result.Answer); err != nil {
+		return result, err
 	}
 	result.AuthenticationAuthenticationResult = result.Answer
 
-	return
+	return result, nil
 }

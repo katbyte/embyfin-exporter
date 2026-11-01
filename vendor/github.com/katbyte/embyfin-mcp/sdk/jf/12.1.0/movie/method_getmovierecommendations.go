@@ -14,8 +14,7 @@ import (
 // GetMovieRecommendations calls GET /Movies/Recommendations. Gets movie recommendations.
 func (c Client) GetMovieRecommendations(ctx context.Context, options ...jf.GetMovieRecommendationsOptions) (result jf.GetMovieRecommendationsResponse, err error) {
 	if len(options) > 1 {
-		err = fmt.Errorf("GetMovieRecommendations takes one options struct at most, not %d", len(options))
-		return
+		return result, fmt.Errorf("at most one options struct for GetMovieRecommendations, not %d", len(options))
 	}
 	var option jf.GetMovieRecommendationsOptions
 	if len(options) == 1 {
@@ -34,7 +33,7 @@ func (c Client) GetMovieRecommendations(ctx context.Context, options ...jf.GetMo
 
 	req, err := c.Client.NewRequest(ctx, opts)
 	if err != nil {
-		return
+		return result, err
 	}
 
 	var resp *client.Response
@@ -43,12 +42,12 @@ func (c Client) GetMovieRecommendations(ctx context.Context, options ...jf.GetMo
 		result.HttpResponse = resp.Response
 	}
 	if err != nil {
-		return
+		return result, err
 	}
 
-	if err = resp.Unmarshal(&result.Answer); err != nil {
-		return
+	if err := resp.Unmarshal(&result.Answer); err != nil {
+		return result, err
 	}
 
-	return
+	return result, nil
 }

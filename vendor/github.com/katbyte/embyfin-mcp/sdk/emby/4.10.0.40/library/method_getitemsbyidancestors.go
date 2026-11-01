@@ -16,8 +16,7 @@ import (
 func (c Client) GetItemsByIdAncestors(ctx context.Context, id emby.ItemID, userId ...emby.UserID) (result emby.GetItemsByIdAncestorsResponse, err error) {
 	var option emby.GetItemsByIdAncestorsOptions
 	if len(userId) > 1 {
-		err = fmt.Errorf("GetItemsByIdAncestors takes one userId at most, not %d", len(userId))
-		return
+		return result, fmt.Errorf("at most one userId for GetItemsByIdAncestors, not %d", len(userId))
 	}
 	if len(userId) == 1 {
 		option.UserId = userId[0]
@@ -31,12 +30,12 @@ func (c Client) GetItemsByIdAncestors(ctx context.Context, id emby.ItemID, userI
 		HTTPMethod:    http.MethodGet,
 		Operation:     "GetItemsByIdAncestors",
 		OptionsObject: option,
-		Path:          fmt.Sprintf("/Items/%s/Ancestors", url.PathEscape(string(id))),
+		Path:          "/Items/" + url.PathEscape(string(id)) + "/Ancestors",
 	}
 
 	req, err := c.Client.NewRequest(ctx, opts)
 	if err != nil {
-		return
+		return result, err
 	}
 
 	var resp *client.Response
@@ -45,16 +44,16 @@ func (c Client) GetItemsByIdAncestors(ctx context.Context, id emby.ItemID, userI
 		result.HttpResponse = resp.Response
 	}
 	if err != nil {
-		return
+		return result, err
 	}
 
 	if resp.StatusCode == http.StatusNoContent {
-		return
+		return result, nil
 	}
 
-	if err = resp.Unmarshal(&result.Answer); err != nil {
-		return
+	if err := resp.Unmarshal(&result.Answer); err != nil {
+		return result, err
 	}
 
-	return
+	return result, nil
 }

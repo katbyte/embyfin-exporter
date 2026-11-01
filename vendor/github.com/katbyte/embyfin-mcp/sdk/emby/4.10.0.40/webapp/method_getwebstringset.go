@@ -15,8 +15,7 @@ import (
 func (c Client) GetWebStringset(ctx context.Context, pluginId ...string) (result emby.GetWebStringsetResponse, err error) {
 	var option emby.GetWebStringsetOptions
 	if len(pluginId) > 1 {
-		err = fmt.Errorf("GetWebStringset takes one pluginId at most, not %d", len(pluginId))
-		return
+		return result, fmt.Errorf("at most one pluginId for GetWebStringset, not %d", len(pluginId))
 	}
 	if len(pluginId) == 1 {
 		option.PluginId = pluginId[0]
@@ -35,7 +34,7 @@ func (c Client) GetWebStringset(ctx context.Context, pluginId ...string) (result
 
 	req, err := c.Client.NewRequest(ctx, opts)
 	if err != nil {
-		return
+		return result, err
 	}
 
 	var resp *client.Response
@@ -44,16 +43,16 @@ func (c Client) GetWebStringset(ctx context.Context, pluginId ...string) (result
 		result.HttpResponse = resp.Response
 	}
 	if err != nil {
-		return
+		return result, err
 	}
 
 	if resp.StatusCode == http.StatusNoContent {
-		return
+		return result, nil
 	}
 
-	if err = resp.Unmarshal(&result.Answer); err != nil {
-		return
+	if err := resp.Unmarshal(&result.Answer); err != nil {
+		return result, err
 	}
 
-	return
+	return result, nil
 }

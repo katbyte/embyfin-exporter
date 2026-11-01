@@ -15,8 +15,7 @@ import (
 // RefreshItem calls POST /Items/{itemId}/Refresh. Refreshes metadata for an item.
 func (c Client) RefreshItem(ctx context.Context, itemId jf.ItemID, options ...jf.RefreshItemOptions) (result jf.RefreshItemResponse, err error) {
 	if len(options) > 1 {
-		err = fmt.Errorf("RefreshItem takes one options struct at most, not %d", len(options))
-		return
+		return result, fmt.Errorf("at most one options struct for RefreshItem, not %d", len(options))
 	}
 	var option jf.RefreshItemOptions
 	if len(options) == 1 {
@@ -30,12 +29,12 @@ func (c Client) RefreshItem(ctx context.Context, itemId jf.ItemID, options ...jf
 		HTTPMethod:    http.MethodPost,
 		Operation:     "RefreshItem",
 		OptionsObject: option,
-		Path:          fmt.Sprintf("/Items/%s/Refresh", url.PathEscape(string(itemId))),
+		Path:          "/Items/" + url.PathEscape(string(itemId)) + "/Refresh",
 	}
 
 	req, err := c.Client.NewRequest(ctx, opts)
 	if err != nil {
-		return
+		return result, err
 	}
 
 	var resp *client.Response
@@ -44,8 +43,8 @@ func (c Client) RefreshItem(ctx context.Context, itemId jf.ItemID, options ...jf
 		result.HttpResponse = resp.Response
 	}
 	if err != nil {
-		return
+		return result, err
 	}
 
-	return
+	return result, nil
 }

@@ -15,8 +15,7 @@ import (
 // GetLiveTvChannelTags calls GET /LiveTv/ChannelTags. Gets live tv channel tags.
 func (c Client) GetLiveTvChannelTags(ctx context.Context, options ...emby.GetLiveTvChannelTagsOptions) (result emby.GetLiveTvChannelTagsResponse, err error) {
 	if len(options) > 1 {
-		err = fmt.Errorf("GetLiveTvChannelTags takes one options struct at most, not %d", len(options))
-		return
+		return result, fmt.Errorf("at most one options struct for GetLiveTvChannelTags, not %d", len(options))
 	}
 	var option emby.GetLiveTvChannelTagsOptions
 	if len(options) == 1 {
@@ -37,7 +36,7 @@ func (c Client) GetLiveTvChannelTags(ctx context.Context, options ...emby.GetLiv
 
 	req, err := c.Client.NewRequest(ctx, opts)
 	if err != nil {
-		return
+		return result, err
 	}
 
 	var resp *client.Response
@@ -46,21 +45,21 @@ func (c Client) GetLiveTvChannelTags(ctx context.Context, options ...emby.GetLiv
 		result.HttpResponse = resp.Response
 	}
 	if err != nil {
-		return
+		return result, err
 	}
 
 	if resp.StatusCode == http.StatusNoContent {
-		return
+		return result, nil
 	}
 
 	var answer emby.QueryResultBaseItemDto
 	result.Answer = &answer
-	if err = resp.Unmarshal(result.Answer); err != nil {
-		return
+	if err := resp.Unmarshal(result.Answer); err != nil {
+		return result, err
 	}
 	result.QueryResultBaseItemDto = result.Answer
 
-	return
+	return result, nil
 }
 
 // GetLiveTvChannelTagsComplete calls GetLiveTvChannelTags page by page from options.StartIndex until every
@@ -68,8 +67,7 @@ func (c Client) GetLiveTvChannelTags(ctx context.Context, options ...emby.GetLiv
 // unset.
 func (c Client) GetLiveTvChannelTagsComplete(ctx context.Context, options ...emby.GetLiveTvChannelTagsOptions) (result emby.GetLiveTvChannelTagsCompleteResult, err error) {
 	if len(options) > 1 {
-		err = fmt.Errorf("GetLiveTvChannelTagsComplete takes one options struct at most, not %d", len(options))
-		return
+		return result, fmt.Errorf("at most one options struct for GetLiveTvChannelTagsComplete, not %d", len(options))
 	}
 	var option emby.GetLiveTvChannelTagsOptions
 	if len(options) == 1 {
@@ -82,7 +80,7 @@ func (c Client) GetLiveTvChannelTagsComplete(ctx context.Context, options ...emb
 	}
 	option.Limit = &limit
 	start := 0
-	if option.StartIndex != nil {
+	if option.StartIndex != nil && *option.StartIndex > 0 {
 		start = *option.StartIndex
 	}
 	for {
@@ -90,11 +88,10 @@ func (c Client) GetLiveTvChannelTagsComplete(ctx context.Context, options ...emb
 		page, err = c.GetLiveTvChannelTags(ctx, option)
 		result.LatestHttpResponse = page.HttpResponse
 		if err != nil {
-			err = fmt.Errorf("loading results: %w", err)
-			return
+			return result, fmt.Errorf("loading results: %w", err)
 		}
 		if page.Answer == nil || len(page.Answer.Items) == 0 {
-			return
+			return result, nil
 		}
 		result.Items = append(result.Items, page.Answer.Items...)
 		start += len(page.Answer.Items)
@@ -102,7 +99,7 @@ func (c Client) GetLiveTvChannelTagsComplete(ctx context.Context, options ...emb
 		// a short page is the last; so is reaching the total, when the server
 		// reports one (a list may report 0 whatever it holds)
 		if len(page.Answer.Items) < limit || page.Answer.TotalRecordCount > 0 && start >= page.Answer.TotalRecordCount {
-			return
+			return result, nil
 		}
 	}
 }
@@ -124,7 +121,7 @@ func (c Client) GetLiveTvChannelTagsEach(ctx context.Context, options ...emby.Ge
 	return func(yield func(emby.BaseItemDto, error) bool) {
 		var zero emby.BaseItemDto
 		if len(options) > 1 {
-			yield(zero, fmt.Errorf("GetLiveTvChannelTagsEach takes one options struct at most, not %d", len(options)))
+			yield(zero, fmt.Errorf("at most one options struct for GetLiveTvChannelTagsEach, not %d", len(options)))
 			return
 		}
 		var option emby.GetLiveTvChannelTagsOptions
@@ -138,7 +135,7 @@ func (c Client) GetLiveTvChannelTagsEach(ctx context.Context, options ...emby.Ge
 		}
 		option.Limit = &limit
 		start := 0
-		if option.StartIndex != nil {
+		if option.StartIndex != nil && *option.StartIndex > 0 {
 			start = *option.StartIndex
 		}
 		for {
@@ -150,8 +147,8 @@ func (c Client) GetLiveTvChannelTagsEach(ctx context.Context, options ...emby.Ge
 			if page.Answer == nil || len(page.Answer.Items) == 0 {
 				return
 			}
-			for _, item := range page.Answer.Items {
-				if !yield(item, nil) {
+			for i := range page.Answer.Items {
+				if !yield(page.Answer.Items[i], nil) {
 					return
 				}
 			}

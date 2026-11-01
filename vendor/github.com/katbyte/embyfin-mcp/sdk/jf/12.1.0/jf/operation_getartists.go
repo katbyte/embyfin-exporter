@@ -31,7 +31,7 @@ func (r GetArtistsResponse) Answered() bool { return r.Answer != nil }
 // error when the server answered none.
 func (r GetArtistsResponse) Record() (BaseItemDtoQueryResult, error) {
 	if r.Answer == nil {
-		return BaseItemDtoQueryResult{}, errors.New("GetArtists answered no BaseItemDtoQueryResult")
+		return BaseItemDtoQueryResult{}, errors.New("no BaseItemDtoQueryResult answered by GetArtists")
 	}
 
 	return *r.Answer, nil
@@ -138,8 +138,7 @@ type GetArtistsOptions struct {
 
 // ToHeaders returns the header parameters the options set.
 func (o GetArtistsOptions) ToHeaders() *client.Headers {
-	out := client.Headers{}
-	return &out
+	return &client.Headers{}
 }
 
 // ToQuery returns the query parameters the options set.

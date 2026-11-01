@@ -30,7 +30,7 @@ func (r GetQueryFiltersLegacyResponse) Answered() bool { return r.Answer != nil 
 // error when the server answered none.
 func (r GetQueryFiltersLegacyResponse) Record() (QueryFiltersLegacy, error) {
 	if r.Answer == nil {
-		return QueryFiltersLegacy{}, errors.New("GetQueryFiltersLegacy answered no QueryFiltersLegacy")
+		return QueryFiltersLegacy{}, errors.New("no QueryFiltersLegacy answered by GetQueryFiltersLegacy")
 	}
 
 	return *r.Answer, nil
@@ -53,8 +53,7 @@ type GetQueryFiltersLegacyOptions struct {
 
 // ToHeaders returns the header parameters the options set.
 func (o GetQueryFiltersLegacyOptions) ToHeaders() *client.Headers {
-	out := client.Headers{}
-	return &out
+	return &client.Headers{}
 }
 
 // ToQuery returns the query parameters the options set.

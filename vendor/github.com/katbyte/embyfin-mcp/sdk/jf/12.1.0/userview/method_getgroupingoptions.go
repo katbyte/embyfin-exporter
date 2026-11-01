@@ -15,8 +15,7 @@ import (
 func (c Client) GetGroupingOptions(ctx context.Context, userId ...jf.UserID) (result jf.GetGroupingOptionsResponse, err error) {
 	var option jf.GetGroupingOptionsOptions
 	if len(userId) > 1 {
-		err = fmt.Errorf("GetGroupingOptions takes one userId at most, not %d", len(userId))
-		return
+		return result, fmt.Errorf("at most one userId for GetGroupingOptions, not %d", len(userId))
 	}
 	if len(userId) == 1 {
 		option.UserId = userId[0]
@@ -34,7 +33,7 @@ func (c Client) GetGroupingOptions(ctx context.Context, userId ...jf.UserID) (re
 
 	req, err := c.Client.NewRequest(ctx, opts)
 	if err != nil {
-		return
+		return result, err
 	}
 
 	var resp *client.Response
@@ -43,12 +42,12 @@ func (c Client) GetGroupingOptions(ctx context.Context, userId ...jf.UserID) (re
 		result.HttpResponse = resp.Response
 	}
 	if err != nil {
-		return
+		return result, err
 	}
 
-	if err = resp.Unmarshal(&result.Answer); err != nil {
-		return
+	if err := resp.Unmarshal(&result.Answer); err != nil {
+		return result, err
 	}
 
-	return
+	return result, nil
 }

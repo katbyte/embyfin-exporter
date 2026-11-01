@@ -28,7 +28,7 @@ func (r InitiateQuickConnectResponse) Answered() bool { return r.Answer != nil }
 // error when the server answered none.
 func (r InitiateQuickConnectResponse) Record() (QuickConnectResult, error) {
 	if r.Answer == nil {
-		return QuickConnectResult{}, errors.New("InitiateQuickConnect answered no QuickConnectResult")
+		return QuickConnectResult{}, errors.New("no QuickConnectResult answered by InitiateQuickConnect")
 	}
 
 	return *r.Answer, nil

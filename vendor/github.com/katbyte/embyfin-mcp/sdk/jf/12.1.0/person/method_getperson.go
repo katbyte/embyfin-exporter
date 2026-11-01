@@ -16,8 +16,7 @@ import (
 func (c Client) GetPerson(ctx context.Context, name string, userId ...jf.UserID) (result jf.GetPersonResponse, err error) {
 	var option jf.GetPersonOptions
 	if len(userId) > 1 {
-		err = fmt.Errorf("GetPerson takes one userId at most, not %d", len(userId))
-		return
+		return result, fmt.Errorf("at most one userId for GetPerson, not %d", len(userId))
 	}
 	if len(userId) == 1 {
 		option.UserId = userId[0]
@@ -31,12 +30,12 @@ func (c Client) GetPerson(ctx context.Context, name string, userId ...jf.UserID)
 		HTTPMethod:    http.MethodGet,
 		Operation:     "GetPerson",
 		OptionsObject: option,
-		Path:          fmt.Sprintf("/Persons/%s", url.PathEscape(name)),
+		Path:          "/Persons/" + url.PathEscape(name),
 	}
 
 	req, err := c.Client.NewRequest(ctx, opts)
 	if err != nil {
-		return
+		return result, err
 	}
 
 	var resp *client.Response
@@ -45,15 +44,15 @@ func (c Client) GetPerson(ctx context.Context, name string, userId ...jf.UserID)
 		result.HttpResponse = resp.Response
 	}
 	if err != nil {
-		return
+		return result, err
 	}
 
 	var answer jf.BaseItemDto
 	result.Answer = &answer
-	if err = resp.Unmarshal(result.Answer); err != nil {
-		return
+	if err := resp.Unmarshal(result.Answer); err != nil {
+		return result, err
 	}
 	result.BaseItemDto = result.Answer
 
-	return
+	return result, nil
 }

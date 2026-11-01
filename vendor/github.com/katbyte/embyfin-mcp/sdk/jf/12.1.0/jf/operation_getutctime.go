@@ -28,7 +28,7 @@ func (r GetUtcTimeResponse) Answered() bool { return r.Answer != nil }
 // error when the server answered none.
 func (r GetUtcTimeResponse) Record() (UtcTimeResponse, error) {
 	if r.Answer == nil {
-		return UtcTimeResponse{}, errors.New("GetUtcTime answered no UtcTimeResponse")
+		return UtcTimeResponse{}, errors.New("no UtcTimeResponse answered by GetUtcTime")
 	}
 
 	return *r.Answer, nil

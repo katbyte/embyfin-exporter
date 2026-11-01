@@ -4,7 +4,6 @@ package lyric
 
 import (
 	"context"
-	"fmt"
 	"net/http"
 	"net/url"
 
@@ -20,12 +19,12 @@ func (c Client) DeleteLyrics(ctx context.Context, itemId jf.ItemID) (result jf.D
 		},
 		HTTPMethod: http.MethodDelete,
 		Operation:  "DeleteLyrics",
-		Path:       fmt.Sprintf("/Audio/%s/Lyrics", url.PathEscape(string(itemId))),
+		Path:       "/Audio/" + url.PathEscape(string(itemId)) + "/Lyrics",
 	}
 
 	req, err := c.Client.NewRequest(ctx, opts)
 	if err != nil {
-		return
+		return result, err
 	}
 
 	var resp *client.Response
@@ -34,8 +33,8 @@ func (c Client) DeleteLyrics(ctx context.Context, itemId jf.ItemID) (result jf.D
 		result.HttpResponse = resp.Response
 	}
 	if err != nil {
-		return
+		return result, err
 	}
 
-	return
+	return result, nil
 }

@@ -31,7 +31,7 @@ func (r GetCollectionsByIdMissingResponse) Answered() bool { return r.Answer != 
 // error when the server answered none.
 func (r GetCollectionsByIdMissingResponse) Record() (QueryResultBaseItemDto, error) {
 	if r.Answer == nil {
-		return QueryResultBaseItemDto{}, errors.New("GetCollectionsByIdMissing answered no QueryResultBaseItemDto")
+		return QueryResultBaseItemDto{}, errors.New("no QueryResultBaseItemDto answered by GetCollectionsByIdMissing")
 	}
 
 	return *r.Answer, nil
@@ -429,8 +429,7 @@ type GetCollectionsByIdMissingOptions struct {
 
 // ToHeaders returns the header parameters the options set.
 func (o GetCollectionsByIdMissingOptions) ToHeaders() *client.Headers {
-	out := client.Headers{}
-	return &out
+	return &client.Headers{}
 }
 
 // ToQuery returns the query parameters the options set.

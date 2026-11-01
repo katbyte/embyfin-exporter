@@ -30,7 +30,7 @@ func (r GetDevicesInfoResponse) Answered() bool { return r.Answer != nil }
 // error when the server answered none.
 func (r GetDevicesInfoResponse) Record() (DevicesDeviceInfo, error) {
 	if r.Answer == nil {
-		return DevicesDeviceInfo{}, errors.New("GetDevicesInfo answered no DevicesDeviceInfo")
+		return DevicesDeviceInfo{}, errors.New("no DevicesDeviceInfo answered by GetDevicesInfo")
 	}
 
 	return *r.Answer, nil
@@ -44,8 +44,7 @@ type GetDevicesInfoOptions struct {
 
 // ToHeaders returns the header parameters the options set.
 func (o GetDevicesInfoOptions) ToHeaders() *client.Headers {
-	out := client.Headers{}
-	return &out
+	return &client.Headers{}
 }
 
 // ToQuery returns the query parameters the options set.

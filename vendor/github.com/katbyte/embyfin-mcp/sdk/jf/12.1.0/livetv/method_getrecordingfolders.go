@@ -15,8 +15,7 @@ import (
 func (c Client) GetRecordingFolders(ctx context.Context, userId ...jf.UserID) (result jf.GetRecordingFoldersResponse, err error) {
 	var option jf.GetRecordingFoldersOptions
 	if len(userId) > 1 {
-		err = fmt.Errorf("GetRecordingFolders takes one userId at most, not %d", len(userId))
-		return
+		return result, fmt.Errorf("at most one userId for GetRecordingFolders, not %d", len(userId))
 	}
 	if len(userId) == 1 {
 		option.UserId = userId[0]
@@ -35,7 +34,7 @@ func (c Client) GetRecordingFolders(ctx context.Context, userId ...jf.UserID) (r
 
 	req, err := c.Client.NewRequest(ctx, opts)
 	if err != nil {
-		return
+		return result, err
 	}
 
 	var resp *client.Response
@@ -44,15 +43,15 @@ func (c Client) GetRecordingFolders(ctx context.Context, userId ...jf.UserID) (r
 		result.HttpResponse = resp.Response
 	}
 	if err != nil {
-		return
+		return result, err
 	}
 
 	var answer jf.BaseItemDtoQueryResult
 	result.Answer = &answer
-	if err = resp.Unmarshal(result.Answer); err != nil {
-		return
+	if err := resp.Unmarshal(result.Answer); err != nil {
+		return result, err
 	}
 	result.BaseItemDtoQueryResult = result.Answer
 
-	return
+	return result, nil
 }

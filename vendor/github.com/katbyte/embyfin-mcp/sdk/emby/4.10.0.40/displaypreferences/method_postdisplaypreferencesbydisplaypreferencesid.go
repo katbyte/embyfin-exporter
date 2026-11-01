@@ -4,7 +4,6 @@ package displaypreferences
 
 import (
 	"context"
-	"fmt"
 	"net/http"
 	"net/url"
 
@@ -26,16 +25,16 @@ func (c Client) PostDisplayPreferencesByDisplayPreferencesId(ctx context.Context
 		HTTPMethod:    http.MethodPost,
 		Operation:     "PostDisplayPreferencesByDisplayPreferencesId",
 		OptionsObject: option,
-		Path:          fmt.Sprintf("/DisplayPreferences/%s", url.PathEscape(displayPreferencesId)),
+		Path:          "/DisplayPreferences/" + url.PathEscape(displayPreferencesId),
 	}
 
 	req, err := c.Client.NewRequest(ctx, opts)
 	if err != nil {
-		return
+		return result, err
 	}
 
-	if err = req.Marshal(input); err != nil {
-		return
+	if err := req.Marshal(input); err != nil {
+		return result, err
 	}
 
 	var resp *client.Response
@@ -44,8 +43,8 @@ func (c Client) PostDisplayPreferencesByDisplayPreferencesId(ctx context.Context
 		result.HttpResponse = resp.Response
 	}
 	if err != nil {
-		return
+		return result, err
 	}
 
-	return
+	return result, nil
 }

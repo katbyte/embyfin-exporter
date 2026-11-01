@@ -28,7 +28,7 @@ func (r GetDevicesCameraUploadsResponse) Answered() bool { return r.Answer != ni
 // error when the server answered none.
 func (r GetDevicesCameraUploadsResponse) Record() (DevicesContentUploadHistory, error) {
 	if r.Answer == nil {
-		return DevicesContentUploadHistory{}, errors.New("GetDevicesCameraUploads answered no DevicesContentUploadHistory")
+		return DevicesContentUploadHistory{}, errors.New("no DevicesContentUploadHistory answered by GetDevicesCameraUploads")
 	}
 
 	return *r.Answer, nil

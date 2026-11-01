@@ -4,7 +4,6 @@ package playlist
 
 import (
 	"context"
-	"fmt"
 	"net/http"
 	"net/url"
 
@@ -21,12 +20,12 @@ func (c Client) GetPlaylist(ctx context.Context, playlistId jf.ItemID) (result j
 		},
 		HTTPMethod: http.MethodGet,
 		Operation:  "GetPlaylist",
-		Path:       fmt.Sprintf("/Playlists/%s", url.PathEscape(string(playlistId))),
+		Path:       "/Playlists/" + url.PathEscape(string(playlistId)),
 	}
 
 	req, err := c.Client.NewRequest(ctx, opts)
 	if err != nil {
-		return
+		return result, err
 	}
 
 	var resp *client.Response
@@ -35,15 +34,15 @@ func (c Client) GetPlaylist(ctx context.Context, playlistId jf.ItemID) (result j
 		result.HttpResponse = resp.Response
 	}
 	if err != nil {
-		return
+		return result, err
 	}
 
 	var answer jf.PlaylistDto
 	result.Answer = &answer
-	if err = resp.Unmarshal(result.Answer); err != nil {
-		return
+	if err := resp.Unmarshal(result.Answer); err != nil {
+		return result, err
 	}
 	result.PlaylistDto = result.Answer
 
-	return
+	return result, nil
 }

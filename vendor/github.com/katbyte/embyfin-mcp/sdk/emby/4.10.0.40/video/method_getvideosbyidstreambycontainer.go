@@ -15,8 +15,7 @@ import (
 // GetVideosByIdStreamByContainer calls GET /Videos/{Id}/stream.{Container}. Gets a video stream.
 func (c Client) GetVideosByIdStreamByContainer(ctx context.Context, id emby.ItemID, container string, options ...emby.GetVideosByIdStreamByContainerOptions) (result emby.GetVideosByIdStreamByContainerResponse, err error) {
 	if len(options) > 1 {
-		err = fmt.Errorf("GetVideosByIdStreamByContainer takes one options struct at most, not %d", len(options))
-		return
+		return result, fmt.Errorf("at most one options struct for GetVideosByIdStreamByContainer, not %d", len(options))
 	}
 	var option emby.GetVideosByIdStreamByContainerOptions
 	if len(options) == 1 {
@@ -31,13 +30,13 @@ func (c Client) GetVideosByIdStreamByContainer(ctx context.Context, id emby.Item
 		HTTPMethod:     http.MethodGet,
 		Operation:      "GetVideosByIdStreamByContainer",
 		OptionsObject:  option,
-		Path:           fmt.Sprintf("/Videos/%s/stream.%s", url.PathEscape(string(id)), url.PathEscape(container)),
+		Path:           "/Videos/" + url.PathEscape(string(id)) + "/stream." + url.PathEscape(container),
 		StreamResponse: true,
 	}
 
 	req, err := c.Client.NewRequest(ctx, opts)
 	if err != nil {
-		return
+		return result, err
 	}
 
 	var resp *client.Response
@@ -46,8 +45,8 @@ func (c Client) GetVideosByIdStreamByContainer(ctx context.Context, id emby.Item
 		result.HttpResponse = resp.Response
 	}
 	if err != nil {
-		return
+		return result, err
 	}
 
-	return
+	return result, nil
 }

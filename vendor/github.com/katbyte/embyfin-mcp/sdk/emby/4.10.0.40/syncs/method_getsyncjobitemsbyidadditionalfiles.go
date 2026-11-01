@@ -4,7 +4,6 @@ package syncs
 
 import (
 	"context"
-	"fmt"
 	"net/http"
 	"net/url"
 
@@ -13,7 +12,7 @@ import (
 )
 
 // GetSyncJobItemsByIdAdditionalFiles calls GET /Sync/JobItems/{Id}/AdditionalFiles. Gets a sync job item file.
-func (c Client) GetSyncJobItemsByIdAdditionalFiles(ctx context.Context, id string, name string) (result emby.GetSyncJobItemsByIdAdditionalFilesResponse, err error) {
+func (c Client) GetSyncJobItemsByIdAdditionalFiles(ctx context.Context, id, name string) (result emby.GetSyncJobItemsByIdAdditionalFilesResponse, err error) {
 	var option emby.GetSyncJobItemsByIdAdditionalFilesOptions
 	option.Name = name
 
@@ -25,13 +24,13 @@ func (c Client) GetSyncJobItemsByIdAdditionalFiles(ctx context.Context, id strin
 		HTTPMethod:     http.MethodGet,
 		Operation:      "GetSyncJobItemsByIdAdditionalFiles",
 		OptionsObject:  option,
-		Path:           fmt.Sprintf("/Sync/JobItems/%s/AdditionalFiles", url.PathEscape(id)),
+		Path:           "/Sync/JobItems/" + url.PathEscape(id) + "/AdditionalFiles",
 		StreamResponse: true,
 	}
 
 	req, err := c.Client.NewRequest(ctx, opts)
 	if err != nil {
-		return
+		return result, err
 	}
 
 	var resp *client.Response
@@ -40,8 +39,8 @@ func (c Client) GetSyncJobItemsByIdAdditionalFiles(ctx context.Context, id strin
 		result.HttpResponse = resp.Response
 	}
 	if err != nil {
-		return
+		return result, err
 	}
 
-	return
+	return result, nil
 }

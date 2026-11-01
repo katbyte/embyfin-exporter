@@ -28,7 +28,7 @@ func (r ForgotPasswordPinResponse) Answered() bool { return r.Answer != nil }
 // error when the server answered none.
 func (r ForgotPasswordPinResponse) Record() (PinRedeemResult, error) {
 	if r.Answer == nil {
-		return PinRedeemResult{}, errors.New("ForgotPasswordPin answered no PinRedeemResult")
+		return PinRedeemResult{}, errors.New("no PinRedeemResult answered by ForgotPasswordPin")
 	}
 
 	return *r.Answer, nil

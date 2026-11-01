@@ -4,7 +4,6 @@ package session
 
 import (
 	"context"
-	"fmt"
 	"net/http"
 	"net/url"
 
@@ -20,12 +19,12 @@ func (c Client) AddUserToSession(ctx context.Context, sessionId jf.SessionID, us
 		},
 		HTTPMethod: http.MethodPost,
 		Operation:  "AddUserToSession",
-		Path:       fmt.Sprintf("/Sessions/%s/User/%s", url.PathEscape(string(sessionId)), url.PathEscape(string(userId))),
+		Path:       "/Sessions/" + url.PathEscape(string(sessionId)) + "/User/" + url.PathEscape(string(userId)),
 	}
 
 	req, err := c.Client.NewRequest(ctx, opts)
 	if err != nil {
-		return
+		return result, err
 	}
 
 	var resp *client.Response
@@ -34,8 +33,8 @@ func (c Client) AddUserToSession(ctx context.Context, sessionId jf.SessionID, us
 		result.HttpResponse = resp.Response
 	}
 	if err != nil {
-		return
+		return result, err
 	}
 
-	return
+	return result, nil
 }

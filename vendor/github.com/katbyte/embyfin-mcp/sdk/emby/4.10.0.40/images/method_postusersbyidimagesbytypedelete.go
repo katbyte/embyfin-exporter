@@ -16,8 +16,7 @@ import (
 func (c Client) PostUsersByIdImagesByTypeDelete(ctx context.Context, id emby.UserID, typeParam emby.ImageType, index ...int) (result emby.PostUsersByIdImagesByTypeDeleteResponse, err error) {
 	var option emby.PostUsersByIdImagesByTypeDeleteOptions
 	if len(index) > 1 {
-		err = fmt.Errorf("PostUsersByIdImagesByTypeDelete takes one index at most, not %d", len(index))
-		return
+		return result, fmt.Errorf("at most one index for PostUsersByIdImagesByTypeDelete, not %d", len(index))
 	}
 	if len(index) == 1 {
 		option.Index = &index[0]
@@ -31,12 +30,12 @@ func (c Client) PostUsersByIdImagesByTypeDelete(ctx context.Context, id emby.Use
 		HTTPMethod:    http.MethodPost,
 		Operation:     "PostUsersByIdImagesByTypeDelete",
 		OptionsObject: option,
-		Path:          fmt.Sprintf("/Users/%s/Images/%s/Delete", url.PathEscape(string(id)), url.PathEscape(string(typeParam))),
+		Path:          "/Users/" + url.PathEscape(string(id)) + "/Images/" + url.PathEscape(string(typeParam)) + "/Delete",
 	}
 
 	req, err := c.Client.NewRequest(ctx, opts)
 	if err != nil {
-		return
+		return result, err
 	}
 
 	var resp *client.Response
@@ -45,8 +44,8 @@ func (c Client) PostUsersByIdImagesByTypeDelete(ctx context.Context, id emby.Use
 		result.HttpResponse = resp.Response
 	}
 	if err != nil {
-		return
+		return result, err
 	}
 
-	return
+	return result, nil
 }

@@ -15,8 +15,7 @@ import (
 func (c Client) PostUpdatedSeries(ctx context.Context, tvdbId ...string) (result jf.PostUpdatedSeriesResponse, err error) {
 	var option jf.PostUpdatedSeriesOptions
 	if len(tvdbId) > 1 {
-		err = fmt.Errorf("PostUpdatedSeries takes one tvdbId at most, not %d", len(tvdbId))
-		return
+		return result, fmt.Errorf("at most one tvdbId for PostUpdatedSeries, not %d", len(tvdbId))
 	}
 	if len(tvdbId) == 1 {
 		option.TvdbId = tvdbId[0]
@@ -34,7 +33,7 @@ func (c Client) PostUpdatedSeries(ctx context.Context, tvdbId ...string) (result
 
 	req, err := c.Client.NewRequest(ctx, opts)
 	if err != nil {
-		return
+		return result, err
 	}
 
 	var resp *client.Response
@@ -43,8 +42,8 @@ func (c Client) PostUpdatedSeries(ctx context.Context, tvdbId ...string) (result
 		result.HttpResponse = resp.Response
 	}
 	if err != nil {
-		return
+		return result, err
 	}
 
-	return
+	return result, nil
 }

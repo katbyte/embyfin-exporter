@@ -31,7 +31,7 @@ func (r GetStudiosResponse) Answered() bool { return r.Answer != nil }
 // error when the server answered none.
 func (r GetStudiosResponse) Record() (BaseItemDtoQueryResult, error) {
 	if r.Answer == nil {
-		return BaseItemDtoQueryResult{}, errors.New("GetStudios answered no BaseItemDtoQueryResult")
+		return BaseItemDtoQueryResult{}, errors.New("no BaseItemDtoQueryResult answered by GetStudios")
 	}
 
 	return *r.Answer, nil
@@ -93,8 +93,7 @@ type GetStudiosOptions struct {
 
 // ToHeaders returns the header parameters the options set.
 func (o GetStudiosOptions) ToHeaders() *client.Headers {
-	out := client.Headers{}
-	return &out
+	return &client.Headers{}
 }
 
 // ToQuery returns the query parameters the options set.

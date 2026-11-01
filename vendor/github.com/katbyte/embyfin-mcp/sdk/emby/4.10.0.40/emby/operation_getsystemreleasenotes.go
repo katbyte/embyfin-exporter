@@ -28,7 +28,7 @@ func (r GetSystemReleaseNotesResponse) Answered() bool { return r.Answer != nil 
 // error when the server answered none.
 func (r GetSystemReleaseNotesResponse) Record() (PackageVersionInfo, error) {
 	if r.Answer == nil {
-		return PackageVersionInfo{}, errors.New("GetSystemReleaseNotes answered no PackageVersionInfo")
+		return PackageVersionInfo{}, errors.New("no PackageVersionInfo answered by GetSystemReleaseNotes")
 	}
 
 	return *r.Answer, nil

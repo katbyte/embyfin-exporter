@@ -31,7 +31,7 @@ func (r GetAudioLayoutsResponse) Answered() bool { return r.Answer != nil }
 // error when the server answered none.
 func (r GetAudioLayoutsResponse) Record() (QueryResultUserLibraryTagItem, error) {
 	if r.Answer == nil {
-		return QueryResultUserLibraryTagItem{}, errors.New("GetAudioLayouts answered no QueryResultUserLibraryTagItem")
+		return QueryResultUserLibraryTagItem{}, errors.New("no QueryResultUserLibraryTagItem answered by GetAudioLayouts")
 	}
 
 	return *r.Answer, nil
@@ -429,8 +429,7 @@ type GetAudioLayoutsOptions struct {
 
 // ToHeaders returns the header parameters the options set.
 func (o GetAudioLayoutsOptions) ToHeaders() *client.Headers {
-	out := client.Headers{}
-	return &out
+	return &client.Headers{}
 }
 
 // ToQuery returns the query parameters the options set.

@@ -15,8 +15,7 @@ import (
 // PostPackagesInstalledByName calls POST /Packages/Installed/{Name}. Installs a package.
 func (c Client) PostPackagesInstalledByName(ctx context.Context, name string, options ...emby.PostPackagesInstalledByNameOptions) (result emby.PostPackagesInstalledByNameResponse, err error) {
 	if len(options) > 1 {
-		err = fmt.Errorf("PostPackagesInstalledByName takes one options struct at most, not %d", len(options))
-		return
+		return result, fmt.Errorf("at most one options struct for PostPackagesInstalledByName, not %d", len(options))
 	}
 	var option emby.PostPackagesInstalledByNameOptions
 	if len(options) == 1 {
@@ -31,12 +30,12 @@ func (c Client) PostPackagesInstalledByName(ctx context.Context, name string, op
 		HTTPMethod:    http.MethodPost,
 		Operation:     "PostPackagesInstalledByName",
 		OptionsObject: option,
-		Path:          fmt.Sprintf("/Packages/Installed/%s", url.PathEscape(name)),
+		Path:          "/Packages/Installed/" + url.PathEscape(name),
 	}
 
 	req, err := c.Client.NewRequest(ctx, opts)
 	if err != nil {
-		return
+		return result, err
 	}
 
 	var resp *client.Response
@@ -45,8 +44,8 @@ func (c Client) PostPackagesInstalledByName(ctx context.Context, name string, op
 		result.HttpResponse = resp.Response
 	}
 	if err != nil {
-		return
+		return result, err
 	}
 
-	return
+	return result, nil
 }

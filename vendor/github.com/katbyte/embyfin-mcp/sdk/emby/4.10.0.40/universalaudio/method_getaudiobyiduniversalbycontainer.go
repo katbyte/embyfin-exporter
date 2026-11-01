@@ -15,8 +15,7 @@ import (
 // GetAudioByIdUniversalByContainer calls GET /Audio/{Id}/universal.{Container}. Gets an audio stream.
 func (c Client) GetAudioByIdUniversalByContainer(ctx context.Context, id emby.ItemID, container string, options ...emby.GetAudioByIdUniversalByContainerOptions) (result emby.GetAudioByIdUniversalByContainerResponse, err error) {
 	if len(options) > 1 {
-		err = fmt.Errorf("GetAudioByIdUniversalByContainer takes one options struct at most, not %d", len(options))
-		return
+		return result, fmt.Errorf("at most one options struct for GetAudioByIdUniversalByContainer, not %d", len(options))
 	}
 	var option emby.GetAudioByIdUniversalByContainerOptions
 	if len(options) == 1 {
@@ -31,13 +30,13 @@ func (c Client) GetAudioByIdUniversalByContainer(ctx context.Context, id emby.It
 		HTTPMethod:     http.MethodGet,
 		Operation:      "GetAudioByIdUniversalByContainer",
 		OptionsObject:  option,
-		Path:           fmt.Sprintf("/Audio/%s/universal.%s", url.PathEscape(string(id)), url.PathEscape(container)),
+		Path:           "/Audio/" + url.PathEscape(string(id)) + "/universal." + url.PathEscape(container),
 		StreamResponse: true,
 	}
 
 	req, err := c.Client.NewRequest(ctx, opts)
 	if err != nil {
-		return
+		return result, err
 	}
 
 	var resp *client.Response
@@ -46,8 +45,8 @@ func (c Client) GetAudioByIdUniversalByContainer(ctx context.Context, id emby.It
 		result.HttpResponse = resp.Response
 	}
 	if err != nil {
-		return
+		return result, err
 	}
 
-	return
+	return result, nil
 }

@@ -31,7 +31,7 @@ func (r AddListingProviderResponse) Answered() bool { return r.Answer != nil }
 // error when the server answered none.
 func (r AddListingProviderResponse) Record() (ListingsProviderInfo, error) {
 	if r.Answer == nil {
-		return ListingsProviderInfo{}, errors.New("AddListingProvider answered no ListingsProviderInfo")
+		return ListingsProviderInfo{}, errors.New("no ListingsProviderInfo answered by AddListingProvider")
 	}
 
 	return *r.Answer, nil
@@ -51,8 +51,7 @@ type AddListingProviderOptions struct {
 
 // ToHeaders returns the header parameters the options set.
 func (o AddListingProviderOptions) ToHeaders() *client.Headers {
-	out := client.Headers{}
-	return &out
+	return &client.Headers{}
 }
 
 // ToQuery returns the query parameters the options set.

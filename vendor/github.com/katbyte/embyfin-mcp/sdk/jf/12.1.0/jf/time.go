@@ -46,8 +46,7 @@ func (t Time) MarshalJSON() ([]byte, error) {
 func (t *Time) UnmarshalJSON(data []byte) error {
 	parsed, err := client.ParseTime(data, timeLayouts)
 	if err != nil {
-		var unread *client.UnreadDateError
-		if errors.As(err, &unread) {
+		if unread, ok := errors.AsType[*client.UnreadDateError](err); ok {
 			// a date no layout reads is kept as its text and held as zero (KeepUnread)
 			t.Unread = unread.Text
 

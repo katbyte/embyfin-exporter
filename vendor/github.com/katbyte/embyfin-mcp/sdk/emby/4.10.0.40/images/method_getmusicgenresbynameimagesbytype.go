@@ -15,8 +15,7 @@ import (
 // GetMusicGenresByNameImagesByType calls GET /MusicGenres/{Name}/Images/{Type}. Requires authentication as user.
 func (c Client) GetMusicGenresByNameImagesByType(ctx context.Context, name string, typeParam emby.ImageType, options ...emby.GetMusicGenresByNameImagesByTypeOptions) (result emby.GetMusicGenresByNameImagesByTypeResponse, err error) {
 	if len(options) > 1 {
-		err = fmt.Errorf("GetMusicGenresByNameImagesByType takes one options struct at most, not %d", len(options))
-		return
+		return result, fmt.Errorf("at most one options struct for GetMusicGenresByNameImagesByType, not %d", len(options))
 	}
 	var option emby.GetMusicGenresByNameImagesByTypeOptions
 	if len(options) == 1 {
@@ -31,13 +30,13 @@ func (c Client) GetMusicGenresByNameImagesByType(ctx context.Context, name strin
 		HTTPMethod:     http.MethodGet,
 		Operation:      "GetMusicGenresByNameImagesByType",
 		OptionsObject:  option,
-		Path:           fmt.Sprintf("/MusicGenres/%s/Images/%s", url.PathEscape(name), url.PathEscape(string(typeParam))),
+		Path:           "/MusicGenres/" + url.PathEscape(name) + "/Images/" + url.PathEscape(string(typeParam)),
 		StreamResponse: true,
 	}
 
 	req, err := c.Client.NewRequest(ctx, opts)
 	if err != nil {
-		return
+		return result, err
 	}
 
 	var resp *client.Response
@@ -46,8 +45,8 @@ func (c Client) GetMusicGenresByNameImagesByType(ctx context.Context, name strin
 		result.HttpResponse = resp.Response
 	}
 	if err != nil {
-		return
+		return result, err
 	}
 
-	return
+	return result, nil
 }

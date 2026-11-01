@@ -30,7 +30,7 @@ func (r GetChannelResponse) Answered() bool { return r.Answer != nil }
 // error when the server answered none.
 func (r GetChannelResponse) Record() (BaseItemDto, error) {
 	if r.Answer == nil {
-		return BaseItemDto{}, errors.New("GetChannel answered no BaseItemDto")
+		return BaseItemDto{}, errors.New("no BaseItemDto answered by GetChannel")
 	}
 
 	return *r.Answer, nil
@@ -44,8 +44,7 @@ type GetChannelOptions struct {
 
 // ToHeaders returns the header parameters the options set.
 func (o GetChannelOptions) ToHeaders() *client.Headers {
-	out := client.Headers{}
-	return &out
+	return &client.Headers{}
 }
 
 // ToQuery returns the query parameters the options set.

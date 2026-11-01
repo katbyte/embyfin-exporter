@@ -3,10 +3,10 @@ module github.com/katbyte/embyfin-exporter
 go 1.27.0
 
 require (
-	github.com/gookit/color v1.6.1
-	github.com/katbyte/embyfin-mcp v0.9.0
-	github.com/katbyte/go-kt v0.9.0
-	github.com/katbyte/pandorest v0.11.0
+	github.com/gookit/color v1.6.3
+	github.com/katbyte/embyfin-mcp v0.10.2
+	github.com/katbyte/go-kt v0.9.1
+	github.com/katbyte/pandorest v0.13.2
 	github.com/prometheus/client_golang v1.25.0
 	github.com/sirupsen/logrus v1.10.2
 	github.com/spf13/cobra v1.10.2

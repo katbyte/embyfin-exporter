@@ -4,7 +4,6 @@ package plugins
 
 import (
 	"context"
-	"fmt"
 	"net/http"
 	"net/url"
 
@@ -13,19 +12,19 @@ import (
 )
 
 // DisablePlugin calls POST /Plugins/{pluginId}/{version}/Disable. Disable a plugin.
-func (c Client) DisablePlugin(ctx context.Context, pluginId string, version string) (result jf.DisablePluginResponse, err error) {
+func (c Client) DisablePlugin(ctx context.Context, pluginId, version string) (result jf.DisablePluginResponse, err error) {
 	opts := client.RequestOptions{
 		ExpectedStatusCodes: []int{
 			http.StatusNoContent,
 		},
 		HTTPMethod: http.MethodPost,
 		Operation:  "DisablePlugin",
-		Path:       fmt.Sprintf("/Plugins/%s/%s/Disable", url.PathEscape(pluginId), url.PathEscape(version)),
+		Path:       "/Plugins/" + url.PathEscape(pluginId) + "/" + url.PathEscape(version) + "/Disable",
 	}
 
 	req, err := c.Client.NewRequest(ctx, opts)
 	if err != nil {
-		return
+		return result, err
 	}
 
 	var resp *client.Response
@@ -34,8 +33,8 @@ func (c Client) DisablePlugin(ctx context.Context, pluginId string, version stri
 		result.HttpResponse = resp.Response
 	}
 	if err != nil {
-		return
+		return result, err
 	}
 
-	return
+	return result, nil
 }

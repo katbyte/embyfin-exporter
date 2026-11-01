@@ -31,7 +31,7 @@ func (r GetLogEntriesResponse) Answered() bool { return r.Answer != nil }
 // error when the server answered none.
 func (r GetLogEntriesResponse) Record() (ActivityLogEntryQueryResult, error) {
 	if r.Answer == nil {
-		return ActivityLogEntryQueryResult{}, errors.New("GetLogEntries answered no ActivityLogEntryQueryResult")
+		return ActivityLogEntryQueryResult{}, errors.New("no ActivityLogEntryQueryResult answered by GetLogEntries")
 	}
 
 	return *r.Answer, nil
@@ -84,8 +84,7 @@ type GetLogEntriesOptions struct {
 
 // ToHeaders returns the header parameters the options set.
 func (o GetLogEntriesOptions) ToHeaders() *client.Headers {
-	out := client.Headers{}
-	return &out
+	return &client.Headers{}
 }
 
 // ToQuery returns the query parameters the options set.

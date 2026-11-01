@@ -30,7 +30,7 @@ func (r GetLiveTvTimersDefaultsResponse) Answered() bool { return r.Answer != ni
 // error when the server answered none.
 func (r GetLiveTvTimersDefaultsResponse) Record() (LiveTvSeriesTimerInfoDto, error) {
 	if r.Answer == nil {
-		return LiveTvSeriesTimerInfoDto{}, errors.New("GetLiveTvTimersDefaults answered no LiveTvSeriesTimerInfoDto")
+		return LiveTvSeriesTimerInfoDto{}, errors.New("no LiveTvSeriesTimerInfoDto answered by GetLiveTvTimersDefaults")
 	}
 
 	return *r.Answer, nil
@@ -44,8 +44,7 @@ type GetLiveTvTimersDefaultsOptions struct {
 
 // ToHeaders returns the header parameters the options set.
 func (o GetLiveTvTimersDefaultsOptions) ToHeaders() *client.Headers {
-	out := client.Headers{}
-	return &out
+	return &client.Headers{}
 }
 
 // ToQuery returns the query parameters the options set.

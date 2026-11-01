@@ -16,8 +16,7 @@ import (
 func (c Client) PostUsersByUserIdPlayedItemsById(ctx context.Context, userId emby.UserID, id emby.ItemID, datePlayed ...string) (result emby.PostUsersByUserIdPlayedItemsByIdResponse, err error) {
 	var option emby.PostUsersByUserIdPlayedItemsByIdOptions
 	if len(datePlayed) > 1 {
-		err = fmt.Errorf("PostUsersByUserIdPlayedItemsById takes one datePlayed at most, not %d", len(datePlayed))
-		return
+		return result, fmt.Errorf("at most one datePlayed for PostUsersByUserIdPlayedItemsById, not %d", len(datePlayed))
 	}
 	if len(datePlayed) == 1 {
 		option.DatePlayed = datePlayed[0]
@@ -32,12 +31,12 @@ func (c Client) PostUsersByUserIdPlayedItemsById(ctx context.Context, userId emb
 		HTTPMethod:    http.MethodPost,
 		Operation:     "PostUsersByUserIdPlayedItemsById",
 		OptionsObject: option,
-		Path:          fmt.Sprintf("/Users/%s/PlayedItems/%s", url.PathEscape(string(userId)), url.PathEscape(string(id))),
+		Path:          "/Users/" + url.PathEscape(string(userId)) + "/PlayedItems/" + url.PathEscape(string(id)),
 	}
 
 	req, err := c.Client.NewRequest(ctx, opts)
 	if err != nil {
-		return
+		return result, err
 	}
 
 	var resp *client.Response
@@ -46,19 +45,19 @@ func (c Client) PostUsersByUserIdPlayedItemsById(ctx context.Context, userId emb
 		result.HttpResponse = resp.Response
 	}
 	if err != nil {
-		return
+		return result, err
 	}
 
 	if resp.StatusCode == http.StatusNoContent {
-		return
+		return result, nil
 	}
 
 	var answer emby.UserItemDataDto
 	result.Answer = &answer
-	if err = resp.Unmarshal(result.Answer); err != nil {
-		return
+	if err := resp.Unmarshal(result.Answer); err != nil {
+		return result, err
 	}
 	result.UserItemDataDto = result.Answer
 
-	return
+	return result, nil
 }

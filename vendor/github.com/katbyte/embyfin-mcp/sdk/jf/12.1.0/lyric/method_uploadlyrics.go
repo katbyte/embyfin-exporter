@@ -4,7 +4,6 @@ package lyric
 
 import (
 	"context"
-	"fmt"
 	"io"
 	"net/http"
 	"net/url"
@@ -16,7 +15,7 @@ import (
 // UploadLyrics calls POST /Audio/{itemId}/Lyrics. Upload an external lyric file.
 //
 // input is sent as contentType, or as text/plain when that is empty.
-func (c Client) UploadLyrics(ctx context.Context, itemId jf.ItemID, input io.Reader, contentType string, fileName string) (result jf.UploadLyricsResponse, err error) {
+func (c Client) UploadLyrics(ctx context.Context, itemId jf.ItemID, input io.Reader, contentType, fileName string) (result jf.UploadLyricsResponse, err error) {
 	var option jf.UploadLyricsOptions
 	option.FileName = fileName
 
@@ -29,16 +28,16 @@ func (c Client) UploadLyrics(ctx context.Context, itemId jf.ItemID, input io.Rea
 		HTTPMethod:    http.MethodPost,
 		Operation:     "UploadLyrics",
 		OptionsObject: option,
-		Path:          fmt.Sprintf("/Audio/%s/Lyrics", url.PathEscape(string(itemId))),
+		Path:          "/Audio/" + url.PathEscape(string(itemId)) + "/Lyrics",
 	}
 
 	req, err := c.Client.NewRequest(ctx, opts)
 	if err != nil {
-		return
+		return result, err
 	}
 
-	if err = req.SetBody(input, contentType); err != nil {
-		return
+	if err := req.SetBody(input, contentType); err != nil {
+		return result, err
 	}
 
 	var resp *client.Response
@@ -47,15 +46,15 @@ func (c Client) UploadLyrics(ctx context.Context, itemId jf.ItemID, input io.Rea
 		result.HttpResponse = resp.Response
 	}
 	if err != nil {
-		return
+		return result, err
 	}
 
 	var answer jf.LyricDto
 	result.Answer = &answer
-	if err = resp.Unmarshal(result.Answer); err != nil {
-		return
+	if err := resp.Unmarshal(result.Answer); err != nil {
+		return result, err
 	}
 	result.LyricDto = result.Answer
 
-	return
+	return result, nil
 }

@@ -28,7 +28,7 @@ func (r GetConfigurationResponse) Answered() bool { return r.Answer != nil }
 // error when the server answered none.
 func (r GetConfigurationResponse) Record() (ServerConfiguration, error) {
 	if r.Answer == nil {
-		return ServerConfiguration{}, errors.New("GetConfiguration answered no ServerConfiguration")
+		return ServerConfiguration{}, errors.New("no ServerConfiguration answered by GetConfiguration")
 	}
 
 	return *r.Answer, nil

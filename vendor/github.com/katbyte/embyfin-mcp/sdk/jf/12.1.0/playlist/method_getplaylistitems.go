@@ -16,8 +16,7 @@ import (
 // GetPlaylistItems calls GET /Playlists/{playlistId}/Items. Gets the original items of a playlist.
 func (c Client) GetPlaylistItems(ctx context.Context, playlistId jf.ItemID, options ...jf.GetPlaylistItemsOptions) (result jf.GetPlaylistItemsResponse, err error) {
 	if len(options) > 1 {
-		err = fmt.Errorf("GetPlaylistItems takes one options struct at most, not %d", len(options))
-		return
+		return result, fmt.Errorf("at most one options struct for GetPlaylistItems, not %d", len(options))
 	}
 	var option jf.GetPlaylistItemsOptions
 	if len(options) == 1 {
@@ -32,12 +31,12 @@ func (c Client) GetPlaylistItems(ctx context.Context, playlistId jf.ItemID, opti
 		HTTPMethod:    http.MethodGet,
 		Operation:     "GetPlaylistItems",
 		OptionsObject: option,
-		Path:          fmt.Sprintf("/Playlists/%s/Items", url.PathEscape(string(playlistId))),
+		Path:          "/Playlists/" + url.PathEscape(string(playlistId)) + "/Items",
 	}
 
 	req, err := c.Client.NewRequest(ctx, opts)
 	if err != nil {
-		return
+		return result, err
 	}
 
 	var resp *client.Response
@@ -46,17 +45,17 @@ func (c Client) GetPlaylistItems(ctx context.Context, playlistId jf.ItemID, opti
 		result.HttpResponse = resp.Response
 	}
 	if err != nil {
-		return
+		return result, err
 	}
 
 	var answer jf.BaseItemDtoQueryResult
 	result.Answer = &answer
-	if err = resp.Unmarshal(result.Answer); err != nil {
-		return
+	if err := resp.Unmarshal(result.Answer); err != nil {
+		return result, err
 	}
 	result.BaseItemDtoQueryResult = result.Answer
 
-	return
+	return result, nil
 }
 
 // GetPlaylistItemsComplete calls GetPlaylistItems page by page from options.StartIndex until every
@@ -64,8 +63,7 @@ func (c Client) GetPlaylistItems(ctx context.Context, playlistId jf.ItemID, opti
 // unset.
 func (c Client) GetPlaylistItemsComplete(ctx context.Context, playlistId jf.ItemID, options ...jf.GetPlaylistItemsOptions) (result jf.GetPlaylistItemsCompleteResult, err error) {
 	if len(options) > 1 {
-		err = fmt.Errorf("GetPlaylistItemsComplete takes one options struct at most, not %d", len(options))
-		return
+		return result, fmt.Errorf("at most one options struct for GetPlaylistItemsComplete, not %d", len(options))
 	}
 	var option jf.GetPlaylistItemsOptions
 	if len(options) == 1 {
@@ -78,7 +76,7 @@ func (c Client) GetPlaylistItemsComplete(ctx context.Context, playlistId jf.Item
 	}
 	option.Limit = &limit
 	start := 0
-	if option.StartIndex != nil {
+	if option.StartIndex != nil && *option.StartIndex > 0 {
 		start = *option.StartIndex
 	}
 	for {
@@ -86,11 +84,10 @@ func (c Client) GetPlaylistItemsComplete(ctx context.Context, playlistId jf.Item
 		page, err = c.GetPlaylistItems(ctx, playlistId, option)
 		result.LatestHttpResponse = page.HttpResponse
 		if err != nil {
-			err = fmt.Errorf("loading results: %w", err)
-			return
+			return result, fmt.Errorf("loading results: %w", err)
 		}
 		if page.Answer == nil || len(page.Answer.Items) == 0 {
-			return
+			return result, nil
 		}
 		result.Items = append(result.Items, page.Answer.Items...)
 		start += len(page.Answer.Items)
@@ -98,7 +95,7 @@ func (c Client) GetPlaylistItemsComplete(ctx context.Context, playlistId jf.Item
 		// a short page is the last; so is reaching the total, when the server
 		// reports one (a list may report 0 whatever it holds)
 		if len(page.Answer.Items) < limit || page.Answer.TotalRecordCount > 0 && start >= page.Answer.TotalRecordCount {
-			return
+			return result, nil
 		}
 	}
 }
@@ -120,7 +117,7 @@ func (c Client) GetPlaylistItemsEach(ctx context.Context, playlistId jf.ItemID, 
 	return func(yield func(jf.BaseItemDto, error) bool) {
 		var zero jf.BaseItemDto
 		if len(options) > 1 {
-			yield(zero, fmt.Errorf("GetPlaylistItemsEach takes one options struct at most, not %d", len(options)))
+			yield(zero, fmt.Errorf("at most one options struct for GetPlaylistItemsEach, not %d", len(options)))
 			return
 		}
 		var option jf.GetPlaylistItemsOptions
@@ -134,7 +131,7 @@ func (c Client) GetPlaylistItemsEach(ctx context.Context, playlistId jf.ItemID, 
 		}
 		option.Limit = &limit
 		start := 0
-		if option.StartIndex != nil {
+		if option.StartIndex != nil && *option.StartIndex > 0 {
 			start = *option.StartIndex
 		}
 		for {
@@ -146,8 +143,8 @@ func (c Client) GetPlaylistItemsEach(ctx context.Context, playlistId jf.ItemID, 
 			if page.Answer == nil || len(page.Answer.Items) == 0 {
 				return
 			}
-			for _, item := range page.Answer.Items {
-				if !yield(item, nil) {
+			for i := range page.Answer.Items {
+				if !yield(page.Answer.Items[i], nil) {
 					return
 				}
 			}

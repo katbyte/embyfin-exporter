@@ -4,7 +4,6 @@ package tag
 
 import (
 	"context"
-	"fmt"
 	"net/http"
 	"net/url"
 
@@ -22,16 +21,16 @@ func (c Client) PostItemsByIdTagsDelete(ctx context.Context, id emby.ItemID, inp
 		},
 		HTTPMethod: http.MethodPost,
 		Operation:  "PostItemsByIdTagsDelete",
-		Path:       fmt.Sprintf("/Items/%s/Tags/Delete", url.PathEscape(string(id))),
+		Path:       "/Items/" + url.PathEscape(string(id)) + "/Tags/Delete",
 	}
 
 	req, err := c.Client.NewRequest(ctx, opts)
 	if err != nil {
-		return
+		return result, err
 	}
 
-	if err = req.Marshal(input); err != nil {
-		return
+	if err := req.Marshal(input); err != nil {
+		return result, err
 	}
 
 	var resp *client.Response
@@ -40,8 +39,8 @@ func (c Client) PostItemsByIdTagsDelete(ctx context.Context, id emby.ItemID, inp
 		result.HttpResponse = resp.Response
 	}
 	if err != nil {
-		return
+		return result, err
 	}
 
-	return
+	return result, nil
 }

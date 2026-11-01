@@ -4,7 +4,6 @@ package displaypreferences
 
 import (
 	"context"
-	"fmt"
 	"net/http"
 	"net/url"
 
@@ -23,12 +22,12 @@ func (c Client) GetDisplayPreferencesById(ctx context.Context, id string, option
 		HTTPMethod:    http.MethodGet,
 		Operation:     "GetDisplayPreferencesById",
 		OptionsObject: options,
-		Path:          fmt.Sprintf("/DisplayPreferences/%s", url.PathEscape(id)),
+		Path:          "/DisplayPreferences/" + url.PathEscape(id),
 	}
 
 	req, err := c.Client.NewRequest(ctx, opts)
 	if err != nil {
-		return
+		return result, err
 	}
 
 	var resp *client.Response
@@ -37,19 +36,19 @@ func (c Client) GetDisplayPreferencesById(ctx context.Context, id string, option
 		result.HttpResponse = resp.Response
 	}
 	if err != nil {
-		return
+		return result, err
 	}
 
 	if resp.StatusCode == http.StatusNoContent {
-		return
+		return result, nil
 	}
 
 	var answer emby.DisplayPreferences
 	result.Answer = &answer
-	if err = resp.Unmarshal(result.Answer); err != nil {
-		return
+	if err := resp.Unmarshal(result.Answer); err != nil {
+		return result, err
 	}
 	result.DisplayPreferences = result.Answer
 
-	return
+	return result, nil
 }

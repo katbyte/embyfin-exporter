@@ -27,7 +27,7 @@ func (c Client) MergeVersions(ctx context.Context, ids []jf.ItemID) (result jf.M
 
 	req, err := c.Client.NewRequest(ctx, opts)
 	if err != nil {
-		return
+		return result, err
 	}
 
 	var resp *client.Response
@@ -36,8 +36,8 @@ func (c Client) MergeVersions(ctx context.Context, ids []jf.ItemID) (result jf.M
 		result.HttpResponse = resp.Response
 	}
 	if err != nil {
-		return
+		return result, err
 	}
 
-	return
+	return result, nil
 }

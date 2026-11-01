@@ -4,9 +4,9 @@ package images
 
 import (
 	"context"
-	"fmt"
 	"net/http"
 	"net/url"
+	"strconv"
 
 	"github.com/katbyte/embyfin-mcp/sdk/jf/12.1.0/jf"
 	"github.com/katbyte/pandorest/client"
@@ -20,12 +20,12 @@ func (c Client) DeleteItemImageByIndex(ctx context.Context, itemId jf.ItemID, im
 		},
 		HTTPMethod: http.MethodDelete,
 		Operation:  "DeleteItemImageByIndex",
-		Path:       fmt.Sprintf("/Items/%s/Images/%s/%d", url.PathEscape(string(itemId)), url.PathEscape(string(imageType)), imageIndex),
+		Path:       "/Items/" + url.PathEscape(string(itemId)) + "/Images/" + url.PathEscape(string(imageType)) + "/" + strconv.Itoa(imageIndex),
 	}
 
 	req, err := c.Client.NewRequest(ctx, opts)
 	if err != nil {
-		return
+		return result, err
 	}
 
 	var resp *client.Response
@@ -34,8 +34,8 @@ func (c Client) DeleteItemImageByIndex(ctx context.Context, itemId jf.ItemID, im
 		result.HttpResponse = resp.Response
 	}
 	if err != nil {
-		return
+		return result, err
 	}
 
-	return
+	return result, nil
 }

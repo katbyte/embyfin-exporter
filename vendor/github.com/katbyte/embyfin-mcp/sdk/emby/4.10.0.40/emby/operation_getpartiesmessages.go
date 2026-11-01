@@ -28,7 +28,7 @@ func (r GetPartiesMessagesResponse) Answered() bool { return r.Answer != nil }
 // error when the server answered none.
 func (r GetPartiesMessagesResponse) Record() (QueryResultSessionPartyMessage, error) {
 	if r.Answer == nil {
-		return QueryResultSessionPartyMessage{}, errors.New("GetPartiesMessages answered no QueryResultSessionPartyMessage")
+		return QueryResultSessionPartyMessage{}, errors.New("no QueryResultSessionPartyMessage answered by GetPartiesMessages")
 	}
 
 	return *r.Answer, nil

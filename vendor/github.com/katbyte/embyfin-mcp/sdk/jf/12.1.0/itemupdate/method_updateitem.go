@@ -4,7 +4,6 @@ package itemupdate
 
 import (
 	"context"
-	"fmt"
 	"net/http"
 	"net/url"
 
@@ -21,16 +20,16 @@ func (c Client) UpdateItem(ctx context.Context, itemId jf.ItemID, input jf.BaseI
 		},
 		HTTPMethod: http.MethodPost,
 		Operation:  "UpdateItem",
-		Path:       fmt.Sprintf("/Items/%s", url.PathEscape(string(itemId))),
+		Path:       "/Items/" + url.PathEscape(string(itemId)),
 	}
 
 	req, err := c.Client.NewRequest(ctx, opts)
 	if err != nil {
-		return
+		return result, err
 	}
 
-	if err = req.Marshal(input); err != nil {
-		return
+	if err := req.Marshal(input); err != nil {
+		return result, err
 	}
 
 	var resp *client.Response
@@ -39,8 +38,8 @@ func (c Client) UpdateItem(ctx context.Context, itemId jf.ItemID, input jf.BaseI
 		result.HttpResponse = resp.Response
 	}
 	if err != nil {
-		return
+		return result, err
 	}
 
-	return
+	return result, nil
 }

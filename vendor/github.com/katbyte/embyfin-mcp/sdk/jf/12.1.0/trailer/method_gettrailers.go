@@ -17,8 +17,7 @@ import (
 // Deprecated: the document marks this operation deprecated.
 func (c Client) GetTrailers(ctx context.Context, options ...jf.GetTrailersOptions) (result jf.GetTrailersResponse, err error) {
 	if len(options) > 1 {
-		err = fmt.Errorf("GetTrailers takes one options struct at most, not %d", len(options))
-		return
+		return result, fmt.Errorf("at most one options struct for GetTrailers, not %d", len(options))
 	}
 	var option jf.GetTrailersOptions
 	if len(options) == 1 {
@@ -38,7 +37,7 @@ func (c Client) GetTrailers(ctx context.Context, options ...jf.GetTrailersOption
 
 	req, err := c.Client.NewRequest(ctx, opts)
 	if err != nil {
-		return
+		return result, err
 	}
 
 	var resp *client.Response
@@ -47,17 +46,17 @@ func (c Client) GetTrailers(ctx context.Context, options ...jf.GetTrailersOption
 		result.HttpResponse = resp.Response
 	}
 	if err != nil {
-		return
+		return result, err
 	}
 
 	var answer jf.BaseItemDtoQueryResult
 	result.Answer = &answer
-	if err = resp.Unmarshal(result.Answer); err != nil {
-		return
+	if err := resp.Unmarshal(result.Answer); err != nil {
+		return result, err
 	}
 	result.BaseItemDtoQueryResult = result.Answer
 
-	return
+	return result, nil
 }
 
 // GetTrailersComplete calls GetTrailers page by page from options.StartIndex until every
@@ -65,8 +64,7 @@ func (c Client) GetTrailers(ctx context.Context, options ...jf.GetTrailersOption
 // unset.
 func (c Client) GetTrailersComplete(ctx context.Context, options ...jf.GetTrailersOptions) (result jf.GetTrailersCompleteResult, err error) {
 	if len(options) > 1 {
-		err = fmt.Errorf("GetTrailersComplete takes one options struct at most, not %d", len(options))
-		return
+		return result, fmt.Errorf("at most one options struct for GetTrailersComplete, not %d", len(options))
 	}
 	var option jf.GetTrailersOptions
 	if len(options) == 1 {
@@ -79,7 +77,7 @@ func (c Client) GetTrailersComplete(ctx context.Context, options ...jf.GetTraile
 	}
 	option.Limit = &limit
 	start := 0
-	if option.StartIndex != nil {
+	if option.StartIndex != nil && *option.StartIndex > 0 {
 		start = *option.StartIndex
 	}
 	for {
@@ -87,11 +85,10 @@ func (c Client) GetTrailersComplete(ctx context.Context, options ...jf.GetTraile
 		page, err = c.GetTrailers(ctx, option)
 		result.LatestHttpResponse = page.HttpResponse
 		if err != nil {
-			err = fmt.Errorf("loading results: %w", err)
-			return
+			return result, fmt.Errorf("loading results: %w", err)
 		}
 		if page.Answer == nil || len(page.Answer.Items) == 0 {
-			return
+			return result, nil
 		}
 		result.Items = append(result.Items, page.Answer.Items...)
 		start += len(page.Answer.Items)
@@ -99,7 +96,7 @@ func (c Client) GetTrailersComplete(ctx context.Context, options ...jf.GetTraile
 		// a short page is the last; so is reaching the total, when the server
 		// reports one (a list may report 0 whatever it holds)
 		if len(page.Answer.Items) < limit || page.Answer.TotalRecordCount > 0 && start >= page.Answer.TotalRecordCount {
-			return
+			return result, nil
 		}
 	}
 }
@@ -121,7 +118,7 @@ func (c Client) GetTrailersEach(ctx context.Context, options ...jf.GetTrailersOp
 	return func(yield func(jf.BaseItemDto, error) bool) {
 		var zero jf.BaseItemDto
 		if len(options) > 1 {
-			yield(zero, fmt.Errorf("GetTrailersEach takes one options struct at most, not %d", len(options)))
+			yield(zero, fmt.Errorf("at most one options struct for GetTrailersEach, not %d", len(options)))
 			return
 		}
 		var option jf.GetTrailersOptions
@@ -135,7 +132,7 @@ func (c Client) GetTrailersEach(ctx context.Context, options ...jf.GetTrailersOp
 		}
 		option.Limit = &limit
 		start := 0
-		if option.StartIndex != nil {
+		if option.StartIndex != nil && *option.StartIndex > 0 {
 			start = *option.StartIndex
 		}
 		for {
@@ -147,8 +144,8 @@ func (c Client) GetTrailersEach(ctx context.Context, options ...jf.GetTrailersOp
 			if page.Answer == nil || len(page.Answer.Items) == 0 {
 				return
 			}
-			for _, item := range page.Answer.Items {
-				if !yield(item, nil) {
+			for i := range page.Answer.Items {
+				if !yield(page.Answer.Items[i], nil) {
 					return
 				}
 			}

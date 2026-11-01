@@ -15,8 +15,7 @@ import (
 // GetLatestChannelItems calls GET /Channels/Items/Latest. Gets latest channel items.
 func (c Client) GetLatestChannelItems(ctx context.Context, options ...jf.GetLatestChannelItemsOptions) (result jf.GetLatestChannelItemsResponse, err error) {
 	if len(options) > 1 {
-		err = fmt.Errorf("GetLatestChannelItems takes one options struct at most, not %d", len(options))
-		return
+		return result, fmt.Errorf("at most one options struct for GetLatestChannelItems, not %d", len(options))
 	}
 	var option jf.GetLatestChannelItemsOptions
 	if len(options) == 1 {
@@ -36,7 +35,7 @@ func (c Client) GetLatestChannelItems(ctx context.Context, options ...jf.GetLate
 
 	req, err := c.Client.NewRequest(ctx, opts)
 	if err != nil {
-		return
+		return result, err
 	}
 
 	var resp *client.Response
@@ -45,17 +44,17 @@ func (c Client) GetLatestChannelItems(ctx context.Context, options ...jf.GetLate
 		result.HttpResponse = resp.Response
 	}
 	if err != nil {
-		return
+		return result, err
 	}
 
 	var answer jf.BaseItemDtoQueryResult
 	result.Answer = &answer
-	if err = resp.Unmarshal(result.Answer); err != nil {
-		return
+	if err := resp.Unmarshal(result.Answer); err != nil {
+		return result, err
 	}
 	result.BaseItemDtoQueryResult = result.Answer
 
-	return
+	return result, nil
 }
 
 // GetLatestChannelItemsComplete calls GetLatestChannelItems page by page from options.StartIndex until every
@@ -63,8 +62,7 @@ func (c Client) GetLatestChannelItems(ctx context.Context, options ...jf.GetLate
 // unset.
 func (c Client) GetLatestChannelItemsComplete(ctx context.Context, options ...jf.GetLatestChannelItemsOptions) (result jf.GetLatestChannelItemsCompleteResult, err error) {
 	if len(options) > 1 {
-		err = fmt.Errorf("GetLatestChannelItemsComplete takes one options struct at most, not %d", len(options))
-		return
+		return result, fmt.Errorf("at most one options struct for GetLatestChannelItemsComplete, not %d", len(options))
 	}
 	var option jf.GetLatestChannelItemsOptions
 	if len(options) == 1 {
@@ -77,7 +75,7 @@ func (c Client) GetLatestChannelItemsComplete(ctx context.Context, options ...jf
 	}
 	option.Limit = &limit
 	start := 0
-	if option.StartIndex != nil {
+	if option.StartIndex != nil && *option.StartIndex > 0 {
 		start = *option.StartIndex
 	}
 	for {
@@ -85,11 +83,10 @@ func (c Client) GetLatestChannelItemsComplete(ctx context.Context, options ...jf
 		page, err = c.GetLatestChannelItems(ctx, option)
 		result.LatestHttpResponse = page.HttpResponse
 		if err != nil {
-			err = fmt.Errorf("loading results: %w", err)
-			return
+			return result, fmt.Errorf("loading results: %w", err)
 		}
 		if page.Answer == nil || len(page.Answer.Items) == 0 {
-			return
+			return result, nil
 		}
 		result.Items = append(result.Items, page.Answer.Items...)
 		start += len(page.Answer.Items)
@@ -97,7 +94,7 @@ func (c Client) GetLatestChannelItemsComplete(ctx context.Context, options ...jf
 		// a short page is the last; so is reaching the total, when the server
 		// reports one (a list may report 0 whatever it holds)
 		if len(page.Answer.Items) < limit || page.Answer.TotalRecordCount > 0 && start >= page.Answer.TotalRecordCount {
-			return
+			return result, nil
 		}
 	}
 }
@@ -119,7 +116,7 @@ func (c Client) GetLatestChannelItemsEach(ctx context.Context, options ...jf.Get
 	return func(yield func(jf.BaseItemDto, error) bool) {
 		var zero jf.BaseItemDto
 		if len(options) > 1 {
-			yield(zero, fmt.Errorf("GetLatestChannelItemsEach takes one options struct at most, not %d", len(options)))
+			yield(zero, fmt.Errorf("at most one options struct for GetLatestChannelItemsEach, not %d", len(options)))
 			return
 		}
 		var option jf.GetLatestChannelItemsOptions
@@ -133,7 +130,7 @@ func (c Client) GetLatestChannelItemsEach(ctx context.Context, options ...jf.Get
 		}
 		option.Limit = &limit
 		start := 0
-		if option.StartIndex != nil {
+		if option.StartIndex != nil && *option.StartIndex > 0 {
 			start = *option.StartIndex
 		}
 		for {
@@ -145,8 +142,8 @@ func (c Client) GetLatestChannelItemsEach(ctx context.Context, options ...jf.Get
 			if page.Answer == nil || len(page.Answer.Items) == 0 {
 				return
 			}
-			for _, item := range page.Answer.Items {
-				if !yield(item, nil) {
+			for i := range page.Answer.Items {
+				if !yield(page.Answer.Items[i], nil) {
 					return
 				}
 			}

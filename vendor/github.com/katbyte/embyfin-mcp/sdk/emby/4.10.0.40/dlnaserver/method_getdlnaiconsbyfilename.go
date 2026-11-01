@@ -16,8 +16,7 @@ import (
 func (c Client) GetDlnaIconsByFilename(ctx context.Context, filename string, uuId ...string) (result emby.GetDlnaIconsByFilenameResponse, err error) {
 	var option emby.GetDlnaIconsByFilenameOptions
 	if len(uuId) > 1 {
-		err = fmt.Errorf("GetDlnaIconsByFilename takes one uuId at most, not %d", len(uuId))
-		return
+		return result, fmt.Errorf("at most one uuId for GetDlnaIconsByFilename, not %d", len(uuId))
 	}
 	if len(uuId) == 1 {
 		option.UuId = uuId[0]
@@ -31,13 +30,13 @@ func (c Client) GetDlnaIconsByFilename(ctx context.Context, filename string, uuI
 		HTTPMethod:     http.MethodGet,
 		Operation:      "GetDlnaIconsByFilename",
 		OptionsObject:  option,
-		Path:           fmt.Sprintf("/Dlna/icons/%s", url.PathEscape(filename)),
+		Path:           "/Dlna/icons/" + url.PathEscape(filename),
 		StreamResponse: true,
 	}
 
 	req, err := c.Client.NewRequest(ctx, opts)
 	if err != nil {
-		return
+		return result, err
 	}
 
 	var resp *client.Response
@@ -46,8 +45,8 @@ func (c Client) GetDlnaIconsByFilename(ctx context.Context, filename string, uuI
 		result.HttpResponse = resp.Response
 	}
 	if err != nil {
-		return
+		return result, err
 	}
 
-	return
+	return result, nil
 }

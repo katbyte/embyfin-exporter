@@ -4,9 +4,9 @@ package video
 
 import (
 	"context"
-	"fmt"
 	"net/http"
 	"net/url"
+	"strconv"
 
 	"github.com/katbyte/embyfin-mcp/sdk/jf/12.1.0/jf"
 	"github.com/katbyte/pandorest/client"
@@ -21,13 +21,13 @@ func (c Client) GetAttachment(ctx context.Context, videoId jf.ItemID, mediaSourc
 		},
 		HTTPMethod:     http.MethodGet,
 		Operation:      "GetAttachment",
-		Path:           fmt.Sprintf("/Videos/%s/%s/Attachments/%d", url.PathEscape(string(videoId)), url.PathEscape(string(mediaSourceId)), index),
+		Path:           "/Videos/" + url.PathEscape(string(videoId)) + "/" + url.PathEscape(string(mediaSourceId)) + "/Attachments/" + strconv.Itoa(index),
 		StreamResponse: true,
 	}
 
 	req, err := c.Client.NewRequest(ctx, opts)
 	if err != nil {
-		return
+		return result, err
 	}
 
 	var resp *client.Response
@@ -36,8 +36,8 @@ func (c Client) GetAttachment(ctx context.Context, videoId jf.ItemID, mediaSourc
 		result.HttpResponse = resp.Response
 	}
 	if err != nil {
-		return
+		return result, err
 	}
 
-	return
+	return result, nil
 }

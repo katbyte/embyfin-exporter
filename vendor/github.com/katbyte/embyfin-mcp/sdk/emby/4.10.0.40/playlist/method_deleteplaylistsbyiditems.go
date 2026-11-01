@@ -4,7 +4,6 @@ package playlist
 
 import (
 	"context"
-	"fmt"
 	"net/http"
 	"net/url"
 
@@ -25,12 +24,12 @@ func (c Client) DeletePlaylistsByIdItems(ctx context.Context, id emby.ItemID, en
 		HTTPMethod:    http.MethodDelete,
 		Operation:     "DeletePlaylistsByIdItems",
 		OptionsObject: option,
-		Path:          fmt.Sprintf("/Playlists/%s/Items", url.PathEscape(string(id))),
+		Path:          "/Playlists/" + url.PathEscape(string(id)) + "/Items",
 	}
 
 	req, err := c.Client.NewRequest(ctx, opts)
 	if err != nil {
-		return
+		return result, err
 	}
 
 	var resp *client.Response
@@ -39,8 +38,8 @@ func (c Client) DeletePlaylistsByIdItems(ctx context.Context, id emby.ItemID, en
 		result.HttpResponse = resp.Response
 	}
 	if err != nil {
-		return
+		return result, err
 	}
 
-	return
+	return result, nil
 }

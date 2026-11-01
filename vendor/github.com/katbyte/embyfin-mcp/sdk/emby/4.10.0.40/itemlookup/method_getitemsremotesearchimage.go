@@ -26,7 +26,7 @@ func (c Client) GetItemsRemoteSearchImage(ctx context.Context, options emby.GetI
 
 	req, err := c.Client.NewRequest(ctx, opts)
 	if err != nil {
-		return
+		return result, err
 	}
 
 	var resp *client.Response
@@ -35,8 +35,8 @@ func (c Client) GetItemsRemoteSearchImage(ctx context.Context, options emby.GetI
 		result.HttpResponse = resp.Response
 	}
 	if err != nil {
-		return
+		return result, err
 	}
 
-	return
+	return result, nil
 }

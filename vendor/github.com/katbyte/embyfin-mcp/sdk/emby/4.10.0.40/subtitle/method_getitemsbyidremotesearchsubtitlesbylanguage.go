@@ -4,7 +4,6 @@ package subtitle
 
 import (
 	"context"
-	"fmt"
 	"net/http"
 	"net/url"
 
@@ -22,12 +21,12 @@ func (c Client) GetItemsByIdRemoteSearchSubtitlesByLanguage(ctx context.Context,
 		HTTPMethod:    http.MethodGet,
 		Operation:     "GetItemsByIdRemoteSearchSubtitlesByLanguage",
 		OptionsObject: options,
-		Path:          fmt.Sprintf("/Items/%s/RemoteSearch/Subtitles/%s", url.PathEscape(string(id)), url.PathEscape(language)),
+		Path:          "/Items/" + url.PathEscape(string(id)) + "/RemoteSearch/Subtitles/" + url.PathEscape(language),
 	}
 
 	req, err := c.Client.NewRequest(ctx, opts)
 	if err != nil {
-		return
+		return result, err
 	}
 
 	var resp *client.Response
@@ -36,16 +35,16 @@ func (c Client) GetItemsByIdRemoteSearchSubtitlesByLanguage(ctx context.Context,
 		result.HttpResponse = resp.Response
 	}
 	if err != nil {
-		return
+		return result, err
 	}
 
 	if resp.StatusCode == http.StatusNoContent {
-		return
+		return result, nil
 	}
 
-	if err = resp.Unmarshal(&result.Answer); err != nil {
-		return
+	if err := resp.Unmarshal(&result.Answer); err != nil {
+		return result, err
 	}
 
-	return
+	return result, nil
 }

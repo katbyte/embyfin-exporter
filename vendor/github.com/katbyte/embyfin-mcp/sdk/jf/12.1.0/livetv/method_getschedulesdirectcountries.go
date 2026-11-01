@@ -23,7 +23,7 @@ func (c Client) GetSchedulesDirectCountries(ctx context.Context) (result jf.GetS
 
 	req, err := c.Client.NewRequest(ctx, opts)
 	if err != nil {
-		return
+		return result, err
 	}
 
 	var resp *client.Response
@@ -32,12 +32,12 @@ func (c Client) GetSchedulesDirectCountries(ctx context.Context) (result jf.GetS
 		result.HttpResponse = resp.Response
 	}
 	if err != nil {
-		return
+		return result, err
 	}
 
-	if err = resp.Unmarshal(&result.Answer); err != nil {
-		return
+	if err := resp.Unmarshal(&result.Answer); err != nil {
+		return result, err
 	}
 
-	return
+	return result, nil
 }

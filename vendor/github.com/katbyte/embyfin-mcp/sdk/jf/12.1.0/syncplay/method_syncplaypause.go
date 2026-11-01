@@ -23,7 +23,7 @@ func (c Client) SyncPlayPause(ctx context.Context) (result jf.SyncPlayPauseRespo
 
 	req, err := c.Client.NewRequest(ctx, opts)
 	if err != nil {
-		return
+		return result, err
 	}
 
 	var resp *client.Response
@@ -32,8 +32,8 @@ func (c Client) SyncPlayPause(ctx context.Context) (result jf.SyncPlayPauseRespo
 		result.HttpResponse = resp.Response
 	}
 	if err != nil {
-		return
+		return result, err
 	}
 
-	return
+	return result, nil
 }

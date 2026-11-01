@@ -15,8 +15,7 @@ import (
 func (c Client) AddMediaPath(ctx context.Context, input jf.MediaPathDto, refreshLibrary ...bool) (result jf.AddMediaPathResponse, err error) {
 	var option jf.AddMediaPathOptions
 	if len(refreshLibrary) > 1 {
-		err = fmt.Errorf("AddMediaPath takes one refreshLibrary at most, not %d", len(refreshLibrary))
-		return
+		return result, fmt.Errorf("at most one refreshLibrary for AddMediaPath, not %d", len(refreshLibrary))
 	}
 	if len(refreshLibrary) == 1 {
 		option.RefreshLibrary = &refreshLibrary[0]
@@ -35,11 +34,11 @@ func (c Client) AddMediaPath(ctx context.Context, input jf.MediaPathDto, refresh
 
 	req, err := c.Client.NewRequest(ctx, opts)
 	if err != nil {
-		return
+		return result, err
 	}
 
-	if err = req.Marshal(input); err != nil {
-		return
+	if err := req.Marshal(input); err != nil {
+		return result, err
 	}
 
 	var resp *client.Response
@@ -48,8 +47,8 @@ func (c Client) AddMediaPath(ctx context.Context, input jf.MediaPathDto, refresh
 		result.HttpResponse = resp.Response
 	}
 	if err != nil {
-		return
+		return result, err
 	}
 
-	return
+	return result, nil
 }

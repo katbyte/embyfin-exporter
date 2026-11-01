@@ -4,7 +4,6 @@ package subtitle
 
 import (
 	"context"
-	"fmt"
 	"net/http"
 	"net/url"
 
@@ -21,13 +20,13 @@ func (c Client) GetRemoteSubtitles(ctx context.Context, subtitleId string) (resu
 		},
 		HTTPMethod:     http.MethodGet,
 		Operation:      "GetRemoteSubtitles",
-		Path:           fmt.Sprintf("/Providers/Subtitles/Subtitles/%s", url.PathEscape(subtitleId)),
+		Path:           "/Providers/Subtitles/Subtitles/" + url.PathEscape(subtitleId),
 		StreamResponse: true,
 	}
 
 	req, err := c.Client.NewRequest(ctx, opts)
 	if err != nil {
-		return
+		return result, err
 	}
 
 	var resp *client.Response
@@ -36,8 +35,8 @@ func (c Client) GetRemoteSubtitles(ctx context.Context, subtitleId string) (resu
 		result.HttpResponse = resp.Response
 	}
 	if err != nil {
-		return
+		return result, err
 	}
 
-	return
+	return result, nil
 }

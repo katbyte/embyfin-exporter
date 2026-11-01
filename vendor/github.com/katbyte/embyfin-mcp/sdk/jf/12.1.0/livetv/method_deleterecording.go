@@ -4,7 +4,6 @@ package livetv
 
 import (
 	"context"
-	"fmt"
 	"net/http"
 	"net/url"
 
@@ -20,12 +19,12 @@ func (c Client) DeleteRecording(ctx context.Context, recordingId string) (result
 		},
 		HTTPMethod: http.MethodDelete,
 		Operation:  "DeleteRecording",
-		Path:       fmt.Sprintf("/LiveTv/Recordings/%s", url.PathEscape(recordingId)),
+		Path:       "/LiveTv/Recordings/" + url.PathEscape(recordingId),
 	}
 
 	req, err := c.Client.NewRequest(ctx, opts)
 	if err != nil {
-		return
+		return result, err
 	}
 
 	var resp *client.Response
@@ -34,8 +33,8 @@ func (c Client) DeleteRecording(ctx context.Context, recordingId string) (result
 		result.HttpResponse = resp.Response
 	}
 	if err != nil {
-		return
+		return result, err
 	}
 
-	return
+	return result, nil
 }

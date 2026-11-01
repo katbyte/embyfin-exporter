@@ -31,7 +31,7 @@ func (r GetItemsByIdCriticReviewsResponse) Answered() bool { return r.Answer != 
 // error when the server answered none.
 func (r GetItemsByIdCriticReviewsResponse) Record() (QueryResultBaseItemDto, error) {
 	if r.Answer == nil {
-		return QueryResultBaseItemDto{}, errors.New("GetItemsByIdCriticReviews answered no QueryResultBaseItemDto")
+		return QueryResultBaseItemDto{}, errors.New("no QueryResultBaseItemDto answered by GetItemsByIdCriticReviews")
 	}
 
 	return *r.Answer, nil
@@ -48,8 +48,7 @@ type GetItemsByIdCriticReviewsOptions struct {
 
 // ToHeaders returns the header parameters the options set.
 func (o GetItemsByIdCriticReviewsOptions) ToHeaders() *client.Headers {
-	out := client.Headers{}
-	return &out
+	return &client.Headers{}
 }
 
 // ToQuery returns the query parameters the options set.

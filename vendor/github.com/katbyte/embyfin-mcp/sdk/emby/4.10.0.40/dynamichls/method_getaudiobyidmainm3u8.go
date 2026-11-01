@@ -4,7 +4,6 @@ package dynamichls
 
 import (
 	"context"
-	"fmt"
 	"net/http"
 	"net/url"
 
@@ -22,13 +21,13 @@ func (c Client) GetAudioByIdMainM3u8(ctx context.Context, id emby.ItemID, option
 		HTTPMethod:     http.MethodGet,
 		Operation:      "GetAudioByIdMainM3u8",
 		OptionsObject:  options,
-		Path:           fmt.Sprintf("/Audio/%s/main.m3u8", url.PathEscape(string(id))),
+		Path:           "/Audio/" + url.PathEscape(string(id)) + "/main.m3u8",
 		StreamResponse: true,
 	}
 
 	req, err := c.Client.NewRequest(ctx, opts)
 	if err != nil {
-		return
+		return result, err
 	}
 
 	var resp *client.Response
@@ -37,8 +36,8 @@ func (c Client) GetAudioByIdMainM3u8(ctx context.Context, id emby.ItemID, option
 		result.HttpResponse = resp.Response
 	}
 	if err != nil {
-		return
+		return result, err
 	}
 
-	return
+	return result, nil
 }

@@ -28,7 +28,7 @@ func (r GetCurrentUserResponse) Answered() bool { return r.Answer != nil }
 // error when the server answered none.
 func (r GetCurrentUserResponse) Record() (UserDto, error) {
 	if r.Answer == nil {
-		return UserDto{}, errors.New("GetCurrentUser answered no UserDto")
+		return UserDto{}, errors.New("no UserDto answered by GetCurrentUser")
 	}
 
 	return *r.Answer, nil
